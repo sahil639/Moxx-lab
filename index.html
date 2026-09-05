@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Moxx Lab</title>
+<meta name="description" content="Mockup animations. Each one is a single self-contained page, built to be screen-recorded.">
+<style>
+  :root{
+    --bg:#0b0d0f;
+    --fg:#d8dee4;
+    --dim:#6b7680;
+    --line:#1e242a;
+    --accent:#5aa9e6;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--fg);
+    font:14px/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    letter-spacing:.01em;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:680px;margin:0 auto;padding:88px 28px 120px}
+
+  header{margin-bottom:64px}
+  h1{
+    font-size:13px;font-weight:400;letter-spacing:.22em;text-transform:uppercase;
+    margin:0 0 14px;color:var(--fg);
+  }
+  header p{margin:0;color:var(--dim);font-size:13px;max-width:46ch}
+
+  h2{
+    font-size:11px;font-weight:400;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--dim);margin:0 0 4px;padding-bottom:10px;border-bottom:1px solid var(--line);
+  }
+
+  ul{list-style:none;margin:0;padding:0}
+  li{border-bottom:1px solid var(--line)}
+
+  a.item{
+    display:block;text-decoration:none;color:inherit;
+    padding:22px 0 20px;
+  }
+  a.item:hover .name,a.item:focus-visible .name{color:var(--accent)}
+  a.item:focus-visible{outline:1px solid var(--accent);outline-offset:4px}
+
+  .top{display:flex;align-items:baseline;gap:14px}
+  .name{font-size:15px;color:var(--fg);transition:color .12s ease}
+  .rule{flex:1;height:1px;background:var(--line);transform:translateY(-3px)}
+  .no{color:var(--dim);font-size:12px;font-variant-numeric:tabular-nums}
+
+  .desc{margin:7px 0 0;color:var(--dim);font-size:13px;max-width:56ch}
+  .meta{margin:9px 0 0;color:#4d565f;font-size:11.5px;letter-spacing:.06em}
+
+  footer{
+    margin-top:64px;padding-top:20px;border-top:1px solid var(--line);
+    color:#4d565f;font-size:11.5px;line-height:1.9;
+  }
+  footer a{color:#6b7680;text-decoration:none;border-bottom:1px solid #2a3138}
+  footer a:hover{color:var(--accent);border-color:var(--accent)}
+
+  @media (max-width:520px){
+    .wrap{padding:56px 20px 80px}
+    header{margin-bottom:44px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Moxx Lab</h1>
+    <p>Mockup animations. Each one is a single self-contained page with its own
+       control panel, built to be tuned in the browser and screen-recorded.</p>
+  </header>
+
+  <h2>Animations</h2>
+  <ul>
+    <li>
+      <a class="item" href="terminal-type.html">
+        <span class="top">
+          <span class="name">Terminal Type</span>
+          <span class="rule"></span>
+          <span class="no">01</span>
+        </span>
+        <p class="desc">Portrait terminal text that types itself in, with a decode
+          scramble running ahead of the write head. Drop in any font file to try it.</p>
+        <p class="meta">1080 × 1920 · typewriter · cascade · CRT</p>
+      </a>
+    </li>
+  </ul>
+
+  <footer>
+    Self-contained pages — no build step, no dependencies, no network requests.<br>
+    <a href="https://github.com/sahil639/Moxx-lab">github.com/sahil639/Moxx-lab</a>
+  </footer>
+
+</div>
+</body>
+</html>
