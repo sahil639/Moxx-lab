@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Moxx Lab — Line Relief</title>
+<style>
+  :root{
+    --panel-bg:#101317;
+    --panel-line:#23292f;
+    --panel-fg:#c7d1da;
+    --panel-dim:#6d7a86;
+    --panel-accent:#8fb3cc;
+    --panel-w:328px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;background:#000;color:var(--panel-fg);
+    font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;
+    overflow:hidden;
+  }
+
+  #viewport{
+    position:fixed;inset:0;display:grid;place-items:center;
+    padding-right:var(--panel-w);transition:padding-right .18s ease;
+  }
+  body.ui-hidden #viewport{padding-right:0}
+  #stage{position:relative;transform-origin:center center}
+  #c{display:block}
+
+  #drop{
+    position:fixed;inset:0;z-index:30;display:none;place-items:center;
+    background:rgba(4,8,12,.84);border:2px dashed var(--panel-accent);
+    color:var(--panel-accent);letter-spacing:.16em;text-transform:uppercase;font-size:12px;
+  }
+  #drop.on{display:grid}
+
+  #panel{
+    position:fixed;top:0;right:0;bottom:0;width:var(--panel-w);
+    background:var(--panel-bg);border-left:1px solid var(--panel-line);
+    overflow-y:auto;padding:14px 14px 60px;z-index:10;transition:transform .18s ease;
+  }
+  body.ui-hidden #panel{transform:translateX(100%)}
+  #panel::-webkit-scrollbar{width:9px}
+  #panel::-webkit-scrollbar-thumb{background:#2b333b;border-radius:9px}
+  h1{font-size:11px;letter-spacing:.16em;text-transform:uppercase;margin:2px 0 12px;color:var(--panel-accent)}
+  h1 small{display:block;color:var(--panel-dim);letter-spacing:.08em;margin-top:4px;text-transform:none}
+  details{border-top:1px solid var(--panel-line);padding:8px 0}
+  details[open]{padding-bottom:12px}
+  summary{
+    cursor:pointer;list-style:none;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--panel-fg);padding:4px 0;user-select:none;display:flex;justify-content:space-between;align-items:center;
+  }
+  summary::-webkit-details-marker{display:none}
+  summary::after{content:"+";color:var(--panel-dim)}
+  details[open] summary::after{content:"–"}
+  .row{display:flex;align-items:center;gap:8px;margin:9px 0}
+  .row label{flex:0 0 100px;color:var(--panel-dim);font-size:10.5px;letter-spacing:.04em}
+  .row input[type=range]{flex:1;min-width:0;accent-color:var(--panel-accent);height:16px}
+  .row .val{flex:0 0 48px;text-align:right;font-size:10.5px;font-variant-numeric:tabular-nums}
+  .row input[type=color]{width:34px;height:22px;padding:0;border:1px solid var(--panel-line);background:none;border-radius:3px}
+  .row input[type=text],.row select{
+    flex:1;min-width:0;background:#0a0d10;color:var(--panel-fg);
+    border:1px solid var(--panel-line);border-radius:3px;padding:4px 6px;font:inherit;
+  }
+  .toggle{display:flex;align-items:center;gap:7px;cursor:pointer;font-size:11px;margin:7px 0}
+  .toggle input{accent-color:var(--panel-accent);width:14px;height:14px}
+  button{
+    background:#1a2027;color:var(--panel-fg);border:1px solid var(--panel-line);
+    border-radius:3px;padding:6px 9px;font:inherit;cursor:pointer;letter-spacing:.04em;
+  }
+  button:hover{background:#222a33;border-color:#39424c}
+  .btns{display:flex;gap:6px;flex-wrap:wrap;margin:9px 0}
+  .btns button{flex:1}
+  #pick{
+    border:1px dashed #333c45;border-radius:4px;padding:14px 10px;text-align:center;
+    color:var(--panel-dim);cursor:pointer;font-size:10.5px;line-height:1.6;
+  }
+  #pick:hover{border-color:var(--panel-accent);color:var(--panel-accent)}
+  .hint{color:var(--panel-dim);font-size:10px;line-height:1.6;margin:8px 0 0}
+  kbd{background:#1a2027;border:1px solid var(--panel-line);border-radius:2px;padding:0 4px}
+  #hud{
+    position:fixed;left:12px;bottom:10px;color:#3d4650;font-size:10px;
+    letter-spacing:.08em;z-index:9;
+  }
+  #hud a{color:#5a6570;text-decoration:none}
+  #hud a:hover{color:var(--panel-accent)}
+  #hud span{pointer-events:none}
+  body.ui-hidden #hud{display:none}
+</style>
+</head>
+<body>
+
+<div id="viewport"><div id="stage"><canvas id="c"></canvas></div></div>
+<div id="drop">Drop an image</div>
+<div id="hud"><a href="index.html">← Moxx Lab</a><span> · drop an image · <kbd>H</kbd> panel · <kbd>R</kbd> replay · <kbd>S</kbd> save png · <kbd>space</kbd> pause</span></div>
+
+<div id="panel">
+  <h1>Line Relief<small>displacement line plot</small></h1>
+
+  <details open>
+    <summary>Playback</summary>
+    <div class="btns"><button id="bPlay">Pause</button><button id="bReplay">Replay</button></div>
+    <div class="row"><label>Scrub</label><input type="range" id="scrub" min="0" max="1000" step="1" value="0"><span class="val" id="scrub_v">0.0s</span></div>
+    <div class="row"><label>Speed</label><input type="range" id="rate" min="0.1" max="3" step="0.05" value="1"><span class="val" id="rate_v"></span></div>
+    <div class="row"><label>Loop length</label><input type="range" id="loopDur" min="2" max="30" step="0.5" value="12"><span class="val" id="loopDur_v"></span></div>
+    <p class="hint">Drift and breathe both cycle on the loop length, so the held state is a seamless loop — record after the bloom finishes.</p>
+  </details>
+
+  <details open>
+    <summary>Motion</summary>
+    <label class="toggle"><input type="checkbox" id="bloom" checked> Amplitude bloom</label>
+    <div class="row"><label>Bloom time</label><input type="range" id="bloomDur" min="0.2" max="8" step="0.1" value="2.6"><span class="val" id="bloomDur_v"></span></div>
+    <div class="row"><label>Bloom ease</label><select id="ease">
+      <option value="out3">Ease out — cubic</option>
+      <option value="out5">Ease out — quintic</option>
+      <option value="inout">Ease in-out</option>
+      <option value="lin">Linear</option>
+    </select></div>
+    <div class="row"><label>Bloom stagger</label><input type="range" id="stag" min="0" max="1" step="0.01" value="0.35"><span class="val" id="stag_v"></span></div>
+    <div class="row"><label>Drift</label><input type="range" id="drift" min="0" max="4" step="0.05" value="1"><span class="val" id="drift_v"></span></div>
+    <div class="row"><label>Breathe</label><input type="range" id="breathe" min="0" max="0.5" step="0.005" value="0.06"><span class="val" id="breathe_v"></span></div>
+  </details>
+
+  <details open>
+    <summary>Source</summary>
+    <div id="pick">Drop an image anywhere — or click<br>jpg · png · webp · gif</div>
+    <div class="row" style="margin-top:11px"><label>Fit</label><select id="fit">
+      <option value="cover">Cover</option>
+      <option value="contain">Contain</option>
+    </select></div>
+    <div class="row"><label>Scale</label><input type="range" id="izoom" min="0.3" max="3" step="0.01" value="1"><span class="val" id="izoom_v"></span></div>
+    <div class="row"><label>Offset X</label><input type="range" id="offX" min="-0.5" max="0.5" step="0.005" value="0"><span class="val" id="offX_v"></span></div>
+    <div class="row"><label>Offset Y</label><input type="range" id="offY" min="-0.5" max="0.5" step="0.005" value="0"><span class="val" id="offY_v"></span></div>
+    <div class="row"><label>Brightness</label><input type="range" id="bri" min="-0.5" max="0.5" step="0.01" value="0"><span class="val" id="bri_v"></span></div>
+    <div class="row"><label>Contrast</label><input type="range" id="con" min="0.2" max="3" step="0.01" value="1.25"><span class="val" id="con_v"></span></div>
+    <div class="row"><label>Gamma</label><input type="range" id="gam" min="0.3" max="3" step="0.01" value="1"><span class="val" id="gam_v"></span></div>
+    <div class="row"><label>Blur</label><input type="range" id="blur" min="0" max="40" step="1" value="10"><span class="val" id="blur_v"></span></div>
+    <label class="toggle"><input type="checkbox" id="invert"> Invert</label>
+    <p class="hint">Blur is the strongest control here. Too little and the lines go scratchy; too much and the form dissolves.</p>
+  </details>
+
+  <details open>
+    <summary>Field</summary>
+    <div class="row"><label>Angle</label><input type="range" id="angle" min="0" max="180" step="1" value="90"><span class="val" id="angle_v"></span></div>
+    <div class="row"><label>Lines</label><input type="range" id="lines" min="8" max="300" step="1" value="48"><span class="val" id="lines_v"></span></div>
+    <div class="row"><label>Resolution</label><input type="range" id="samples" min="80" max="1400" step="10" value="620"><span class="val" id="samples_v"></span></div>
+  </details>
+
+  <details open>
+    <summary>Displacement</summary>
+    <div class="row"><label>Amplitude</label><input type="range" id="amp" min="0" max="400" step="1" value="70"><span class="val" id="amp_v"></span></div>
+    <div class="row"><label>Response</label><input type="range" id="resp" min="0.2" max="4" step="0.05" value="1.3"><span class="val" id="resp_v"></span></div>
+    <div class="row"><label>Floor</label><input type="range" id="thr" min="0" max="0.9" step="0.01" value="0.06"><span class="val" id="thr_v"></span></div>
+    <label class="toggle"><input type="checkbox" id="centred"> Push both ways</label>
+    <label class="toggle"><input type="checkbox" id="flip"> Flip direction</label>
+  </details>
+
+  <details open>
+    <summary>Wobble</summary>
+    <div class="row"><label>Amount</label><input type="range" id="wob" min="0" max="60" step="0.5" value="9"><span class="val" id="wob_v"></span></div>
+    <div class="row"><label>Scale</label><input type="range" id="wscale" min="0.2" max="12" step="0.1" value="2.6"><span class="val" id="wscale_v"></span></div>
+    <div class="row"><label>Octaves</label><input type="range" id="oct" min="1" max="4" step="1" value="2"><span class="val" id="oct_v"></span></div>
+  </details>
+
+  <details open>
+    <summary>Ink</summary>
+    <div class="row"><label>Weight</label><input type="range" id="lw" min="0.3" max="6" step="0.1" value="1.1"><span class="val" id="lw_v"></span></div>
+    <div class="row"><label>Break by</label><select id="dsrc">
+      <option value="none">Nothing — solid lines</option>
+      <option value="compress" selected>Line compression</option>
+      <option value="lum">Brightness</option>
+      <option value="grad">Brightness gradient</option>
+    </select></div>
+    <div class="row"><label>Dash period</label><input type="range" id="dper" min="2" max="60" step="0.5" value="9"><span class="val" id="dper_v"></span></div>
+    <div class="row"><label>Solid at</label><input type="range" id="dmax" min="0" max="1" step="0.01" value="1"><span class="val" id="dmax_v"></span></div>
+    <div class="row"><label>Sparse at</label><input type="range" id="dmin" min="0" max="1" step="0.01" value="0.12"><span class="val" id="dmin_v"></span></div>
+    <div class="row"><label>Break onset</label><input type="range" id="spread" min="0.1" max="4" step="0.05" value="2"><span class="val" id="spread_v"></span></div>
+    <div class="row"><label>Scatter</label><input type="range" id="jit" min="0" max="1" step="0.01" value="0.5"><span class="val" id="jit_v"></span></div>
+    <label class="toggle"><input type="checkbox" id="dinv"> Invert break</label>
+  </details>
+
+  <details open>
+    <summary>Colour</summary>
+    <div class="row"><label>Line</label><input type="color" id="fg" value="#eef3f6"><input type="text" id="fgT" value="#eef3f6"></div>
+    <div class="row"><label>Ground</label><input type="color" id="bg" value="#3d4f61"><input type="text" id="bgT" value="#3d4f61"></div>
+    <div class="row"><label>Glow</label><input type="range" id="glow" min="0" max="20" step="0.5" value="0"><span class="val" id="glow_v"></span></div>
+    <div class="btns">
+      <button data-pal="#eef3f6,#3d4f61">Slate</button>
+      <button data-pal="#0d0f12,#e8e4dc">Paper</button>
+      <button data-pal="#7ee787,#06120a">Phosphor</button>
+      <button data-pal="#e6e6e6,#000000">Mono</button>
+    </div>
+  </details>
+
+  <details>
+    <summary>Stage &amp; export</summary>
+    <div class="row"><label>Canvas</label><select id="preset">
+      <option value="1080x1920">1080 × 1920 — portrait</option>
+      <option value="1080x1350">1080 × 1350 — 4:5</option>
+      <option value="1080x1080">1080 × 1080 — square</option>
+      <option value="1920x1080">1920 × 1080 — landscape</option>
+    </select></div>
+    <div class="row"><label>Zoom</label><select id="zoom">
+      <option value="fit">Fit to window</option>
+      <option value="1">100% — true pixels</option>
+      <option value="0.75">75%</option>
+      <option value="0.5">50%</option>
+      <option value="0.35">35%</option>
+    </select></div>
+    <div class="btns">
+      <button id="bHide">Hide UI (H)</button>
+      <button id="bSave">Save PNG</button>
+      <button id="bCopy">Copy settings</button>
+    </div>
+    <p class="hint">Save PNG writes the canvas at its backing resolution, so on a retina display you get a 2× still.</p>
+  </details>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const cv = $('c'), ctx = cv.getContext('2d');
+  const stage = $('stage');
+
+  const S = {
+    playing:true, t:0, rate:1, loopDur:12,
+    bloom:true, bloomDur:2.6, ease:'out3', stag:.35, drift:1, breathe:.06,
+    fit:'cover', izoom:1, offX:0, offY:0, bri:0, con:1.25, gam:1, blur:10, invert:false,
+    angle:90, lines:48, samples:620,
+    amp:70, resp:1.3, thr:.06, centred:false, flip:false,
+    wob:9, wscale:2.6, oct:2,
+    lw:1.1, dsrc:'compress', dper:9, dmax:1, dmin:.12, spread:2, jit:.5, dinv:false,
+    fg:'#eef3f6', bg:'#3d4f61', glow:0,
+    preset:'1080x1920', zoom:'fit'
+  };
+
+  let W = 1080, H = 1920, dpr = Math.min(2, devicePixelRatio || 1);
+
+  // ---------- luminance buffer ----------
+  let LUM = null, LW = 0, LH = 0;
+  let srcImage = null;                 // HTMLImageElement, or null for the placeholder
+  const buf = document.createElement('canvas');
+  const bctx = buf.getContext('2d', { willReadFrequently:true });
+
+  function placeholder(g, w, h){
+    g.fillStyle = '#000'; g.fillRect(0,0,w,h);
+    const blob = (x,y,r,a) => {
+      const gr = g.createRadialGradient(x,y,0,x,y,r);
+      gr.addColorStop(0,`rgba(255,255,255,${a})`);
+      gr.addColorStop(1,'rgba(255,255,255,0)');
+      g.fillStyle = gr; g.beginPath(); g.arc(x,y,r,0,7); g.fill();
+    };
+    g.globalCompositeOperation = 'lighter';
+    blob(w*.46, h*.40, Math.min(w,h)*.42, .95);
+    blob(w*.60, h*.30, Math.min(w,h)*.20, .55);
+    blob(w*.38, h*.62, Math.min(w,h)*.30, .45);
+    blob(w*.55, h*.74, Math.min(w,h)*.16, .30);
+    g.globalCompositeOperation = 'source-over';
+  }
+
+  function rebuildLum(){
+    LW = 480;
+    LH = Math.max(8, Math.round(LW * H / W));
+    buf.width = LW; buf.height = LH;
+    bctx.setTransform(1,0,0,1,0,0);
+    bctx.fillStyle = '#000'; bctx.fillRect(0,0,LW,LH);
+
+    if (srcImage){
+      const iw = srcImage.naturalWidth, ih = srcImage.naturalHeight;
+      const sc = (S.fit === 'cover' ? Math.max(LW/iw, LH/ih) : Math.min(LW/iw, LH/ih)) * S.izoom;
+      const dw = iw*sc, dh = ih*sc;
+      bctx.drawImage(srcImage, (LW-dw)/2 + S.offX*LW, (LH-dh)/2 + S.offY*LH, dw, dh);
+    } else {
+      placeholder(bctx, LW, LH);
+    }
+
+    const px = bctx.getImageData(0,0,LW,LH).data;
+    const n = LW*LH;
+    let L = new Float32Array(n);
+    for (let i=0;i<n;i++){
+      let v = (px[i*4]*0.2126 + px[i*4+1]*0.7152 + px[i*4+2]*0.0722) / 255;
+      if (S.invert) v = 1 - v;
+      v = (v - .5) * S.con + .5 + S.bri;
+      v = v < 0 ? 0 : v > 1 ? 1 : v;
+      if (S.gam !== 1) v = Math.pow(v, S.gam);
+      L[i] = v;
+    }
+    const r = Math.round(S.blur * LW / W);
+    if (r > 0) L = blur(L, LW, LH, r);
+    LUM = L;
+  }
+
+  function blur(src, w, h, r){
+    let a = src, b = new Float32Array(w*h);
+    for (let pass=0; pass<3; pass++){
+      // horizontal
+      for (let y=0;y<h;y++){
+        const row = y*w; let sum = 0;
+        for (let x=-r;x<=r;x++) sum += a[row + Math.min(w-1, Math.max(0,x))];
+        for (let x=0;x<w;x++){
+          b[row+x] = sum / (2*r+1);
+          sum -= a[row + Math.min(w-1, Math.max(0, x-r))];
+          sum += a[row + Math.min(w-1, Math.max(0, x+r+1))];
+        }
+      }
+      // vertical
+      const t = a; a = b; b = t;
+      for (let x=0;x<w;x++){
+        let sum = 0;
+        for (let y=-r;y<=r;y++) sum += a[Math.min(h-1, Math.max(0,y))*w + x];
+        for (let y=0;y<h;y++){
+          b[y*w+x] = sum / (2*r+1);
+          sum -= a[Math.min(h-1, Math.max(0, y-r))*w + x];
+          sum += a[Math.min(h-1, Math.max(0, y+r+1))*w + x];
+        }
+      }
+      const t2 = a; a = b; b = t2;
+    }
+    return a;
+  }
+
+  function lumAt(x, y){
+    if (!LUM) return 0;
+    const fx = x / W * LW - .5, fy = y / H * LH - .5;
+    if (fx < -1 || fy < -1 || fx > LW || fy > LH) return 0;
+    const x0 = Math.floor(fx), y0 = Math.floor(fy);
+    const tx = fx - x0, ty = fy - y0;
+    const cl = (xx,yy) => LUM[(yy<0?0:yy>=LH?LH-1:yy)*LW + (xx<0?0:xx>=LW?LW-1:xx)];
+    const a = cl(x0,y0), b = cl(x0+1,y0), c = cl(x0,y0+1), d = cl(x0+1,y0+1);
+    const top = a + (b-a)*tx, bot = c + (d-c)*tx;
+    return top + (bot-top)*ty;
+  }
+
+  // ---------- tileable value noise ----------
+  const NP = 64;                                  // lattice period, in octave-0 cells
+  function hash(x, y, p){
+    x = ((x % p) + p) % p; y = ((y % p) + p) % p;
+    let n = (x * 374761393 + y * 668265263) | 0;
+    n = (n ^ (n >> 13)) * 1274126177 | 0;
+    return ((n ^ (n >> 16)) >>> 0) / 4294967296;
+  }
+  function vnoise(x, y, p){
+    const xi = Math.floor(x), yi = Math.floor(y);
+    const xf = x - xi, yf = y - yi;
+    const u = xf*xf*(3-2*xf), v = yf*yf*(3-2*yf);
+    const a = hash(xi,yi,p), b = hash(xi+1,yi,p), c = hash(xi,yi+1,p), d = hash(xi+1,yi+1,p);
+    const top = a + (b-a)*u, bot = c + (d-c)*u;
+    return top + (bot-top)*v;
+  }
+  function fbm(x, y, oct){
+    let s = 0, amp = 1, tot = 0;
+    for (let k=0;k<oct;k++){
+      const m = 1 << k;
+      s += amp * (vnoise(x*m, y*m, NP*m)*2 - 1);
+      tot += amp; amp *= .5;
+    }
+    return s / tot;
+  }
+
+  const EASE = {
+    lin: p => p,
+    out3: p => 1-Math.pow(1-p,3),
+    out5: p => 1-Math.pow(1-p,5),
+    inout: p => p<.5 ? 4*p*p*p : 1-Math.pow(-2*p+2,3)/2
+  };
+
+  // ---------- draw ----------
+  let prevOff = null, curOff = null;
+
+  function draw(){
+    const t = S.t;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.fillStyle = S.bg; ctx.fillRect(0,0,W,H);
+
+    const th = S.angle * Math.PI / 180;
+    const tx = Math.cos(th), ty = Math.sin(th);      // along the line
+    const nx = -ty, ny = tx;                          // across the lines
+    const cx = W/2, cy = H/2;
+
+    const extN = Math.abs(W*nx) + Math.abs(H*ny);
+    const extT = Math.abs(W*tx) + Math.abs(H*ty);
+    const spacing = extN / (S.lines - 1);
+    const M = S.samples;
+    const stepT = extT / (M - 1);
+
+    // amplitude envelope
+    const dir = S.flip ? -1 : 1;
+    const breathe = 1 + S.breathe * Math.sin(2*Math.PI * t / S.loopDur);
+    const driftY = S.drift * NP * (t / S.loopDur);
+    const nfreq = S.wscale / 1000;
+
+    const extra = Math.ceil(Math.abs(S.amp) / spacing) + 1;
+    const i0 = -extra, i1 = S.lines - 1 + extra;
+    const total = i1 - i0;
+
+    if (!curOff || curOff.length !== M){ curOff = new Float32Array(M); prevOff = new Float32Array(M); }
+
+    const path = new Path2D();
+    const solid = S.dsrc === 'none';
+    let havePrev = false;
+
+    for (let i = i0; i <= i1; i++){
+      const s = -extN/2 + i * spacing;
+
+      // per-line bloom envelope, staggered across the field
+      let env = 1;
+      if (S.bloom){
+        const k = (i - i0) / (total || 1);
+        const d = S.bloomDur * (1 - S.stag) + S.bloomDur * S.stag * k;
+        env = EASE[S.ease](Math.max(0, Math.min(1, t / Math.max(.001, d))));
+      }
+      const A = S.amp * env * breathe;
+
+      let run = 0, lastX = 0, lastY = 0, px0 = 0, py0 = 0, arc = 0;
+
+      for (let j = 0; j < M; j++){
+        const tt = -extT/2 + j * stepT;
+        const bx = cx + tx*tt + nx*s;
+        const by = cy + ty*tt + ny*s;
+
+        const L = lumAt(bx, by);
+        let f = (L - S.thr) / (1 - S.thr);
+        f = f < 0 ? 0 : f > 1 ? 1 : f;
+        if (S.resp !== 1) f = Math.pow(f, S.resp);
+
+        let d = A * (S.centred ? (f - .5) : f) * dir;
+        if (S.wob > 0) d += S.wob * fbm(bx*nfreq, by*nfreq + driftY, S.oct);
+
+        const off = s + d;
+        curOff[j] = off;
+        const x = cx + tx*tt + nx*off;
+        const y = cy + ty*tt + ny*off;
+
+        // ---- ink decision ----
+        let on = true;
+        if (!solid){
+          let D;
+          if (S.dsrc === 'lum') D = f;
+          else if (S.dsrc === 'grad') D = Math.min(1, Math.abs(lumAt(bx+nx*3, by+ny*3) - lumAt(bx-nx*3, by-ny*3)) * 6);
+          else {
+            // local spacing relative to rest: 1 is untouched, <1 bunched, >1 pulled apart.
+            // Bunched stays solid, spread breaks up into dots.
+            const r = havePrev ? Math.abs(off - prevOff[j]) / spacing : 1;
+            D = 1 - (r - 1) / S.spread;
+          }
+          if (S.dinv) D = 1 - D;
+          const duty = S.dmin + (S.dmax - S.dmin) * Math.max(0, Math.min(1, D));
+          if (j > 0) arc += Math.hypot(x - lastX, y - lastY);
+          const ph = arc / S.dper + S.jit * hash(i + 4096, j, 8191);
+          on = duty >= 1 ? true : (ph - Math.floor(ph)) < duty;
+        }
+        lastX = x; lastY = y;
+
+        if (on){
+          if (run === 0){ path.moveTo(x, y); px0 = x; py0 = y; }
+          else path.lineTo(x, y);
+          run++;
+        } else if (run){
+          if (run === 1) path.lineTo(px0 + .01, py0);      // a lone sample is a dot
+          run = 0;
+        }
+      }
+      if (run === 1) path.lineTo(px0 + .01, py0);
+
+      const swap = prevOff; prevOff = curOff; curOff = swap;
+      havePrev = true;
+    }
+
+    ctx.strokeStyle = S.fg;
+    ctx.lineWidth = S.lw;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    if (S.glow > 0){ ctx.shadowBlur = S.glow; ctx.shadowColor = S.fg; } else ctx.shadowBlur = 0;
+    ctx.stroke(path);
+    ctx.shadowBlur = 0;
+  }
+
+  // ---------- loop ----------
+  let last = performance.now()/1000;
+  function frame(){
+    const now = performance.now()/1000;
+    const dt = Math.min(.05, now - last); last = now;
+    if (S.playing){
+      S.t += dt * S.rate;
+      const end = (S.bloom ? S.bloomDur : 0) + S.loopDur;
+      if (S.t > end) S.t -= S.loopDur;                     // stay inside the loop, keep the bloom done
+    }
+    draw();
+    syncScrub();
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- stage ----------
+  function applyStage(){
+    const [w,h] = S.preset.split('x').map(Number);
+    W = w; H = h;
+    cv.width = Math.round(W*dpr); cv.height = Math.round(H*dpr);
+    cv.style.width = W+'px'; cv.style.height = H+'px';
+    stage.style.width = W+'px'; stage.style.height = H+'px';
+    let z;
+    if (S.zoom === 'fit'){
+      const pw = document.body.classList.contains('ui-hidden') ? 0 : 328;
+      z = Math.min((innerWidth - pw - 40)/W, (innerHeight - 40)/H);
+    } else z = parseFloat(S.zoom);
+    stage.style.transform = `scale(${z})`;
+    stage.style.margin = `${(H*z-H)/2}px ${(W*z-W)/2}px`;
+    rebuildLum();
+  }
+
+  // ---------- image loading ----------
+  function loadFile(file){
+    if (!file || !/^image\//.test(file.type)) return;
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => { srcImage = img; rebuildLum(); URL.revokeObjectURL(url); };
+    img.onerror = () => { alert('Could not read that image.'); URL.revokeObjectURL(url); };
+    img.src = url;
+  }
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file'; fileInput.accept = 'image/*';
+  fileInput.onchange = () => { loadFile(fileInput.files[0]); fileInput.value = ''; };
+  $('pick').onclick = () => fileInput.click();
+
+  const dz = $('drop');
+  let depth = 0;
+  addEventListener('dragenter', e => { e.preventDefault(); if (++depth === 1) dz.classList.add('on'); });
+  addEventListener('dragleave', e => { e.preventDefault(); if (--depth <= 0){ depth = 0; dz.classList.remove('on'); } });
+  addEventListener('dragover', e => e.preventDefault());
+  addEventListener('drop', e => { e.preventDefault(); depth = 0; dz.classList.remove('on'); loadFile(e.dataTransfer.files[0]); });
+
+  // ---------- controls ----------
+  const FMT = {
+    rate:v=>v.toFixed(2)+'×', loopDur:v=>v.toFixed(1)+'s', bloomDur:v=>v.toFixed(1)+'s',
+    stag:v=>v.toFixed(2), drift:v=>v.toFixed(2), breathe:v=>v.toFixed(3),
+    izoom:v=>v.toFixed(2), offX:v=>v.toFixed(3), offY:v=>v.toFixed(3),
+    bri:v=>v.toFixed(2), con:v=>v.toFixed(2), gam:v=>v.toFixed(2), blur:v=>v+'px',
+    angle:v=>v+'°', lines:v=>v, samples:v=>v,
+    amp:v=>v+'px', resp:v=>v.toFixed(2), thr:v=>v.toFixed(2),
+    wob:v=>v.toFixed(1), wscale:v=>v.toFixed(1), oct:v=>v,
+    lw:v=>v.toFixed(1), dper:v=>v.toFixed(1), dmax:v=>v.toFixed(2), dmin:v=>v.toFixed(2), spread:v=>v.toFixed(2), jit:v=>v.toFixed(2),
+    glow:v=>v.toFixed(1)
+  };
+  const SOURCE = new Set(['fit','izoom','offX','offY','bri','con','gam','blur','invert']);
+
+  for (const key of Object.keys(S)){
+    const el = $(key); if (!el) continue;
+    const isNum = el.type === 'range';
+    const write = () => {
+      S[key] = el.type === 'checkbox' ? el.checked : (isNum ? parseFloat(el.value) : el.value);
+      const v = $(key+'_v'); if (v) v.textContent = (FMT[key]||(x=>x))(S[key]);
+      if (SOURCE.has(key)) rebuildLum();
+      if (key === 'preset' || key === 'zoom') applyStage();
+    };
+    el.addEventListener('input', write);
+    if (el.type === 'checkbox' || el.tagName === 'SELECT') el.addEventListener('change', write);
+    if (el.type === 'checkbox') el.checked = S[key]; else el.value = S[key];
+    const v = $(key+'_v'); if (v) v.textContent = (FMT[key]||(x=>x))(S[key]);
+  }
+
+  const twin = (c,t) => {
+    $(c).addEventListener('input', () => { $(t).value = $(c).value; });
+    $(t).addEventListener('input', () => { if (/^#[0-9a-f]{3,8}$/i.test($(t).value)){ $(c).value = $(t).value; $(c).dispatchEvent(new Event('input')); } });
+  };
+  twin('fg','fgT'); twin('bg','bgT');
+  for (const b of document.querySelectorAll('[data-pal]')) b.onclick = () => {
+    const [fg,bg] = b.dataset.pal.split(',');
+    $('fg').value = fg; $('fgT').value = fg; $('bg').value = bg; $('bgT').value = bg;
+    $('fg').dispatchEvent(new Event('input')); $('bg').dispatchEvent(new Event('input'));
+  };
+
+  const bPlay = $('bPlay');
+  const setPlay = p => { S.playing = p; bPlay.textContent = p ? 'Pause' : 'Play'; };
+  bPlay.onclick = () => setPlay(!S.playing);
+  $('bReplay').onclick = () => { S.t = 0; setPlay(true); };
+  $('bHide').onclick = () => { document.body.classList.toggle('ui-hidden'); applyStage(); };
+  $('bSave').onclick = () => {
+    cv.toBlob(b => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(b);
+      a.download = `line-relief-${Date.now()}.png`;
+      a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+    });
+  };
+  $('bCopy').onclick = async () => {
+    const out = {...S}; delete out.t; delete out.playing;
+    try { await navigator.clipboard.writeText(JSON.stringify(out,null,2)); $('bCopy').textContent = 'Copied'; setTimeout(()=>$('bCopy').textContent='Copy settings',1200); }
+    catch { console.log(JSON.stringify(out,null,2)); alert('Settings logged to the console.'); }
+  };
+
+  const scrub = $('scrub'), scrubV = $('scrub_v');
+  let scrubbing = false;
+  const span = () => (S.bloom ? S.bloomDur : 0) + S.loopDur;
+  scrub.addEventListener('pointerdown', () => { scrubbing = true; setPlay(false); });
+  addEventListener('pointerup', () => { scrubbing = false; });
+  scrub.addEventListener('input', () => { S.t = (scrub.value/1000) * span(); draw(); scrubV.textContent = S.t.toFixed(1)+'s'; });
+  function syncScrub(){
+    if (scrubbing) return;
+    scrub.value = Math.round(Math.min(1, S.t/span())*1000);
+    scrubV.textContent = S.t.toFixed(1)+'s';
+  }
+
+  addEventListener('keydown', e => {
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+    const k = e.key.toLowerCase();
+    if (k === 'h'){ document.body.classList.toggle('ui-hidden'); applyStage(); }
+    else if (k === 'r'){ $('bReplay').click(); }
+    else if (k === 's'){ $('bSave').click(); }
+    else if (e.key === ' '){ e.preventDefault(); setPlay(!S.playing); }
+  });
+  addEventListener('resize', applyStage);
+
+  window.LR = { S, draw };
+  applyStage();
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches){ S.drift = 0; S.breathe = 0; }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

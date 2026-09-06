@@ -27,9 +27,20 @@ exposure and gamma ahead of the threshold and scanlines, grain, bloom and RGB sp
 behind it. A lens follows the cursor and sharpens the cell size under it; clicking
 pulses it. Six presets set the whole chain at once. Needs WebGL2.
 
+**`line-relief.html` — Line Relief.** A field of evenly spaced lines, each pushed
+sideways by the brightness of a dropped image, so the picture is never drawn — it
+exists only as deformation in the field. Where brightness ramps steeply the local
+spacing collapses and the lines bunch into dense bands; where it ramps the other way
+they pull apart and break into dots, which is one duty-cycle control rather than a
+separate mode. Layered tileable noise keeps the whole thing from reading as
+mechanical, and it drifts on the loop length so the held state is a seamless loop.
+The lines bloom out from flat over an adjustable stagger. Angle, line count,
+amplitude, response curve, blur and the break-up are all controls; Canvas 2D, so any
+image works.
+
 ## Recording
 
-Both pages are built to be screen-recorded. **H** clears the panel on either one.
+All three pages are built to be screen-recorded. **H** clears the panel on any of them.
 
 In Terminal Type, set the canvas (1080×1920 portrait, 4:5, square, landscape or
 fill) and zoom to **100%** for a true 1:1 capture; **R** replays, **space** pauses,
@@ -37,4 +48,5 @@ and the scrub slider holds any single frame. If 1920 px of height does not fit t
 display, record at Fit and scale up in post, or work at 4:5. **Copy settings** puts
 the whole state on the clipboard as JSON.
 
-In Dither Lab, **S** saves the current frame as a PNG.
+In Dither Lab and Line Relief, **S** saves the current frame as a PNG. Line Relief
+takes the same canvas presets and zoom as Terminal Type, and **R** replays its bloom.
