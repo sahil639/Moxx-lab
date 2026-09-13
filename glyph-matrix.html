@@ -1,0 +1,1036 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Moxx Lab — Glyph Matrix</title>
+<style>
+  :root{
+    --panel-bg:#101317; --panel-line:#23292f; --panel-fg:#c7d1da;
+    --panel-dim:#6d7a86; --panel-accent:#e85fc0; --panel-w:340px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:#000;color:var(--panel-fg);
+    font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;overflow:hidden}
+
+  #viewport{position:fixed;inset:0;display:grid;place-items:center;
+    padding-right:var(--panel-w);transition:padding-right .18s ease}
+  body.ui-hidden #viewport{padding-right:0}
+  #stage{position:relative;transform-origin:center center}
+  #c{display:block}
+
+  #drop{position:fixed;inset:0;z-index:30;display:none;place-items:center;
+    background:rgba(4,8,12,.84);border:2px dashed var(--panel-accent);
+    color:var(--panel-accent);letter-spacing:.16em;text-transform:uppercase;font-size:12px}
+  #drop.on{display:grid}
+
+  #panel{position:fixed;top:0;right:0;bottom:0;width:var(--panel-w);
+    background:var(--panel-bg);border-left:1px solid var(--panel-line);
+    overflow-y:auto;padding:14px 14px 60px;z-index:10;transition:transform .18s ease}
+  body.ui-hidden #panel{transform:translateX(100%)}
+  #panel::-webkit-scrollbar{width:9px}
+  #panel::-webkit-scrollbar-thumb{background:#2b333b;border-radius:9px}
+  h1{font-size:11px;letter-spacing:.16em;text-transform:uppercase;margin:2px 0 12px;color:var(--panel-accent)}
+  h1 small{display:block;color:var(--panel-dim);letter-spacing:.08em;margin-top:4px;text-transform:none}
+  details{border-top:1px solid var(--panel-line);padding:8px 0}
+  details[open]{padding-bottom:12px}
+  summary{cursor:pointer;list-style:none;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--panel-fg);padding:4px 0;user-select:none;display:flex;justify-content:space-between;align-items:center}
+  summary::-webkit-details-marker{display:none}
+  summary::after{content:"+";color:var(--panel-dim)}
+  details[open] summary::after{content:"–"}
+  .row{display:flex;align-items:center;gap:8px;margin:9px 0}
+  .row label{flex:0 0 96px;color:var(--panel-dim);font-size:10.5px;letter-spacing:.04em}
+  .row input[type=range]{flex:1;min-width:0;accent-color:var(--panel-accent);height:16px}
+  .row .val{flex:0 0 48px;text-align:right;font-size:10.5px;font-variant-numeric:tabular-nums}
+  .row input[type=color]{width:32px;height:22px;padding:0;border:1px solid var(--panel-line);background:none;border-radius:3px}
+  .row input[type=text],.row select{flex:1;min-width:0;background:#0a0d10;color:var(--panel-fg);
+    border:1px solid var(--panel-line);border-radius:3px;padding:4px 6px;font:inherit}
+  .toggle{display:flex;align-items:center;gap:7px;cursor:pointer;font-size:11px;margin:7px 0}
+  .toggle input{accent-color:var(--panel-accent);width:14px;height:14px}
+  button{background:#1a2027;color:var(--panel-fg);border:1px solid var(--panel-line);
+    border-radius:3px;padding:6px 9px;font:inherit;cursor:pointer;letter-spacing:.04em}
+  button:hover{background:#222a33;border-color:#39424c}
+  button.on{background:var(--panel-accent);border-color:var(--panel-accent);color:#150610}
+  .btns{display:flex;gap:6px;flex-wrap:wrap;margin:9px 0}
+  .btns button{flex:1}
+  #presets{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:2px 0 4px}
+  #pick{border:1px dashed #333c45;border-radius:4px;padding:13px 10px;text-align:center;
+    color:var(--panel-dim);cursor:pointer;font-size:10.5px;line-height:1.6}
+  #pick:hover{border-color:var(--panel-accent);color:var(--panel-accent)}
+
+  /* band table */
+  #bandwrap{display:flex;flex-direction:column;gap:4px;margin-top:8px}
+  .band{display:flex;align-items:center;gap:6px}
+  .band .ix{flex:0 0 16px;color:var(--panel-dim);font-size:10px;text-align:right}
+  .band input[type=color]{flex:0 0 28px;height:22px;padding:0;border:1px solid var(--panel-line);background:none;border-radius:3px}
+  .band select{flex:1;min-width:0;background:#0a0d10;color:var(--panel-fg);
+    border:1px solid var(--panel-line);border-radius:3px;padding:3px 4px;font:inherit;font-size:10.5px}
+  .band input[type=range]{flex:0 0 60px;accent-color:var(--panel-accent);height:14px}
+  .band canvas{flex:0 0 22px;width:22px;height:22px;border-radius:3px;background:#000}
+
+  .hint{color:var(--panel-dim);font-size:10px;line-height:1.6;margin:8px 0 0}
+  kbd{background:#1a2027;border:1px solid var(--panel-line);border-radius:2px;padding:0 4px}
+  #hud{position:fixed;left:12px;bottom:10px;color:#3d4650;font-size:10px;letter-spacing:.08em;z-index:9}
+  #hud a{color:#5a6570;text-decoration:none}
+  #hud a:hover{color:var(--panel-accent)}
+  #hud span{pointer-events:none}
+  body.ui-hidden #hud{display:none}
+  #fps{position:fixed;right:calc(var(--panel-w) + 12px);bottom:10px;color:#2f373f;font-size:10px;z-index:9}
+  body.ui-hidden #fps{display:none}
+</style>
+</head>
+<body>
+
+<div id="viewport"><div id="stage"><canvas id="c"></canvas></div></div>
+<div id="drop">Drop an image</div>
+<div id="hud"><a href="index.html">← Moxx Lab</a><span> · drop an image · <kbd>H</kbd> panel · <kbd>R</kbd> replay · <kbd>S</kbd> save png · <kbd>space</kbd> pause</span></div>
+<div id="fps"></div>
+
+<div id="panel">
+  <h1>Glyph Matrix<small>a pattern that reads the picture</small></h1>
+
+  <details open>
+    <summary>Presets</summary>
+    <div id="presets"></div>
+  </details>
+
+  <details open>
+    <summary>Playback</summary>
+    <div class="btns"><button id="bPlay">Pause</button><button id="bReplay">Replay</button></div>
+    <div class="row"><label>Scrub</label><input type="range" id="scrub" min="0" max="1000" step="1" value="0"><span class="val" id="scrub_v">0.0s</span></div>
+    <div class="row"><label>Speed</label><input type="range" id="rate" min="0.05" max="3" step="0.05" value="1"><span class="val" id="rate_v"></span></div>
+    <div class="row"><label>Loop length</label><input type="range" id="loopDur" min="2" max="30" step="0.5" value="8"><span class="val" id="loopDur_v"></span></div>
+    <p class="hint">Everything cycles a whole number of times per loop, so the clip is seamless end to end.</p>
+  </details>
+
+  <details open>
+    <summary>Source</summary>
+    <div class="row"><label>Type</label><select id="srcType">
+      <option value="image">Dropped image</option>
+      <option value="liquid">Liquid — warped noise</option>
+      <option value="flow">Flow — drifting noise</option>
+      <option value="rings">Rings — radial</option>
+      <option value="waves">Waves — interference</option>
+    </select></div>
+    <div id="pick">Drop an image anywhere — or click<br>jpg · png · webp · gif</div>
+    <div class="row" style="margin-top:10px"><label>Fit</label><select id="imgFit">
+      <option value="cover">Cover</option><option value="contain">Contain</option>
+    </select></div>
+    <div class="row"><label>Scale</label><input type="range" id="imgZoom" min="0.2" max="4" step="0.01" value="1"><span class="val" id="imgZoom_v"></span></div>
+    <div class="row"><label>Offset X</label><input type="range" id="imgX" min="-0.5" max="0.5" step="0.005" value="0"><span class="val" id="imgX_v"></span></div>
+    <div class="row"><label>Offset Y</label><input type="range" id="imgY" min="-0.5" max="0.5" step="0.005" value="0"><span class="val" id="imgY_v"></span></div>
+    <div class="row"><label>Field scale</label><input type="range" id="srcScale" min="0.2" max="10" step="0.05" value="1.6"><span class="val" id="srcScale_v"></span></div>
+    <div class="row"><label>Warp</label><input type="range" id="srcWarp" min="0" max="3" step="0.02" value="1.1"><span class="val" id="srcWarp_v"></span></div>
+    <div class="row"><label>Detail</label><input type="range" id="detail" min="1" max="4" step="1" value="2"><span class="val" id="detail_v"></span></div>
+    <div class="row"><label>Drift</label><input type="range" id="srcSpeed" min="0" max="6" step="1" value="1"><span class="val" id="srcSpeed_v"></span></div>
+    <div class="row"><label>Direction</label><input type="range" id="srcAngle" min="0" max="360" step="1" value="90"><span class="val" id="srcAngle_v"></span></div>
+  </details>
+
+  <details open>
+    <summary>Response</summary>
+    <div class="row"><label>Read</label><select id="chan">
+      <option value="luma">Brightness</option>
+      <option value="edge">Edges</option>
+      <option value="hue">Hue</option>
+      <option value="sat">Saturation</option>
+      <option value="r">Red</option><option value="g">Green</option><option value="b">Blue</option>
+    </select></div>
+    <div class="row"><label>Brightness</label><input type="range" id="bri" min="-0.6" max="0.6" step="0.01" value="0"><span class="val" id="bri_v"></span></div>
+    <div class="row"><label>Contrast</label><input type="range" id="con" min="0.2" max="4" step="0.01" value="1.15"><span class="val" id="con_v"></span></div>
+    <div class="row"><label>Gamma</label><input type="range" id="gam" min="0.3" max="3" step="0.01" value="1"><span class="val" id="gam_v"></span></div>
+    <div class="row"><label>Dither</label><input type="range" id="dither" min="0" max="1.5" step="0.01" value="0.55"><span class="val" id="dither_v"></span></div>
+    <label class="toggle"><input type="checkbox" id="auto" checked> Auto levels — stretch to fill the bands</label>
+    <div class="row"><label>Equalise</label><input type="range" id="equal" min="0" max="1" step="0.01" value="0.7"><span class="val" id="equal_v"></span></div>
+    <label class="toggle"><input type="checkbox" id="invert"> Invert</label>
+    <p class="hint">Dither scatters cells across a band edge instead of cutting a hard line — it is what keeps the boundaries alive.</p>
+  </details>
+
+  <details open>
+    <summary>Bands</summary>
+    <div class="row"><label>Count</label><input type="range" id="nBands" min="2" max="8" step="1" value="7"><span class="val" id="nBands_v"></span></div>
+    <div id="bandwrap"></div>
+    <label class="toggle"><input type="checkbox" id="srcTint"> Tint from the image instead</label>
+    <div class="row"><label>Tint mix</label><input type="range" id="tintMix" min="0" max="1" step="0.01" value="1"><span class="val" id="tintMix_v"></span></div>
+  </details>
+
+  <details open>
+    <summary>Lattice</summary>
+    <div class="row"><label>Cell</label><input type="range" id="cell" min="3" max="60" step="1" value="9"><span class="val" id="cell_v"></span></div>
+    <div class="row"><label>Aspect</label><input type="range" id="cellAsp" min="0.3" max="3" step="0.01" value="1"><span class="val" id="cellAsp_v"></span></div>
+    <div class="row"><label>Arrangement</label><select id="lattice">
+      <option value="square">Square</option><option value="brick">Brick — offset rows</option>
+      <option value="hex">Hexagonal</option>
+    </select></div>
+    <div class="row"><label>Rotation</label><input type="range" id="latRot" min="-90" max="90" step="1" value="0"><span class="val" id="latRot_v"></span></div>
+    <div class="row"><label>Jitter</label><input type="range" id="jitter" min="0" max="1" step="0.01" value="0"><span class="val" id="jitter_v"></span></div>
+    <div class="row"><label>Glyph size</label><input type="range" id="gScale" min="0.2" max="2" step="0.01" value="1"><span class="val" id="gScale_v"></span></div>
+    <div class="row"><label>Glyph angle</label><input type="range" id="gRot" min="-180" max="180" step="1" value="0"><span class="val" id="gRot_v"></span></div>
+    <div class="row"><label>Weight</label><input type="range" id="weight" min="0.05" max="0.5" step="0.005" value="0.16"><span class="val" id="weight_v"></span></div>
+    <div class="row"><label>Characters</label><input type="text" id="chars" value="@#%*+=-:." placeholder="used by the Character glyph"></div>
+  </details>
+
+  <details open>
+    <summary>Pattern wave</summary>
+    <div class="row"><label>Shape</label><select id="waveType">
+      <option value="none">None</option>
+      <option value="linear">Linear sweep</option>
+      <option value="radial">Radial</option>
+      <option value="spiral">Spiral</option>
+      <option value="noise">Noise</option>
+    </select></div>
+    <div class="row"><label>Direction</label><input type="range" id="waveDir" min="0" max="360" step="1" value="0"><span class="val" id="waveDir_v"></span></div>
+    <div class="row"><label>Wavelength</label><input type="range" id="waveLen" min="0.05" max="2" step="0.01" value="0.5"><span class="val" id="waveLen_v"></span></div>
+    <div class="row"><label>Cycles / loop</label><input type="range" id="waveCyc" min="0" max="8" step="1" value="1"><span class="val" id="waveCyc_v"></span></div>
+    <div class="row"><label>Easing</label><select id="waveEase">
+      <option value="sine">Sine</option><option value="soft">Soft — eased</option>
+      <option value="hard">Hard — square</option><option value="saw">Sawtooth</option>
+    </select></div>
+    <div class="row"><label>→ Size</label><input type="range" id="wScale" min="0" max="1" step="0.01" value="0"><span class="val" id="wScale_v"></span></div>
+    <div class="row"><label>→ Angle</label><input type="range" id="wRot" min="0" max="180" step="1" value="0"><span class="val" id="wRot_v"></span></div>
+    <div class="row"><label>→ Band</label><input type="range" id="wBand" min="0" max="4" step="0.05" value="0"><span class="val" id="wBand_v"></span></div>
+  </details>
+
+  <details open>
+    <summary>Ground &amp; blend</summary>
+    <div class="row"><label>Ground</label><input type="color" id="bg" value="#000000"><input type="text" id="bgT" value="#000000"></div>
+    <div class="row"><label>Image under</label><input type="range" id="underlay" min="0" max="1" step="0.01" value="0"><span class="val" id="underlay_v"></span></div>
+    <div class="row"><label>Blend</label><select id="blend">
+      <option value="source-over">Normal</option><option value="multiply">Multiply</option>
+      <option value="screen">Screen</option><option value="overlay">Overlay</option>
+      <option value="difference">Difference</option><option value="lighten">Lighten</option>
+      <option value="darken">Darken</option><option value="hard-light">Hard light</option>
+      <option value="color-dodge">Colour dodge</option><option value="exclusion">Exclusion</option>
+    </select></div>
+  </details>
+
+  <details>
+    <summary>Stage &amp; export</summary>
+    <div class="row"><label>Canvas</label><select id="preset">
+      <option value="1080x1440">1080 × 1440 — 3:4</option>
+      <option value="1080x1920">1080 × 1920 — portrait</option>
+      <option value="1080x1350">1080 × 1350 — 4:5</option>
+      <option value="1080x1080">1080 × 1080 — square</option>
+      <option value="1920x1080">1920 × 1080 — landscape</option>
+    </select></div>
+    <div class="row"><label>Zoom</label><select id="zoom">
+      <option value="fit">Fit to window</option><option value="1">100% — true pixels</option>
+      <option value="0.75">75%</option><option value="0.5">50%</option><option value="0.35">35%</option>
+    </select></div>
+    <div class="btns">
+      <button id="bHide">Hide UI (H)</button><button id="bSave">Save PNG</button><button id="bCopy">Copy settings</button>
+    </div>
+  </details>
+</div>
+
+<script>
+(() => {
+"use strict";
+const $ = id => document.getElementById(id);
+const cv = $('c'), ctx = cv.getContext('2d');
+const stage = $('stage');
+
+/* ------------------------------------------------------------ glyphs */
+const GLYPH_NAMES = {
+  none:'— empty', dot:'Dot', ring:'Ring', square:'Square', frame:'Square outline',
+  plus:'Plus', sparkle:'Sparkle', cross:'Cross ×', barsV:'Bars |||', barsH:'Bars ≡',
+  slash:'Slash /', tri:'Triangle', diamond:'Diamond', dotbox:'Dot in box',
+  ringX:'Ring + ×', half:'Half', chr:'Character'
+};
+// draw one glyph centred in a box of size n, in the current fillStyle/strokeStyle
+function glyphPath(g, x, n, w, ch){
+  const c = n/2, r = n*0.5*0.82, lw = Math.max(1, n*w);
+  x.lineWidth = lw; x.lineCap = 'butt';
+  switch(g){
+    case 'dot': x.beginPath(); x.arc(c,c,r,0,7); x.fill(); break;
+    case 'ring': x.beginPath(); x.arc(c,c,r-lw/2,0,7); x.stroke(); break;
+    case 'square': x.fillRect(c-r,c-r,r*2,r*2); break;
+    case 'frame': x.strokeRect(c-r+lw/2,c-r+lw/2,r*2-lw,r*2-lw); break;
+    case 'plus': x.fillRect(c-lw*1.5,c-r,lw*3,r*2); x.fillRect(c-r,c-lw*1.5,r*2,lw*3); break;
+    case 'sparkle': {
+      x.beginPath();
+      x.moveTo(c,c-r); x.quadraticCurveTo(c+lw*0.6,c-lw*0.6,c+r,c);
+      x.quadraticCurveTo(c+lw*0.6,c+lw*0.6,c,c+r);
+      x.quadraticCurveTo(c-lw*0.6,c+lw*0.6,c-r,c);
+      x.quadraticCurveTo(c-lw*0.6,c-lw*0.6,c,c-r);
+      x.closePath(); x.fill(); break;
+    }
+    case 'cross': {
+      x.lineWidth = lw*2.2; x.lineCap='round';
+      x.beginPath(); x.moveTo(c-r*.7,c-r*.7); x.lineTo(c+r*.7,c+r*.7);
+      x.moveTo(c+r*.7,c-r*.7); x.lineTo(c-r*.7,c+r*.7); x.stroke(); break;
+    }
+    case 'barsV': { const k=3; for(let i=0;i<k;i++){ const bw=(r*2)/(k*2-1); x.fillRect(c-r+i*bw*2,c-r,bw,r*2); } break; }
+    case 'barsH': { const k=3; for(let i=0;i<k;i++){ const bh=(r*2)/(k*2-1); x.fillRect(c-r,c-r+i*bh*2,r*2,bh); } break; }
+    case 'slash': { x.lineWidth=lw*2; x.lineCap='round'; x.beginPath(); x.moveTo(c-r*.75,c+r*.75); x.lineTo(c+r*.75,c-r*.75); x.stroke(); break; }
+    case 'tri': { x.beginPath(); x.moveTo(c,c-r); x.lineTo(c+r,c+r*.8); x.lineTo(c-r,c+r*.8); x.closePath(); x.fill(); break; }
+    case 'diamond': { x.beginPath(); x.moveTo(c,c-r); x.lineTo(c+r,c); x.lineTo(c,c+r); x.lineTo(c-r,c); x.closePath(); x.fill(); break; }
+    case 'dotbox': { x.fillRect(c-r,c-r,r*2,r*2); const sv=x.fillStyle; x.globalCompositeOperation='destination-out';
+      x.beginPath(); x.arc(c,c,r*0.34,0,7); x.fill(); x.globalCompositeOperation='source-over'; x.fillStyle=sv; break; }
+    case 'ringX': { x.beginPath(); x.arc(c,c,r,0,7); x.fill();
+      x.globalCompositeOperation='destination-out'; x.lineWidth=lw*1.8; x.lineCap='butt';
+      x.beginPath(); x.moveTo(c-r*.62,c-r*.62); x.lineTo(c+r*.62,c+r*.62);
+      x.moveTo(c+r*.62,c-r*.62); x.lineTo(c-r*.62,c+r*.62); x.stroke();
+      x.globalCompositeOperation='source-over'; break; }
+    case 'half': x.fillRect(c-r,c-r,r*2,r); break;
+    case 'chr': {
+      x.font = `${Math.round(n*0.86)}px ui-monospace, Menlo, monospace`;
+      x.textAlign='center'; x.textBaseline='middle';
+      x.fillText(ch || '#', c, c + n*0.04); break;
+    }
+  }
+}
+
+/* ------------------------------------------------------------ noise */
+const NP = 64;
+function hash(x,y,p){
+  x=((x%p)+p)%p; y=((y%p)+p)%p;
+  let n=(x*374761393 + y*668265263)|0;
+  n=(n^(n>>13))*1274126177|0;
+  return ((n^(n>>16))>>>0)/4294967296;
+}
+function vnoise(x,y,p){
+  const xi=Math.floor(x), yi=Math.floor(y), xf=x-xi, yf=y-yi;
+  const u=xf*xf*(3-2*xf), v=yf*yf*(3-2*yf);
+  const a=hash(xi,yi,p), b=hash(xi+1,yi,p), c=hash(xi,yi+1,p), d=hash(xi+1,yi+1,p);
+  const t=a+(b-a)*u, w=c+(d-c)*u; return t+(w-t)*v;
+}
+function fbm(x,y,oct){
+  let s=0,amp=1,tot=0;
+  for(let k=0;k<oct;k++){ const m=1<<k; s+=amp*vnoise(x*m,y*m,NP*m); tot+=amp; amp*=.5; }
+  return s/tot;
+}
+
+/* ------------------------------------------------------------ state */
+const DEF_BANDS = [
+  {c:'#000000', g:'none',   s:1},
+  {c:'#2f8f86', g:'sparkle',s:1},
+  {c:'#f2f0d8', g:'ring',   s:1},
+  {c:'#9dc4a8', g:'barsV',  s:1},
+  {c:'#f2f0d8', g:'plus',   s:1},
+  {c:'#4a5240', g:'dotbox', s:1},
+  {c:'#e85fc0', g:'ringX',  s:1},
+  {c:'#ffffff', g:'dot',    s:1}
+];
+
+const S = {
+  playing:true, t:0, rate:1, loopDur:8,
+  srcType:'liquid', imgFit:'cover', imgZoom:1, imgX:0, imgY:0,
+  srcScale:1.6, srcWarp:1.1, detail:2, srcSpeed:1, srcAngle:90,
+  chan:'luma', auto:true, equal:0.7, bri:0, con:1.15, gam:1, dither:.55, invert:false,
+  nBands:7, srcTint:false, tintMix:1,
+  cell:9, cellAsp:1, lattice:'square', latRot:0, jitter:0,
+  gScale:1, gRot:0, weight:.16, chars:'@#%*+=-:.',
+  waveType:'none', waveDir:0, waveLen:.5, waveCyc:1, waveEase:'sine',
+  wScale:0, wRot:0, wBand:0,
+  bg:'#000000', underlay:0, blend:'source-over',
+  preset:'1080x1440', zoom:'fit'
+};
+let bands = DEF_BANDS.map(b => ({...b}));
+
+let W=1080, H=1440, dpr=Math.min(2, devicePixelRatio||1);
+
+/* ------------------------------------------------------------ source buffer */
+const src = document.createElement('canvas');
+const sctx = src.getContext('2d', { willReadFrequently:true });
+const low = document.createElement('canvas');
+const lctx = low.getContext('2d');
+let srcImage = null;
+let cols=0, rows=0, cw=0, chh=0, LW=0, LH=0;
+let FIELD=null, RGB=null;
+let aMin=null, aMax=null;
+let WAVE=null, wW=0, wH=0;
+const PROF={};
+
+function layout(){
+  const ang = Math.abs(S.latRot*Math.PI/180);
+  const ca=Math.cos(ang), sa=Math.sin(ang);
+  LW = W*ca + H*sa; LH = W*sa + H*ca;           // lattice rect covers the rotated stage
+  cw = S.cell; chh = S.cell*S.cellAsp;
+  if (S.lattice === 'hex') chh *= 0.866;
+  cols = Math.max(2, Math.ceil(LW/cw)+2);
+  rows = Math.max(2, Math.ceil(LH/chh)+2);
+  const cap = 260000;                            // keep the per-frame cell count sane
+  if (cols*rows > cap){
+    const k = Math.sqrt(cols*rows/cap);
+    cw *= k; chh *= k;
+    cols = Math.max(2, Math.ceil(LW/cw)+2);
+    rows = Math.max(2, Math.ceil(LH/chh)+2);
+  }
+  src.width = cols; src.height = rows;
+  FIELD = new Float32Array(cols*rows);
+  RGB = new Uint8ClampedArray(cols*rows*3);
+}
+
+function drawSourceToBuffer(t){
+  const phase = S.loopDur > 0 ? t/S.loopDur : 0;
+  sctx.setTransform(1,0,0,1,0,0);
+  sctx.fillStyle = '#000'; sctx.fillRect(0,0,cols,rows);
+
+  const useImage = S.srcType==='image' && srcImage;
+  if (useImage){
+    const ang = -S.latRot*Math.PI/180;
+    sctx.setTransform(cols/LW,0,0,rows/LH,0,0);
+    sctx.translate(LW/2, LH/2); sctx.rotate(ang); sctx.translate(-W/2,-H/2);
+    const iw=srcImage.naturalWidth, ih=srcImage.naturalHeight;
+    const sc=(S.imgFit==='cover'?Math.max(W/iw,H/ih):Math.min(W/iw,H/ih))*S.imgZoom;
+    const dw=iw*sc, dh=ih*sc;
+    sctx.drawImage(srcImage,(W-dw)/2+S.imgX*W,(H-dh)/2+S.imgY*H,dw,dh);
+    sctx.setTransform(1,0,0,1,0,0);
+    const d = sctx.getImageData(0,0,cols,rows).data;
+    for (let i=0,n=cols*rows;i<n;i++){ RGB[i*3]=d[i*4]; RGB[i*3+1]=d[i*4+1]; RGB[i*3+2]=d[i*4+2]; }
+    return;
+  }
+
+  // No image yet: show the liquid field so the page is never blank.
+  const kind = S.srcType==='image' ? 'liquid' : S.srcType;
+
+  // Procedural fields are smooth, so they are evaluated on a small grid and
+  // scaled up. Cost then does not move when the cell size changes.
+  const LOWCAP=132;
+  const k2=Math.min(1, LOWCAP/Math.max(cols,rows));
+  const lw=Math.max(8,Math.round(cols*k2)), lh=Math.max(8,Math.round(rows*k2));
+  if (low.width!==lw||low.height!==lh){ low.width=lw; low.height=lh; }
+
+  const f = S.srcScale*4/lw;
+  const a = S.srcAngle*Math.PI/180;
+  const dx=Math.cos(a)*S.srcSpeed*NP*phase, dy=Math.sin(a)*S.srcSpeed*NP*phase;
+  const oct=S.detail;
+  const asp=(rows*chh)/(cols*cw);
+  const im=lctx.createImageData(lw,lh);
+  const d=im.data;
+  const spin=2*Math.PI*phase*Math.max(1,S.srcSpeed);
+  for (let j=0;j<lh;j++){
+    for (let i=0;i<lw;i++){
+      const k=j*lw+i;
+      const X=i*f, Y=j*f*asp*lw/lh;
+      let v;
+      if (kind==='liquid'){
+        const q1=fbm(X+dx*f, Y+dy*f, oct), q2=fbm(X+5.2+dx*f, Y+1.3+dy*f, oct);
+        const r1=fbm(X+S.srcWarp*q1*4+1.7, Y+S.srcWarp*q2*4+9.2, oct);
+        v=fbm(X+S.srcWarp*r1*4, Y+S.srcWarp*r1*4+dy*f, oct);
+      } else if (kind==='flow'){
+        v=fbm(X+dx*f, Y+dy*f, oct);
+      } else if (kind==='rings'){
+        const ddx=(i-lw/2), ddy=(j-lh/2)*asp*lw/lh;
+        v=.5+.5*Math.sin(Math.hypot(ddx,ddy)*f*2.2 - spin);
+      } else {
+        v=.5+.5*Math.sin(X*2.4+spin)*Math.sin(Y*1.7-spin*.8);
+      }
+      v=v<0?0:v>1?1:v;
+      const g=(v*255)|0;
+      d[k*4]=g; d[k*4+1]=g; d[k*4+2]=g; d[k*4+3]=255;
+    }
+  }
+  lctx.putImageData(im,0,0);
+  sctx.imageSmoothingEnabled=true;
+  sctx.drawImage(low,0,0,cols,rows);
+  const pd=sctx.getImageData(0,0,cols,rows).data;
+  for (let i=0,n=cols*rows;i<n;i++){ RGB[i*3]=pd[i*4]; RGB[i*3+1]=pd[i*4+1]; RGB[i*3+2]=pd[i*4+2]; }
+}
+
+function buildField(){
+  const n=cols*rows;
+  for (let k=0;k<n;k++){
+    const r=RGB[k*3]/255, g=RGB[k*3+1]/255, b=RGB[k*3+2]/255;
+    let v;
+    switch(S.chan){
+      case 'r': v=r; break; case 'g': v=g; break; case 'b': v=b; break;
+      case 'sat': { const mx=Math.max(r,g,b), mn=Math.min(r,g,b); v=mx===0?0:(mx-mn)/mx; break; }
+      case 'hue': {
+        const mx=Math.max(r,g,b), mn=Math.min(r,g,b), dd=mx-mn;
+        if (dd===0) v=0;
+        else if (mx===r) v=(((g-b)/dd)%6)/6;
+        else if (mx===g) v=(((b-r)/dd)+2)/6;
+        else v=(((r-g)/dd)+4)/6;
+        if (v<0) v+=1; break;
+      }
+      default: v=0.2126*r+0.7152*g+0.0722*b;
+    }
+    FIELD[k]=v;
+  }
+  if (S.chan==='edge'){
+    const out=new Float32Array(n);
+    for (let j=1;j<rows-1;j++) for (let i=1;i<cols-1;i++){
+      const k=j*cols+i;
+      const gx = -FIELD[k-cols-1]-2*FIELD[k-1]-FIELD[k+cols-1]+FIELD[k-cols+1]+2*FIELD[k+1]+FIELD[k+cols+1];
+      const gy = -FIELD[k-cols-1]-2*FIELD[k-cols]-FIELD[k-cols+1]+FIELD[k+cols-1]+2*FIELD[k+cols]+FIELD[k+cols+1];
+      out[k]=Math.min(1, Math.hypot(gx,gy)*0.6);
+    }
+    FIELD.set(out);
+  }
+  if (S.auto){
+    let mn=1, mx=0;
+    for (let k=0;k<n;k++){ const v=FIELD[k]; if(v<mn)mn=v; if(v>mx)mx=v; }
+    if (aMin===null){ aMin=mn; aMax=mx; } else { aMin+=(mn-aMin)*.15; aMax+=(mx-aMax)*.15; }
+    const r=Math.max(.004, aMax-aMin);
+    for (let k=0;k<n;k++) FIELD[k]=(FIELD[k]-aMin)/r;
+  }
+  if (S.equal>0){
+    // Give every band a roughly equal share of the frame. A raw luminance ramp
+    // piles most cells into the middle bands; this is what makes all of them read.
+    const B=64, hist=new Uint32Array(B);
+    for (let k=0;k<n;k++){ let b=(FIELD[k]*B)|0; hist[b<0?0:b>=B?B-1:b]++; }
+    const cdf=new Float32Array(B+1);
+    let run=0;
+    for (let b=0;b<B;b++){ run+=hist[b]; cdf[b+1]=run/n; }
+    for (let k=0;k<n;k++){
+      const f=FIELD[k]*B; let b=f|0; if(b<0)b=0; if(b>=B)b=B-1;
+      const e=cdf[b]+(cdf[b+1]-cdf[b])*(f-b);
+      FIELD[k]=FIELD[k]+(e-FIELD[k])*S.equal;
+    }
+  }
+  for (let k=0;k<n;k++){
+    let v=FIELD[k];
+    if (S.invert) v=1-v;
+    v=(v-.5)*S.con+.5+S.bri;
+    v=v<0?0:v>1?1:v;
+    if (S.gam!==1) v=Math.pow(v,S.gam);
+    FIELD[k]=v;
+  }
+}
+
+/* ------------------------------------------------------------ sprite atlas */
+const atlas = document.createElement('canvas');
+const actx = atlas.getContext('2d');
+let nScale=1, nRot=1, nVar=1, sprW=0, sprH=0, pitchW=0, pitchH=0, atlCols=1, atlasKey='', atlasDirty=true;
+const PAD=1;
+
+// The atlas holds glyph SHAPES only, in white. Colour is a per-instance attribute,
+// so recolouring a band costs nothing and never rebakes.
+function bakeAtlas(){
+  nScale = S.wScale>0 ? 8 : 1;
+  nRot   = S.wRot>0   ? 12 : 1;
+  nVar   = nScale*nRot;
+  const nb=S.nBands, sMax=1+S.wScale;
+  sprW = Math.max(2, Math.round(cw*sMax*dpr));
+  sprH = Math.max(2, Math.round(chh*sMax*dpr));
+  pitchW = sprW+PAD*2; pitchH = sprH+PAD*2;
+  const key=[nb,nScale,nRot,sprW,sprH,S.weight,S.gRot,S.wScale,S.wRot,S.gScale,S.chars,
+             bands.slice(0,nb).map(b=>b.g+'/'+b.s).join('|')].join(',');
+  if (key===atlasKey) return;
+  atlasKey=key; atlasDirty=true;
+
+  const total=nb*nVar;
+  atlCols=Math.max(1, Math.min(total, Math.floor(8192/pitchW)));
+  const atlRows=Math.ceil(total/atlCols);
+  atlas.width=atlCols*pitchW; atlas.height=atlRows*pitchH;
+  actx.setTransform(1,0,0,1,0,0);
+  actx.clearRect(0,0,atlas.width,atlas.height);
+  actx.fillStyle='#fff'; actx.strokeStyle='#fff';
+
+  for (let b=0;b<nb;b++){
+    const bd=bands[b];
+    if (bd.g==='none') continue;
+    const ch=S.chars ? S.chars[b % S.chars.length] : '#';
+    for (let si=0;si<nScale;si++){
+      const sc = nScale===1 ? 1 : (1-S.wScale) + (2*S.wScale)*si/(nScale-1);
+      for (let ri=0;ri<nRot;ri++){
+        const rot=(S.gRot + (nRot===1?0:-S.wRot + 2*S.wRot*ri/(nRot-1)))*Math.PI/180;
+        const idx=b*nVar + si*nRot + ri;
+        const ox=(idx%atlCols)*pitchW+PAD, oy=Math.floor(idx/atlCols)*pitchH+PAD;
+        actx.save();
+        actx.beginPath(); actx.rect(ox,oy,sprW,sprH); actx.clip();
+        actx.translate(ox+sprW/2, oy+sprH/2);
+        actx.rotate(rot);
+        const inner=Math.min(sprW,sprH)*(sc/sMax)*bd.s*S.gScale;
+        actx.translate(-inner/2,-inner/2);
+        actx.fillStyle='#fff'; actx.strokeStyle='#fff';
+        glyphPath(bd.g, actx, inner, S.weight, ch);
+        actx.restore();
+      }
+    }
+  }
+}
+
+/* ------------------------------------------------- webgl glyph layer */
+const glc = document.createElement('canvas');
+const gl = glc.getContext('webgl2', { alpha:true, antialias:false, premultipliedAlpha:true });
+let prog=null, vao=null, bufXY=null, bufCol=null, tex=null, uni={}, cap=0;
+let XY=null, COL=null;
+
+const VS=`#version 300 es
+in vec2 aCorner; in vec2 aPos; in vec2 aUV0; in vec4 aCol;
+uniform vec2 uRes, uBox, uCell, uLatOff, uCentre;
+uniform mat2 uRot;
+out vec2 vUV; out vec4 vCol;
+void main(){
+  vec2 p = aPos + aCorner*uBox;
+  vec2 q = uRot*(p - uLatOff) + uCentre;
+  vec2 c = (q/uRes)*2.0 - 1.0;
+  gl_Position = vec4(c.x, -c.y, 0.0, 1.0);
+  vUV = aUV0 + aCorner*uCell;
+  vCol = aCol;
+}`;
+const FS=`#version 300 es
+precision mediump float;
+in vec2 vUV; in vec4 vCol;
+uniform sampler2D uTex;
+out vec4 o;
+void main(){
+  float a = texture(uTex, vUV).a * vCol.a;
+  if (a <= 0.004) discard;
+  o = vec4(vCol.rgb*a, a);
+}`;
+
+function initGL(){
+  if (!gl) return false;
+  const mk=(t,src)=>{ const sh=gl.createShader(t); gl.shaderSource(sh,src); gl.compileShader(sh);
+    if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh)); return sh; };
+  prog=gl.createProgram();
+  gl.attachShader(prog,mk(gl.VERTEX_SHADER,VS));
+  gl.attachShader(prog,mk(gl.FRAGMENT_SHADER,FS));
+  gl.linkProgram(prog);
+  if(!gl.getProgramParameter(prog,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+  gl.useProgram(prog);
+  for (const n of ['uRes','uBox','uCell','uLatOff','uCentre','uRot','uTex']) uni[n]=gl.getUniformLocation(prog,n);
+
+  vao=gl.createVertexArray(); gl.bindVertexArray(vao);
+  const quad=gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER,quad);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([0,0, 1,0, 0,1, 1,1]),gl.STATIC_DRAW);
+  const aCorner=gl.getAttribLocation(prog,'aCorner');
+  gl.enableVertexAttribArray(aCorner); gl.vertexAttribPointer(aCorner,2,gl.FLOAT,false,0,0);
+
+  bufXY=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,bufXY);
+  const aPos=gl.getAttribLocation(prog,'aPos'), aUV0=gl.getAttribLocation(prog,'aUV0');
+  gl.enableVertexAttribArray(aPos); gl.vertexAttribPointer(aPos,2,gl.FLOAT,false,16,0); gl.vertexAttribDivisor(aPos,1);
+  gl.enableVertexAttribArray(aUV0); gl.vertexAttribPointer(aUV0,2,gl.FLOAT,false,16,8); gl.vertexAttribDivisor(aUV0,1);
+
+  bufCol=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,bufCol);
+  const aCol=gl.getAttribLocation(prog,'aCol');
+  gl.enableVertexAttribArray(aCol); gl.vertexAttribPointer(aCol,4,gl.UNSIGNED_BYTE,true,4,0); gl.vertexAttribDivisor(aCol,1);
+
+  tex=gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D,tex);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  gl.uniform1i(uni.uTex,0);
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+  return true;
+}
+const GLOK = (()=>{ try { return initGL(); } catch(e){ console.error(e); return false; } })();
+
+function ensureCap(n){
+  if (n<=cap) return;
+  cap=Math.ceil(n*1.25);
+  XY=new Float32Array(cap*4); COL=new Uint8Array(cap*4);
+  gl.bindBuffer(gl.ARRAY_BUFFER,bufXY); gl.bufferData(gl.ARRAY_BUFFER,cap*16,gl.DYNAMIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER,bufCol); gl.bufferData(gl.ARRAY_BUFFER,cap*4,gl.DYNAMIC_DRAW);
+}
+
+const BANDRGB=new Uint8Array(8*3);
+function parseBandColours(){
+  for (let i=0;i<8;i++){
+    const h=(bands[i]&&bands[i].c||'#000').replace('#','');
+    const v=parseInt(h.length===3?h.split('').map(c=>c+c).join(''):h,16)||0;
+    BANDRGB[i*3]=(v>>16)&255; BANDRGB[i*3+1]=(v>>8)&255; BANDRGB[i*3+2]=v&255;
+  }
+}
+
+/* ------------------------------------------------------------ wave */
+const BAYER = [0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5];
+function shape(p){                       // p in [0,1) -> [-1,1]
+  switch(S.waveEase){
+    case 'hard': return (p%1) < .5 ? 1 : -1;
+    case 'saw':  return (p%1)*2-1;
+    case 'soft': { const s=Math.sin(2*Math.PI*p); return Math.sign(s)*Math.pow(Math.abs(s),.45); }
+    default: return Math.sin(2*Math.PI*p);
+  }
+}
+
+/* ------------------------------------------------------------ draw */
+function draw(){
+  const t = S.t;
+  const phase = S.loopDur>0 ? t/S.loopDur : 0;
+
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.globalCompositeOperation='source-over';
+  ctx.globalAlpha=1;
+  ctx.fillStyle=S.bg; ctx.fillRect(0,0,W,H);
+  if (!GLOK){
+    ctx.fillStyle='#e88'; ctx.font='16px ui-monospace, monospace'; ctx.textAlign='center';
+    ctx.fillText('WebGL2 is not available in this browser.', W/2, H/2);
+    return 0;
+  }
+
+  const _p0=performance.now();
+  drawSourceToBuffer(t);
+  const _p1=performance.now();
+  buildField();
+  const _p2=performance.now();
+  bakeAtlas();
+  const _p3=performance.now();
+  PROF.src=_p1-_p0; PROF.field=_p2-_p1; PROF.atlas=_p3-_p2; PROF.blitStart=_p3;
+
+  // the picture underneath
+  if (S.underlay>0){
+    ctx.globalAlpha=S.underlay;
+    if (S.srcType==='image' && srcImage){
+      const iw=srcImage.naturalWidth, ih=srcImage.naturalHeight;
+      const sc=(S.imgFit==='cover'?Math.max(W/iw,H/ih):Math.min(W/iw,H/ih))*S.imgZoom;
+      ctx.drawImage(srcImage,(W-iw*sc)/2+S.imgX*W,(H-ih*sc)/2+S.imgY*H,iw*sc,ih*sc);
+    } else {
+      ctx.save();
+      ctx.translate(W/2,H/2); ctx.rotate(S.latRot*Math.PI/180); ctx.translate(-LW/2,-LH/2);
+      ctx.imageSmoothingEnabled=true;
+      ctx.drawImage(src,0,0,LW,LH);
+      ctx.restore();
+    }
+    ctx.globalAlpha=1;
+  }
+
+  // ---- build one instance per inked cell, then draw them all at once ----
+  parseBandColours();
+  ensureCap(cols*rows);
+
+  const nb=S.nBands;
+  const boxW=sprW/dpr, boxH=sprH/dpr;
+  const offX=(boxW-cw)/2, offY=(boxH-chh)/2;
+  const atlW=atlas.width, atlH=atlas.height;
+  const uvW=sprW/atlW, uvH=sprH/atlH;
+  // The wave is smooth, so it is built once on a small grid and sampled per cell.
+  // Evaluating noise or atan2 per cell costs more than everything else combined.
+  const hasWave = S.waveType!=='none';
+  if (hasWave){
+    const WCAP=140;
+    const kw=Math.min(1, WCAP/Math.max(cols,rows));
+    wW=Math.max(4,Math.round(cols*kw)); wH=Math.max(4,Math.round(rows*kw));
+    if (!WAVE || WAVE.length!==wW*wH) WAVE=new Float32Array(wW*wH);
+    const wa=S.waveDir*Math.PI/180, wc=Math.cos(wa), ws=Math.sin(wa);
+    const wl=Math.max(.001,S.waveLen)*Math.max(LW,LH);
+    const wPhase=S.waveCyc*phase;
+    const sx2=LW/wW, sy2=LH/wH;
+    for (let j=0;j<wH;j++){
+      const py=j*sy2;
+      for (let i=0;i<wW;i++){
+        const px=i*sx2;
+        let u;
+        if (S.waveType==='linear') u=(px*wc+py*ws)/wl;
+        else if (S.waveType==='radial') u=Math.hypot(px-LW/2,py-LH/2)/wl;
+        else if (S.waveType==='spiral') u=Math.hypot(px-LW/2,py-LH/2)/wl + Math.atan2(py-LH/2,px-LW/2)/Math.PI;
+        else u=fbm(px/wl*2, py/wl*2, 2)*3;
+        WAVE[j*wW+i]=shape(u-wPhase);
+      }
+    }
+  }
+  const wsx=hasWave ? (wW-1)/Math.max(1,cols-1) : 0;
+  const wsy=hasWave ? (wH-1)/Math.max(1,rows-1) : 0;
+  const tint=S.srcTint && S.tintMix>0;
+  const tm=S.tintMix;
+  const sxAdd=(cols*cw-LW)/2, syAdd=(rows*chh-LH)/2;
+  const brick=S.lattice!=='square';
+
+  let n=0;
+  for (let j=0;j<rows;j++){
+    const rowOdd=j&1, by=j*chh;
+    for (let i=0;i<cols;i++){
+      const k=j*cols+i;
+      let v=FIELD[k];
+
+      let w=0;
+      if (hasWave){
+        const fx=i*wsx, fy=j*wsy;
+        const x0=fx|0, y0=fy|0;
+        const tx=fx-x0, ty=fy-y0;
+        const x1=x0+1<wW?x0+1:x0, y1=y0+1<wH?y0+1:y0;
+        const a0=WAVE[y0*wW+x0], a1=WAVE[y0*wW+x1];
+        const b0=WAVE[y1*wW+x0], b1=WAVE[y1*wW+x1];
+        const t0=a0+(a1-a0)*tx, t1=b0+(b1-b0)*tx;
+        w=t0+(t1-t0)*ty;
+        if (S.wBand) v+=w*S.wBand/nb;
+      }
+
+      const dz=(BAYER[(j&3)*4+(i&3)]/16 - .4375)*S.dither/nb;
+      let b=Math.floor((v+dz)*nb);
+      b = b<0?0:b>=nb?nb-1:b;
+      if (bands[b].g==='none') continue;
+
+      const si = nScale===1 ? 0 : Math.round((w*.5+.5)*(nScale-1));
+      const ri = nRot===1 ? 0 : Math.round((w*.5+.5)*(nRot-1));
+      const idx = b*nVar + si*nRot + ri;
+
+      let px=i*cw - sxAdd - offX, py=by - syAdd - offY;
+      if (brick && rowOdd) px += cw/2;
+      if (S.jitter){
+        px += (hash(i,j,977)-.5)*cw*S.jitter;
+        py += (hash(i+31,j+17,977)-.5)*chh*S.jitter;
+      }
+
+      const o=n*4;
+      XY[o]=px; XY[o+1]=py;
+      XY[o+2]=((idx%atlCols)*pitchW+PAD)/atlW;
+      XY[o+3]=(Math.floor(idx/atlCols)*pitchH+PAD)/atlH;
+      if (tint){
+        COL[o]  = BANDRGB[b*3]  +(RGB[k*3]  -BANDRGB[b*3])  *tm;
+        COL[o+1]= BANDRGB[b*3+1]+(RGB[k*3+1]-BANDRGB[b*3+1])*tm;
+        COL[o+2]= BANDRGB[b*3+2]+(RGB[k*3+2]-BANDRGB[b*3+2])*tm;
+      } else {
+        COL[o]=BANDRGB[b*3]; COL[o+1]=BANDRGB[b*3+1]; COL[o+2]=BANDRGB[b*3+2];
+      }
+      COL[o+3]=255;
+      n++;
+    }
+  }
+
+  if (n){
+    if (glc.width!==cv.width || glc.height!==cv.height){ glc.width=cv.width; glc.height=cv.height; }
+    gl.viewport(0,0,glc.width,glc.height);
+    gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.useProgram(prog); gl.bindVertexArray(vao);
+    if (atlasDirty){
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,tex);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,true);
+      gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,atlas);
+      atlasDirty=false;
+    }
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,tex);
+    const ar=S.latRot*Math.PI/180, car=Math.cos(ar), sar=Math.sin(ar);
+    gl.uniform2f(uni.uRes,W,H);
+    gl.uniform2f(uni.uBox,boxW,boxH);
+    gl.uniform2f(uni.uCell,uvW,uvH);
+    gl.uniform2f(uni.uLatOff,LW/2,LH/2);
+    gl.uniform2f(uni.uCentre,W/2,H/2);
+    gl.uniformMatrix2fv(uni.uRot,false,[car,sar,-sar,car]);
+    gl.bindBuffer(gl.ARRAY_BUFFER,bufXY);  gl.bufferSubData(gl.ARRAY_BUFFER,0,XY,0,n*4);
+    gl.bindBuffer(gl.ARRAY_BUFFER,bufCol); gl.bufferSubData(gl.ARRAY_BUFFER,0,COL,0,n*4);
+    gl.drawArraysInstanced(gl.TRIANGLE_STRIP,0,4,n);
+
+    ctx.save();
+    ctx.globalCompositeOperation=S.blend;
+    ctx.drawImage(glc,0,0,W,H);
+    ctx.restore();
+  }
+  PROF.blit=performance.now()-PROF.blitStart;
+  const drawn=n;
+
+  return drawn;
+}
+
+/* ------------------------------------------------------------ loop */
+let last=performance.now()/1000, acc=0, frames=0, cells=0;
+function frame(){
+  const now=performance.now()/1000;
+  const dt=Math.min(.05, now-last); last=now;
+  if (S.playing){ S.t+=dt*S.rate; if (S.t>S.loopDur) S.t-=S.loopDur; }
+  const t0=performance.now();
+  cells=draw();
+  acc+=performance.now()-t0; frames++;
+  if (frames>=20){ $('fps').textContent=`${(acc/frames).toFixed(1)} ms · ${cells.toLocaleString()} cells`; acc=0; frames=0; }
+  syncScrub();
+  requestAnimationFrame(frame);
+}
+
+/* ------------------------------------------------------------ stage */
+function applyStage(){
+  const [w,h]=S.preset.split('x').map(Number);
+  W=w; H=h;
+  cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr);
+  cv.style.width=W+'px'; cv.style.height=H+'px';
+  stage.style.width=W+'px'; stage.style.height=H+'px';
+  let z;
+  if (S.zoom==='fit'){
+    const pw=document.body.classList.contains('ui-hidden')?0:340;
+    z=Math.min((innerWidth-pw-40)/W,(innerHeight-40)/H);
+  } else z=parseFloat(S.zoom);
+  stage.style.transform=`scale(${z})`;
+  stage.style.margin=`${(H*z-H)/2}px ${(W*z-W)/2}px`;
+  layout();
+}
+
+/* ------------------------------------------------------------ image loading */
+function loadFile(file){
+  if(!file || !/^image\//.test(file.type)) return;
+  const url=URL.createObjectURL(file), img=new Image();
+  img.onload=()=>{ srcImage=img; S.srcType='image'; $('srcType').value='image'; URL.revokeObjectURL(url); };
+  img.onerror=()=>{ alert('Could not read that image.'); URL.revokeObjectURL(url); };
+  img.src=url;
+}
+const fileInput=document.createElement('input');
+fileInput.type='file'; fileInput.accept='image/*';
+fileInput.onchange=()=>{ loadFile(fileInput.files[0]); fileInput.value=''; };
+$('pick').onclick=()=>fileInput.click();
+const dz=$('drop'); let depth=0;
+addEventListener('dragenter',e=>{e.preventDefault(); if(++depth===1) dz.classList.add('on');});
+addEventListener('dragleave',e=>{e.preventDefault(); if(--depth<=0){depth=0; dz.classList.remove('on');}});
+addEventListener('dragover',e=>e.preventDefault());
+addEventListener('drop',e=>{e.preventDefault(); depth=0; dz.classList.remove('on'); loadFile(e.dataTransfer.files[0]);});
+
+/* ------------------------------------------------------------ band editor */
+function renderBands(){
+  const wrap=$('bandwrap'); wrap.innerHTML='';
+  for (let i=0;i<S.nBands;i++){
+    const b=bands[i];
+    const row=document.createElement('div'); row.className='band';
+    const ix=document.createElement('span'); ix.className='ix'; ix.textContent=i;
+    const col=document.createElement('input'); col.type='color'; col.value=b.c;
+    col.oninput=()=>{ b.c=col.value; };
+    const sel=document.createElement('select');
+    for (const [k,label] of Object.entries(GLYPH_NAMES)){
+      const o=document.createElement('option'); o.value=k; o.textContent=label;
+      if (k===b.g) o.selected=true; sel.appendChild(o);
+    }
+    sel.onchange=()=>{ b.g=sel.value; };
+    const sz=document.createElement('input'); sz.type='range'; sz.min='0.2'; sz.max='1.6'; sz.step='0.02'; sz.value=b.s;
+    sz.oninput=()=>{ b.s=parseFloat(sz.value); };
+    row.append(ix,col,sel,sz); wrap.appendChild(row);
+  }
+}
+
+/* ------------------------------------------------------------ presets */
+const PRESETS = {
+  'Bulletin': { srcType:'image', chan:'luma', nBands:7, cell:9, con:1.15, gam:1, dither:.55,
+    lattice:'square', latRot:0, waveType:'none', wScale:0, wRot:0, wBand:0, bg:'#000000',
+    underlay:0, blend:'source-over', weight:.16, gScale:1,
+    _bands:[{c:'#000000',g:'none',s:1},{c:'#2f8f86',g:'sparkle',s:1},{c:'#f2f0d8',g:'ring',s:1},
+            {c:'#9dc4a8',g:'barsV',s:1},{c:'#f2f0d8',g:'plus',s:1},{c:'#4a5240',g:'dotbox',s:1},
+            {c:'#e85fc0',g:'ringX',s:1}] },
+  'Liquid': { srcType:'liquid', srcScale:1.6, srcWarp:1.1, detail:2, srcSpeed:1, srcAngle:90, chan:'luma',
+    nBands:7, cell:9, con:1.3, dither:.55, waveType:'none', wScale:0, wRot:0, wBand:0,
+    underlay:0, bg:'#000000', weight:.16,
+    _bands:[{c:'#000000',g:'none',s:1},{c:'#2f8f86',g:'sparkle',s:1},{c:'#f2f0d8',g:'ring',s:1},
+            {c:'#9dc4a8',g:'barsV',s:1},{c:'#f2f0d8',g:'plus',s:1},{c:'#4a5240',g:'dotbox',s:1},
+            {c:'#e85fc0',g:'ringX',s:1}] },
+  'Halftone': { srcType:'image', chan:'luma', nBands:6, cell:11, dither:.3, con:1.2,
+    lattice:'brick', waveType:'none', wScale:0, wRot:0, wBand:0, underlay:0, bg:'#0b0b0b', weight:.16,
+    _bands:[{c:'#0b0b0b',g:'none',s:1},{c:'#ffffff',g:'dot',s:.3},{c:'#ffffff',g:'dot',s:.5},
+            {c:'#ffffff',g:'dot',s:.72},{c:'#ffffff',g:'dot',s:.9},{c:'#ffffff',g:'dot',s:1.1}] },
+  'Sonar': { srcType:'rings', srcScale:2.4, srcSpeed:2, chan:'luma', nBands:5, cell:12,
+    waveType:'radial', waveLen:.28, waveCyc:2, wScale:.6, wRot:0, wBand:.6, waveEase:'sine',
+    underlay:0, bg:'#020a08', dither:.4, weight:.14,
+    _bands:[{c:'#020a08',g:'none',s:1},{c:'#0f4d45',g:'ring',s:1},{c:'#1f9c85',g:'ring',s:1},
+            {c:'#63e0c0',g:'dot',s:.8},{c:'#d8fff4',g:'sparkle',s:1}] },
+  'Loom': { srcType:'flow', srcScale:2.2, srcSpeed:1, srcAngle:20, chan:'luma', nBands:5,
+    cell:10, cellAsp:1.9, lattice:'square', latRot:-18, waveType:'linear', waveDir:20,
+    waveLen:.3, waveCyc:2, wScale:.5, wRot:0, wBand:0, dither:.5, underlay:0, bg:'#100c14', weight:.2,
+    _bands:[{c:'#100c14',g:'none',s:1},{c:'#3b2f52',g:'barsV',s:1},{c:'#7a5ea8',g:'barsV',s:1},
+            {c:'#c9a7f0',g:'barsV',s:1},{c:'#f6ecff',g:'diamond',s:.7}] },
+  'Teletype': { srcType:'image', chan:'luma', nBands:8, cell:13, cellAsp:1.5, dither:.35, con:1.4,
+    waveType:'none', wScale:0, wRot:0, wBand:0, underlay:0, bg:'#06120a', weight:.16,
+    chars:' .:-=+*#@', gScale:1,
+    _bands:[{c:'#06120a',g:'none',s:1},{c:'#1f6b37',g:'chr',s:1},{c:'#2a8845',g:'chr',s:1},
+            {c:'#37a355',g:'chr',s:1},{c:'#4fc06d',g:'chr',s:1},{c:'#71d98c',g:'chr',s:1},
+            {c:'#9fe9b0',g:'chr',s:1},{c:'#e6ffe9',g:'chr',s:1}] },
+  'Ghost': { srcType:'image', chan:'edge', nBands:4, cell:7, dither:.7, con:1.8, gam:.8,
+    waveType:'noise', waveLen:.4, waveCyc:1, wScale:.45, wRot:0, wBand:.4,
+    underlay:.55, blend:'screen', bg:'#000000', weight:.13,
+    _bands:[{c:'#000000',g:'none',s:1},{c:'#2b3a55',g:'dot',s:.5},{c:'#6e8fd0',g:'plus',s:.9},
+            {c:'#eaf2ff',g:'sparkle',s:1}] },
+  'Pressure': { srcType:'liquid', srcScale:2.6, srcWarp:2.2, srcSpeed:2, chan:'luma', nBands:6,
+    cell:7, dither:.6, con:1.5, lattice:'hex', waveType:'spiral', waveLen:.45, waveCyc:1,
+    wScale:.35, wRot:90, wBand:0, underlay:0, bg:'#12060c', weight:.18,
+    _bands:[{c:'#12060c',g:'none',s:1},{c:'#4a1130',g:'diamond',s:.6},{c:'#95204f',g:'diamond',s:.85},
+            {c:'#e0426e',g:'cross',s:1},{c:'#ff9ab0',g:'plus',s:1},{c:'#fff0f3',g:'dot',s:.55}] }
+};
+
+function applyPreset(name){
+  const p=PRESETS[name]; if(!p) return;
+  for (const [k,v] of Object.entries(p)){
+    if (k==='_bands') continue;
+    if (k in S) S[k]=v;
+  }
+  if (p._bands){
+    // mutate in place so every existing reference stays valid
+    for (let i=0;i<8;i++) Object.assign(bands[i], DEF_BANDS[i]);
+    p._bands.forEach((b,i)=>{ Object.assign(bands[i], b); });
+  }
+  syncUI(); renderBands(); atlasKey=''; aMin=aMax=null; applyStage();
+  for (const b of document.querySelectorAll('#presets button')) b.classList.toggle('on', b.textContent===name);
+}
+
+/* ------------------------------------------------------------ control wiring */
+const FMT={
+  rate:v=>v.toFixed(2)+'×', loopDur:v=>v.toFixed(1)+'s',
+  imgZoom:v=>v.toFixed(2), imgX:v=>v.toFixed(3), imgY:v=>v.toFixed(3),
+  srcScale:v=>v.toFixed(2), srcWarp:v=>v.toFixed(2), detail:v=>v, srcSpeed:v=>v, srcAngle:v=>v+'°',
+  bri:v=>v.toFixed(2), con:v=>v.toFixed(2), gam:v=>v.toFixed(2), dither:v=>v.toFixed(2),
+  nBands:v=>v, equal:v=>v.toFixed(2), tintMix:v=>v.toFixed(2),
+  cell:v=>v+'px', cellAsp:v=>v.toFixed(2), latRot:v=>v+'°', jitter:v=>v.toFixed(2),
+  gScale:v=>v.toFixed(2), gRot:v=>v+'°', weight:v=>v.toFixed(3),
+  waveDir:v=>v+'°', waveLen:v=>v.toFixed(2), waveCyc:v=>v,
+  wScale:v=>v.toFixed(2), wRot:v=>v+'°', wBand:v=>v.toFixed(2),
+  underlay:v=>v.toFixed(2)
+};
+const RELAYOUT=new Set(['cell','cellAsp','lattice','latRot','preset','zoom']);
+
+function syncUI(){
+  for (const key of Object.keys(S)){
+    const el=$(key); if(!el) continue;
+    if (el.type==='checkbox') el.checked=S[key]; else el.value=S[key];
+    const v=$(key+'_v'); if(v) v.textContent=(FMT[key]||(x=>x))(S[key]);
+  }
+  $('bgT').value=S.bg;
+}
+
+for (const key of Object.keys(S)){
+  const el=$(key); if(!el) continue;
+  const isNum=el.type==='range';
+  const write=()=>{
+    S[key]= el.type==='checkbox' ? el.checked : (isNum?parseFloat(el.value):el.value);
+    const v=$(key+'_v'); if(v) v.textContent=(FMT[key]||(x=>x))(S[key]);
+    if (key==='nBands') renderBands();
+    if (key==='srcType'||key==='chan'||key==='auto') aMin=aMax=null;
+    if (RELAYOUT.has(key)) applyStage();
+  };
+  el.addEventListener('input',write);
+  if (el.type==='checkbox'||el.tagName==='SELECT') el.addEventListener('change',write);
+}
+
+$('bgT').addEventListener('input',()=>{ if(/^#[0-9a-f]{6}$/i.test($('bgT').value)){ S.bg=$('bgT').value; $('bg').value=S.bg; } });
+$('bg').addEventListener('input',()=>{ $('bgT').value=$('bg').value; });
+
+const bPlay=$('bPlay');
+const setPlay=p=>{ S.playing=p; bPlay.textContent=p?'Pause':'Play'; };
+bPlay.onclick=()=>setPlay(!S.playing);
+$('bReplay').onclick=()=>{ S.t=0; setPlay(true); };
+$('bHide').onclick=()=>{ document.body.classList.toggle('ui-hidden'); applyStage(); };
+$('bSave').onclick=()=>{ cv.toBlob(b=>{ const a=document.createElement('a');
+  a.href=URL.createObjectURL(b); a.download=`glyph-matrix-${Date.now()}.png`; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000); }); };
+$('bCopy').onclick=async()=>{
+  const out={...S, bands:bands.slice(0,S.nBands)}; delete out.t; delete out.playing;
+  try{ await navigator.clipboard.writeText(JSON.stringify(out,null,2));
+    $('bCopy').textContent='Copied'; setTimeout(()=>$('bCopy').textContent='Copy settings',1200); }
+  catch{ console.log(JSON.stringify(out,null,2)); alert('Settings logged to the console.'); }
+};
+
+const scrub=$('scrub'), scrubV=$('scrub_v'); let scrubbing=false;
+scrub.addEventListener('pointerdown',()=>{ scrubbing=true; setPlay(false); });
+addEventListener('pointerup',()=>{ scrubbing=false; });
+scrub.addEventListener('input',()=>{ S.t=(scrub.value/1000)*S.loopDur; draw(); scrubV.textContent=S.t.toFixed(1)+'s'; });
+function syncScrub(){
+  if (scrubbing) return;
+  scrub.value=Math.round(Math.min(1,S.t/S.loopDur)*1000);
+  scrubV.textContent=S.t.toFixed(1)+'s';
+}
+
+addEventListener('keydown',e=>{
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+  const k=e.key.toLowerCase();
+  if (k==='h'){ document.body.classList.toggle('ui-hidden'); applyStage(); }
+  else if (k==='r'){ $('bReplay').click(); }
+  else if (k==='s'){ $('bSave').click(); }
+  else if (e.key===' '){ e.preventDefault(); setPlay(!S.playing); }
+});
+addEventListener('resize',applyStage);
+
+// preset buttons
+for (const name of Object.keys(PRESETS)){
+  const b=document.createElement('button'); b.textContent=name;
+  b.onclick=()=>applyPreset(name);
+  $('presets').appendChild(b);
+}
+
+window.GM={S,bands,draw,applyPreset,PRESETS,PROF};
+syncUI(); renderBands(); applyStage();
+applyPreset('Liquid');
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

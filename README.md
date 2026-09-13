@@ -38,9 +38,24 @@ The lines bloom out from flat over an adjustable stagger. Angle, line count,
 amplitude, response curve, blur and the break-up are all controls; Canvas 2D, so any
 image works.
 
+**`glyph-matrix.html` — Glyph Matrix.** A lattice of small marks laid over a
+picture, which the picture then drives. The source — a dropped image, or one of four
+procedural fields — is sampled once per cell, read as brightness, edges, hue,
+saturation or a single channel, and quantised into bands; each band owns a colour and
+a glyph, so the image is redrawn in an alphabet of rings, bars, crosses, sparkles,
+diamonds or typed characters rather than in pixels. Ordered dithering scatters the
+cells across each band edge and histogram equalisation keeps every band in play, which
+is what stops it collapsing into two tones. A wave — linear, radial, spiral or noise —
+travels through the lattice over time and can drive glyph size, glyph angle or a shift
+in the banding, cycling a whole number of times per loop. The lattice takes any cell
+size, aspect, rotation, jitter and a square, brick or hexagonal arrangement; glyphs can
+take their colour from the palette or from the image itself, over the original at any
+opacity in any blend mode. Eight presets. The glyph layer is WebGL2 instancing, so a
+hundred thousand cells still runs at sixty frames.
+
 ## Recording
 
-All three pages are built to be screen-recorded. **H** clears the panel on any of them.
+Every page is built to be screen-recorded. **H** clears the panel on any of them.
 
 In Terminal Type, set the canvas (1080×1920 portrait, 4:5, square, landscape or
 fill) and zoom to **100%** for a true 1:1 capture; **R** replays, **space** pauses,
@@ -48,5 +63,5 @@ and the scrub slider holds any single frame. If 1920 px of height does not fit t
 display, record at Fit and scale up in post, or work at 4:5. **Copy settings** puts
 the whole state on the clipboard as JSON.
 
-In Dither Lab and Line Relief, **S** saves the current frame as a PNG. Line Relief
+In Dither Lab, Line Relief and Glyph Matrix, **S** saves the current frame as a PNG. Line Relief
 takes the same canvas presets and zoom as Terminal Type, and **R** replays its bloom.
