@@ -84,8 +84,8 @@
 <body>
 
 <div id="viewport"><div id="stage"><canvas id="c"></canvas></div></div>
-<div id="drop">Drop an image</div>
-<div id="hud"><a href="index.html">← Moxx Lab</a><span> · drop an image · <kbd>H</kbd> panel · <kbd>R</kbd> replay · <kbd>S</kbd> save png · <kbd>space</kbd> pause</span></div>
+<div id="drop">Drop an image or video</div>
+<div id="hud"><a href="index.html">← Moxx Lab</a><span> · drop an image or video · <kbd>H</kbd> panel · <kbd>R</kbd> replay · <kbd>S</kbd> save png · <kbd>space</kbd> pause</span></div>
 <div id="fps"></div>
 
 <div id="panel">
@@ -108,13 +108,13 @@
   <details open>
     <summary>Source</summary>
     <div class="row"><label>Type</label><select id="srcType">
-      <option value="image">Dropped image</option>
+      <option value="image">Dropped image / video</option>
       <option value="liquid">Liquid — warped noise</option>
       <option value="flow">Flow — drifting noise</option>
       <option value="rings">Rings — radial</option>
       <option value="waves">Waves — interference</option>
     </select></div>
-    <div id="pick">Drop an image anywhere — or click<br>jpg · png · webp · gif</div>
+    <div id="pick">Drop an image or video anywhere — or click<br>jpg · png · webp · gif · mp4 · webm · mov</div>
     <div class="row" style="margin-top:10px"><label>Fit</label><select id="imgFit">
       <option value="cover">Cover</option><option value="contain">Contain</option>
     </select></div>
@@ -373,7 +373,7 @@ function drawSourceToBuffer(t){
     const ang = -S.latRot*Math.PI/180;
     sctx.setTransform(cols/LW,0,0,rows/LH,0,0);
     sctx.translate(LW/2, LH/2); sctx.rotate(ang); sctx.translate(-W/2,-H/2);
-    const iw=srcImage.naturalWidth, ih=srcImage.naturalHeight;
+    const iw=srcImage.videoWidth||srcImage.naturalWidth, ih=srcImage.videoHeight||srcImage.naturalHeight;
     const sc=(S.imgFit==='cover'?Math.max(W/iw,H/ih):Math.min(W/iw,H/ih))*S.imgZoom;
     const dw=iw*sc, dh=ih*sc;
     sctx.drawImage(srcImage,(W-dw)/2+S.imgX*W,(H-dh)/2+S.imgY*H,dw,dh);
@@ -671,7 +671,7 @@ function draw(){
   if (S.underlay>0){
     ctx.globalAlpha=S.underlay;
     if (S.srcType==='image' && srcImage){
-      const iw=srcImage.naturalWidth, ih=srcImage.naturalHeight;
+      const iw=srcImage.videoWidth||srcImage.naturalWidth, ih=srcImage.videoHeight||srcImage.naturalHeight;
       const sc=(S.imgFit==='cover'?Math.max(W/iw,H/ih):Math.min(W/iw,H/ih))*S.imgZoom;
       ctx.drawImage(srcImage,(W-iw*sc)/2+S.imgX*W,(H-ih*sc)/2+S.imgY*H,iw*sc,ih*sc);
     } else {
@@ -844,15 +844,30 @@ function applyStage(){
 }
 
 /* ------------------------------------------------------------ image loading */
+let srcUrl=null;
+function useSource(m, url){
+  if (srcImage && srcImage.pause) srcImage.pause();
+  if (srcUrl) URL.revokeObjectURL(srcUrl);
+  srcImage=m; srcUrl=url; S.srcType='image'; $('srcType').value='image';
+}
 function loadFile(file){
-  if(!file || !/^image\//.test(file.type)) return;
-  const url=URL.createObjectURL(file), img=new Image();
-  img.onload=()=>{ srcImage=img; S.srcType='image'; $('srcType').value='image'; URL.revokeObjectURL(url); };
-  img.onerror=()=>{ alert('Could not read that image.'); URL.revokeObjectURL(url); };
-  img.src=url;
+  if(!file) return;
+  const url=URL.createObjectURL(file);
+  if (/^video\//.test(file.type)){
+    const v=document.createElement('video');
+    v.muted=true; v.loop=true; v.playsInline=true; v.autoplay=true; v.preload='auto';
+    v.onloadeddata=()=>{ useSource(v,url); v.play().catch(()=>{}); };
+    v.onerror=()=>{ alert('Could not read that video.'); URL.revokeObjectURL(url); };
+    v.src=url;
+  } else if (/^image\//.test(file.type)){
+    const img=new Image();
+    img.onload=()=>useSource(img,url);
+    img.onerror=()=>{ alert('Could not read that image.'); URL.revokeObjectURL(url); };
+    img.src=url;
+  } else URL.revokeObjectURL(url);
 }
 const fileInput=document.createElement('input');
-fileInput.type='file'; fileInput.accept='image/*';
+fileInput.type='file'; fileInput.accept='image/*,video/*';
 fileInput.onchange=()=>{ loadFile(fileInput.files[0]); fileInput.value=''; };
 $('pick').onclick=()=>fileInput.click();
 const dz=$('drop'); let depth=0;
@@ -985,9 +1000,9 @@ $('bgT').addEventListener('input',()=>{ if(/^#[0-9a-f]{6}$/i.test($('bgT').value
 $('bg').addEventListener('input',()=>{ $('bgT').value=$('bg').value; });
 
 const bPlay=$('bPlay');
-const setPlay=p=>{ S.playing=p; bPlay.textContent=p?'Pause':'Play'; };
+const setPlay=p=>{ S.playing=p; if(srcImage&&srcImage.pause){ p?srcImage.play().catch(()=>{}):srcImage.pause(); } bPlay.textContent=p?'Pause':'Play'; };
 bPlay.onclick=()=>setPlay(!S.playing);
-$('bReplay').onclick=()=>{ S.t=0; setPlay(true); };
+$('bReplay').onclick=()=>{ S.t=0; if(srcImage&&srcImage.pause) srcImage.currentTime=0; setPlay(true); };
 $('bHide').onclick=()=>{ document.body.classList.toggle('ui-hidden'); applyStage(); };
 $('bSave').onclick=()=>{ cv.toBlob(b=>{ const a=document.createElement('a');
   a.href=URL.createObjectURL(b); a.download=`glyph-matrix-${Date.now()}.png`; a.click();
