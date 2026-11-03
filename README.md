@@ -53,6 +53,17 @@ take their colour from the palette or from the image itself, over the original a
 opacity in any blend mode. Eight presets. The glyph layer is WebGL2 instancing, so a
 hundred thousand cells still runs at sixty frames.
 
+**`prism-core.html` — Prism Core.** A vertically oriented, rounded hexagonal block,
+ray-marched in a WebGL2 fragment shader as a translucent volume. Inside it sit
+broad drifting orbs of colour, thin translucent layers that tilt and slide through
+the block, and small bright motes that rise, all emitting and absorbing light along
+each ray, so it reads as softly lit and slightly volumetric rather than painted on.
+The edges pull toward a deeper edge colour, with a rim light and a halo outside. Drag
+to rotate it (shift-drag rolls, scroll zooms, and it keeps its momentum), or set it
+to sway or spin; yaw, pitch and roll also have sliders. The gradient takes up to
+eight colours — add, remove, edit, randomise or reverse them — and the orbs, layers
+and motes pick their colours from the same list. Six presets. Needs WebGL2.
+
 ## Recording
 
 Every page is built to be screen-recorded. **H** clears the panel on any of them.
@@ -63,5 +74,5 @@ and the scrub slider holds any single frame. If 1920 px of height does not fit t
 display, record at Fit and scale up in post, or work at 4:5. **Copy settings** puts
 the whole state on the clipboard as JSON.
 
-In Dither Lab, Line Relief and Glyph Matrix, **S** saves the current frame as a PNG. Line Relief
+In Dither Lab, Line Relief, Glyph Matrix and Prism Core, **S** saves the current frame as a PNG. Line Relief
 takes the same canvas presets and zoom as Terminal Type, and **R** replays its bloom.
