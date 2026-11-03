@@ -142,7 +142,7 @@
     <div id="sl-col"></div>
     <div class="row"><label>Edge colour</label><input type="color" id="edge" value="#0a4bff"><input type="text" id="edgeT" value="#0a4bff"></div>
     <div id="sl-edge"></div>
-    <p class="hint">Colours spread evenly across the gradient and also tint the orbs, layers and motes inside. Add as many as you like, up to eight.</p>
+    <p class="hint">Colours spread evenly across the gradient and also tint the orbs, layers and motes inside. Add as many as you like, up to eight. Inner shadow mixes the edge colour in from the surface — leave it at 0 for a clean, even body.</p>
   </details>
 
   <details open>
@@ -207,7 +207,7 @@ uniform int   uN, uOrbs, uLayers, uMotes, uShape, uCount, uBgMode;
 uniform float uPersp, uDist;
 uniform vec3  uCols[8];
 uniform vec3  uEdge, uBg1, uBg2, uPos[12], uSize;
-uniform float uBgAng, uBgLum, uGlowSize, uGuard;
+uniform float uBgAng, uBgLum, uGlowSize, uGuard, uFace;
 
 float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 
@@ -319,7 +319,7 @@ void main(){
 
   if (!hit){
     float cover = 1.0 - smoothstep(0.0, px * 1.5, md);
-    col = mix(col, mix(uEdge * 0.9, guardC, uGuard * 0.5), cover);
+    col = mix(col, mix(palette(0.5) * 0.92, guardC, uGuard * 0.35), cover);
   } else {
     float k = kS();
     float mn = min(uSize.x, min(uSize.y, uSize.z));
@@ -338,6 +338,12 @@ void main(){
     vec3 gdir = vec3(cos(ga), sin(ga), 0.35) * 1.15;
     vec3 acc = vec3(0.0);
     float T = 1.0;
+
+    // colour of the skin where the ray enters; added back as whatever light the volume let through,
+    // so rays that only clip a corner still carry colour instead of leaving a dark ring
+    vec3 q0 = (uInv * (pos - uPos[id])) / (k * uSize);
+    float tg0 = clamp(0.5 + 0.5 * dot(q0, gdir), 0.0, 1.0);
+    vec3 shell = palette(tg0) * uBase * 0.75;
 
     for (int s = 0; s < 110; s++){
       float d = localSd(pos, id);
@@ -402,14 +408,12 @@ void main(){
     }
 
     // facets catch light differently as the shape turns
-    vec3 L = normalize(vec3(-0.4, 0.7, 0.6));
-    float diff = 0.82 + 0.3 * dot(nW, L);
-    vec3 c = acc * diff;
+    vec3 L = normalize(vec3(-0.5, 0.8, 0.35));
+    float diff = mix(1.0, 0.72 + 0.42 * (dot(nW, L) * 0.5 + 0.5), uFace);   // wrapped, so no face ever goes dark
+    vec3 c = (acc + shell * T) * diff;
     c += uEdge * pow(1.0 - facing, 3.0) * uRim;
     c += vec3(1.0) * pow(max(dot(reflect(rd, nW), L), 0.0), 36.0) * uSheen;
     col = pow(1.0 - exp(-c * 1.6), vec3(1.2));
-    // contrast guard: a thin contrasting rim keeps the silhouette readable on any ground
-    col = mix(col, guardC, uGuard * 0.55 * pow(1.0 - facing, 3.2));
   }
 
   col += (hash(gl_FragCoord.xy) - 0.5) / 255.0;
@@ -449,7 +453,7 @@ const loc = gl.getAttribLocation(prog, 'p');
 gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
 const U = {};
 for (const n of ['uRes','uTime','uInv','uScale','uThick','uRound','uGradAng','uEdgeAmt','uEdgeW','uBase','uCore',
-  'uShape','uPersp','uDist','uCount','uBgMode','uPos','uSize','uBg1','uBg2','uBgAng','uBgLum','uGlowSize','uGuard','uDens','uMoteSize','uRim','uGlow','uSheen','uN','uOrbs','uLayers','uMotes','uCols','uEdge'])
+  'uShape','uPersp','uDist','uCount','uBgMode','uPos','uSize','uBg1','uBg2','uBgAng','uBgLum','uGlowSize','uGuard','uFace','uDens','uMoteSize','uRim','uGlow','uSheen','uN','uOrbs','uLayers','uMotes','uCols','uEdge'])
   U[n] = gl.getUniformLocation(prog, n);
 
 /* ------------------------------------------------------------ state */
@@ -461,9 +465,9 @@ const S = {
   motion:'sway', motionSpeed:0.5,
   shape:0, count:1, arr:'single', gap:1.25, spread:1.0, seed:1, frame:true, sw:1, sh:1, sd:1,
   bgMode:0, bg2:'#2a2f45', bgAng:180, glowOn:true, glowSize:1, guard:true, persp:1, dist:5, scale:1.35, thick:0.7, round:0.55,
-  gradAng:60, edgeAmt:0.85, edgeW:2.2,
-  base:0.9, core:0.35, orbs:4, layers:3, motes:8, moteSize:1, dens:1, flow:1,
-  rim:0.5, glow:0.8, sheen:0.12,
+  gradAng:60, edgeAmt:0, edgeW:2.2, face:0.8,
+  base:0.65, core:0.2, orbs:2, layers:0, motes:0, moteSize:1, dens:1, flow:1,
+  rim:0, glow:0.8, sheen:0,
   preset:'fill', zoom:'fit', quality:'1',
   playing:true, time:0,
 };
@@ -489,7 +493,7 @@ const SLIDERS = {
   'sl-motion':[['motionSpeed','Speed',0,3,0.01,v=>v.toFixed(2)]],
   'sl-col':[['gradAng','Gradient angle',0,360,1,v=>v.toFixed(0)+'°']],
   'sl-edge':[
-    ['edgeAmt','Edge tint',0,1,0.01,v=>v.toFixed(2)],
+    ['edgeAmt','Inner shadow',0,1,0.01,v=>v.toFixed(2)],
     ['edgeW','Edge depth',0.5,12,0.1,v=>v.toFixed(1)],
   ],
   'sl-in':[
@@ -510,6 +514,7 @@ const SLIDERS = {
     ['round','Roundness',0,1,0.01,v=>v.toFixed(2)],
   ],
   'sl-light':[
+    ['face','Face shading',0,1.5,0.01,v=>v.toFixed(2)],
     ['rim','Rim light',0,2,0.01,v=>v.toFixed(2)],
     ['sheen','Sheen',0,1,0.01,v=>v.toFixed(2)],
   ],
@@ -671,7 +676,8 @@ function layout(){
   const P=arrange(n,fw,fh,S.gap);
   let fit=1;
   if (S.frame){
-    let ex=0, ey=0; for (const q of P){ ex=Math.max(ex,Math.abs(q[0])+fw/2); ey=Math.max(ey,Math.abs(q[1])+fh/2); }
+    const rr=1.15*Math.max(S.sw,S.sh,S.sd);   // shapes turn, so leave room for the diagonal
+    let ex=0, ey=0; for (const q of P){ ex=Math.max(ex,Math.abs(q[0])+rr); ey=Math.max(ey,Math.abs(q[1])+rr); }
     fit=Math.min(1, 1.8/(ey*S.scale), 1.8*(W/H)/(ex*S.scale));
   }
   const k=S.scale*fit, flat=new Float32Array(36);
@@ -807,7 +813,7 @@ function render(){
   gl.uniform3f(U.uSize,S.sw,S.sh,S.sd);
   gl.uniform1i(U.uBgMode,S.bgMode); gl.uniform3fv(U.uBg1,hexRgb(S.bg)); gl.uniform3fv(U.uBg2,hexRgb(S.bg2));
   gl.uniform1f(U.uBgAng,S.bgAng*D2R); gl.uniform1f(U.uBgLum,bgLum());
-  gl.uniform1f(U.uGlowSize,S.glowSize); gl.uniform1f(U.uGuard,S.guard?1:0); gl.uniform1f(U.uRound,S.round);
+  gl.uniform1f(U.uGlowSize,S.glowSize); gl.uniform1f(U.uGuard,S.guard?1:0); gl.uniform1f(U.uFace,S.face); gl.uniform1f(U.uRound,S.round);
   gl.uniform1f(U.uGradAng,S.gradAng); gl.uniform1f(U.uEdgeAmt,S.edgeAmt); gl.uniform1f(U.uEdgeW,S.edgeW);
   gl.uniform1f(U.uBase,S.base); gl.uniform1f(U.uCore,S.core); gl.uniform1f(U.uDens,S.dens);
   gl.uniform1f(U.uMoteSize,S.moteSize); gl.uniform1f(U.uRim,S.rim); gl.uniform1f(U.uGlow,S.glowOn?S.glow:0); gl.uniform1f(U.uSheen,S.sheen);
