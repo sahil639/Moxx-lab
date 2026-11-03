@@ -1,7 +1,9 @@
 # Moxx Lab
 
 Mockup animations. Each one is a single self-contained HTML page — no build step,
-no dependencies, no network requests. Open one in a browser and it runs.
+no dependencies. Open one in a browser and it runs. The only network request is the
+IBM Plex Mono brand font from Google Fonts; every page falls back to the system
+monospace if it cannot load.
 
 `index.html` is the directory; add a new card to its grid when a new animation lands.
 `logo.svg` is the Moxx Lab mark (white on transparent) and `favicon.svg` the same on black;
