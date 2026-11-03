@@ -3,146 +3,245 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#000000">
 <title>Moxx Lab</title>
-<meta name="description" content="Mockup animations. Each one is a single self-contained page, built to be screen-recorded.">
+<meta name="description" content="Moxx Lab — mockup animations. Each one is a single self-contained page, built to be tuned in the browser and screen-recorded.">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <style>
   :root{
-    --bg:#0b0d0f;
-    --fg:#d8dee4;
-    --dim:#6b7680;
-    --line:#1e242a;
-    --accent:#5aa9e6;
+    --bg:#000; --fg:#f4f4f5; --dim:#8b8b93; --faint:#4a4a52; --line:#1b1b1f; --card:#09090b;
+    --blue:#2f6bff; --cyan:#19e6ff;
+    --sans:ui-sans-serif,-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",system-ui,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
   }
   *{box-sizing:border-box}
-  html{-webkit-text-size-adjust:100%}
-  body{
-    margin:0;background:var(--bg);color:var(--fg);
-    font:14px/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-    letter-spacing:.01em;
-    -webkit-font-smoothing:antialiased;
-  }
-  .wrap{max-width:680px;margin:0 auto;padding:88px 28px 120px}
+  html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 var(--sans);
+    -webkit-font-smoothing:antialiased;overflow-x:hidden}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 28px}
 
-  header{margin-bottom:64px}
-  h1{
-    font-size:13px;font-weight:400;letter-spacing:.22em;text-transform:uppercase;
-    margin:0 0 14px;color:var(--fg);
-  }
-  header p{margin:0;color:var(--dim);font-size:13px;max-width:46ch}
+  /* top bar */
+  nav{position:sticky;top:0;z-index:20;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    background:rgba(0,0,0,.6);border-bottom:1px solid var(--line)}
+  nav .wrap{display:flex;align-items:center;justify-content:space-between;height:60px}
+  .brand{display:flex;align-items:center;gap:11px;font:600 12px/1 var(--mono);letter-spacing:.22em;text-transform:uppercase}
+  .brand img{width:26px;height:26px;display:block}
+  nav .links{display:flex;gap:22px;font:12px/1 var(--mono);letter-spacing:.08em;color:var(--dim)}
+  nav .links a{transition:color .15s}
+  nav .links a:hover{color:var(--fg)}
 
-  h2{
-    font-size:11px;font-weight:400;letter-spacing:.18em;text-transform:uppercase;
-    color:var(--dim);margin:0 0 4px;padding-bottom:10px;border-bottom:1px solid var(--line);
-  }
+  /* hero */
+  .hero{position:relative;padding:120px 0 96px;isolation:isolate}
+  .hero::before{content:"";position:absolute;z-index:-1;right:-10%;top:-20%;width:760px;height:760px;
+    background:radial-gradient(closest-side,rgba(47,107,255,.34),rgba(25,230,255,.10) 55%,transparent 72%);
+    filter:blur(10px);animation:breathe 9s ease-in-out infinite}
+  .hero-mark{position:absolute;z-index:-1;right:2%;top:50%;width:min(46vw,420px);aspect-ratio:1;
+    transform:translateY(-50%);opacity:.95;
+    filter:drop-shadow(0 0 40px rgba(60,130,255,.55));animation:float 10s ease-in-out infinite}
+  .eyebrow{font:12px/1 var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin:0 0 28px;
+    display:flex;align-items:center;gap:12px}
+  .eyebrow i{display:inline-block;width:28px;height:1px;background:var(--faint)}
+  h1{font:600 clamp(44px,8.4vw,104px)/.96 var(--sans);letter-spacing:-.055em;margin:0;max-width:11ch}
+  h1 em{font-style:normal;background:linear-gradient(100deg,#fff 20%,var(--cyan) 60%,var(--blue));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .lede{margin:30px 0 0;max-width:46ch;color:var(--dim);font-size:17px;line-height:1.55}
+  .cta{display:flex;gap:12px;margin-top:38px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:9px;height:44px;padding:0 20px;border-radius:999px;
+    font:500 13px/1 var(--mono);letter-spacing:.06em;transition:transform .15s,background .15s,border-color .15s}
+  .btn.solid{background:var(--fg);color:#000}
+  .btn.solid:hover{transform:translateY(-1px);background:#fff}
+  .btn.ghost{border:1px solid #2a2a30;color:var(--fg)}
+  .btn.ghost:hover{border-color:#55555e;background:#0c0c0f}
 
-  ul{list-style:none;margin:0;padding:0}
-  li{border-bottom:1px solid var(--line)}
+  /* grid of effects */
+  .head{display:flex;align-items:baseline;justify-content:space-between;
+    padding:20px 0 14px;border-top:1px solid var(--line);margin-top:8px}
+  .head h2{margin:0;font:12px/1 var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--dim);font-weight:400}
+  .head span{font:12px/1 var(--mono);color:var(--faint)}
+  ul.grid{list-style:none;margin:0;padding:0;display:grid;gap:14px;grid-template-columns:repeat(3,1fr)}
+  ul.grid li:nth-child(4),ul.grid li:nth-child(5){grid-column:span 1}
 
-  a.item{
-    display:block;text-decoration:none;color:inherit;
-    padding:22px 0 20px;
-  }
-  a.item:hover .name,a.item:focus-visible .name{color:var(--accent)}
-  a.item:focus-visible{outline:1px solid var(--accent);outline-offset:4px}
+  .card{position:relative;display:flex;flex-direction:column;height:100%;padding:12px 12px 22px;
+    background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;
+    transition:border-color .2s,transform .25s,background .2s}
+  .card::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .25s;
+    background:radial-gradient(420px circle at var(--x,50%) var(--y,0%),rgba(70,130,255,.16),transparent 60%)}
+  .card:hover{border-color:#33333b;transform:translateY(-3px)}
+  .card:hover::after{opacity:1}
+  .card:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+  .meta{display:flex;justify-content:space-between;align-items:center;padding:16px 10px 0;
+    font:12px/1 var(--mono);color:var(--faint)}
+  .arrow{font-size:15px;color:var(--faint);transition:color .2s,transform .2s}
+  .card:hover .arrow{color:var(--fg);transform:translate(2px,-2px)}
+  .card h3{margin:12px 10px 8px;font:600 22px/1.15 var(--sans);letter-spacing:-.03em}
+  .card p{margin:0 10px;color:var(--dim);font-size:13.5px;line-height:1.6}
 
-  .top{display:flex;align-items:baseline;gap:14px}
-  .name{font-size:15px;color:var(--fg);transition:color .12s ease}
-  .rule{flex:1;height:1px;background:var(--line);transform:translateY(-3px)}
-  .no{color:var(--dim);font-size:12px;font-variant-numeric:tabular-nums}
+  /* css-only previews */
+  .thumb{position:relative;aspect-ratio:16/10;border-radius:10px;overflow:hidden;background:#000;
+    border:1px solid #131316}
+  .t-terminal{display:grid;align-content:center;padding:0 16px}
+  .t-terminal::before{white-space:pre;font:11px/1.7 var(--mono);color:#cfd3da;
+    content:"$ moxx --record\A> glyphs decoding\A> 4F 7A 91 2C 3E\A> writing";}
+  .t-terminal::after{content:"";position:absolute;inset:0;
+    background:repeating-linear-gradient(0deg,rgba(255,255,255,.05) 0 1px,transparent 1px 3px)}
+  .t-dither{background:radial-gradient(circle at 32% 42%,#fff 0,#6b6b6b 30%,#000 72%);
+    -webkit-mask:radial-gradient(circle,#000 38%,transparent 40%) 0 0/7px 7px;
+    mask:radial-gradient(circle,#000 38%,transparent 40%) 0 0/7px 7px}
+  .thumb.t-dither{border-color:transparent;background-color:#000}
+  .t-line{background:repeating-linear-gradient(180deg,#e9e9ee 0 1px,transparent 1px 7px)}
+  .t-line::after{content:"";position:absolute;inset:0;
+    background:radial-gradient(ellipse 50% 70% at 50% 50%,transparent 30%,#000 100%)}
+  .t-glyph{background:radial-gradient(circle,#fff 0 1.3px,transparent 1.8px) 0 0/11px 11px}
+  .t-glyph::after{content:"";position:absolute;inset:0;
+    background:radial-gradient(circle at 60% 45%,transparent 0,transparent 20%,#000 75%)}
+  .t-prism{background:radial-gradient(60% 70% at 50% 50%,rgba(47,107,255,.35),transparent 70%),#040406}
+  .t-prism::before{content:"";position:absolute;left:50%;top:50%;width:34%;aspect-ratio:.9;transform:translate(-50%,-50%);
+    clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);
+    background:radial-gradient(circle at 70% 78%,#ffcc9a 0,transparent 42%),
+               linear-gradient(165deg,#0a55ff 0%,#19e6ff 52%,#1b6bff 100%);
+    filter:drop-shadow(0 0 22px rgba(60,130,255,.8))}
 
-  .desc{margin:8px 0 0;color:var(--dim);font-size:13px;max-width:62ch}
+  .about{display:grid;grid-template-columns:1fr 1fr;gap:48px;padding:96px 0 40px;margin-top:72px;
+    border-top:1px solid var(--line)}
+  .about h2{margin:0;font:600 clamp(28px,4vw,44px)/1.05 var(--sans);letter-spacing:-.045em;max-width:14ch}
+  .about p{margin:0 0 16px;color:var(--dim);max-width:52ch}
+  .about b{color:var(--fg);font-weight:500}
 
-  footer{
-    margin-top:64px;padding-top:20px;border-top:1px solid var(--line);
-    color:#4d565f;font-size:11.5px;line-height:1.9;
-  }
-  footer a{color:#6b7680;text-decoration:none;border-bottom:1px solid #2a3138}
-  footer a:hover{color:var(--accent);border-color:var(--accent)}
+  footer{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;
+    padding:28px 0 56px;margin-top:40px;border-top:1px solid var(--line);
+    font:12px/1.7 var(--mono);color:var(--faint)}
+  footer .brand{font-size:11px}
+  footer .brand img{width:20px;height:20px}
+  footer a{color:var(--dim);border-bottom:1px solid #2a2a30}
+  footer a:hover{color:var(--fg);border-color:var(--fg)}
 
-  @media (max-width:520px){
-    .wrap{padding:56px 20px 80px}
-    header{margin-bottom:44px}
+  @keyframes float{0%,100%{transform:translateY(-50%) rotate(-2deg)}50%{transform:translateY(-54%) rotate(2deg)}}
+  @keyframes breathe{0%,100%{opacity:.8;transform:scale(1)}50%{opacity:1;transform:scale(1.06)}}
+  @media (prefers-reduced-motion:reduce){.hero::before,.hero-mark{animation:none}.card,.card *{transition:none}}
+
+  @media (max-width:960px){ul.grid{grid-template-columns:repeat(2,1fr)}.about{grid-template-columns:1fr;gap:20px}}
+  @media (max-width:620px){
+    .wrap{padding:0 20px}
+    .hero{padding:72px 0 56px}
+    .hero-mark{right:-18%;top:30%;width:70vw;opacity:.4}
+    ul.grid{grid-template-columns:1fr}
+    nav .links a:not(:last-child){display:none}
+    .lede{font-size:16px}
   }
 </style>
 </head>
 <body>
-<div class="wrap">
 
-  <header>
-    <h1>Moxx Lab</h1>
-    <p>Mockup animations. Each one is a single self-contained page with its own
-       control panel, built to be tuned in the browser and screen-recorded.</p>
-  </header>
+<nav>
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="logo.svg" alt="">Moxx Lab</a>
+    <div class="links">
+      <a href="#work">Index</a>
+      <a href="#about">About</a>
+      <a href="https://github.com/sahil639/Moxx-lab">GitHub ↗</a>
+    </div>
+  </div>
+</nav>
 
-  <h2>Animations</h2>
-  <ul>
+<main id="top">
+  <section class="hero">
+    <img class="hero-mark" src="logo.svg" alt="Moxx Lab">
+    <div class="wrap">
+      <p class="eyebrow"><i></i>Mockup animations</p>
+      <h1>Motion studies, <em>built to be recorded.</em></h1>
+      <p class="lede">Five small tools for making things move. Each is a single page with its own control panel — tune it in the browser, then capture it.</p>
+      <div class="cta">
+        <a class="btn solid" href="#work">Browse the lab ↓</a>
+        <a class="btn ghost" href="https://github.com/sahil639/Moxx-lab">View source ↗</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap" id="work">
+    <div class="head"><h2>Index</h2><span>05 pieces</span></div>
+    <ul class="grid">
     <li>
-      <a class="item" href="terminal-type.html">
-        <span class="top">
-          <span class="name">Terminal Type</span>
-          <span class="rule"></span>
+      <a class="card" href="terminal-type.html">
+        <div class="thumb t-terminal" aria-hidden="true"></div>
+        <div class="meta">
           <span class="no">01</span>
-        </span>
-        <p class="desc">Portrait terminal text that types itself in, a scramble of
-          glyphs decoding just ahead of the write head, over scanlines and flicker.
-          Drop in any font file to see it set in that face.</p>
+          <span class="arrow" aria-hidden="true">↗</span>
+        </div>
+        <h3>Terminal Type</h3>
+        <p>Portrait terminal text that types itself in, a scramble of glyphs decoding just ahead of the write head, over scanlines and flicker. Drop in any font file to see it set in that face.</p>
       </a>
     </li>
     <li>
-      <a class="item" href="dither-lab.html">
-        <span class="top">
-          <span class="name">Dither Lab</span>
-          <span class="rule"></span>
+      <a class="card" href="dither-lab.html">
+        <div class="thumb t-dither" aria-hidden="true"></div>
+        <div class="meta">
           <span class="no">02</span>
-        </span>
-        <p class="desc">Drop an image or a video and it is dithered live on the GPU —
-          Bayer, noise or halftone, down to a few tones and a three-colour palette,
-          with a lens that sharpens wherever the cursor rests.</p>
+          <span class="arrow" aria-hidden="true">↗</span>
+        </div>
+        <h3>Dither Lab</h3>
+        <p>Drop an image or a video and it is dithered live on the GPU — Bayer, noise or halftone, down to a few tones and a three-colour palette, with a lens that sharpens wherever the cursor rests.</p>
       </a>
     </li>
     <li>
-      <a class="item" href="line-relief.html">
-        <span class="top">
-          <span class="name">Line Relief</span>
-          <span class="rule"></span>
+      <a class="card" href="line-relief.html">
+        <div class="thumb t-line" aria-hidden="true"></div>
+        <div class="meta">
           <span class="no">03</span>
-        </span>
-        <p class="desc">A field of parallel lines pushed sideways by an image's
-          brightness, so the picture exists only as deformation — bunching into dense
-          bands where it steepens, thinning into dots where it spreads.</p>
+          <span class="arrow" aria-hidden="true">↗</span>
+        </div>
+        <h3>Line Relief</h3>
+        <p>A field of parallel lines pushed sideways by an image's brightness, so the picture exists only as deformation — bunching into dense bands where it steepens, thinning into dots where it spreads.</p>
       </a>
     </li>
     <li>
-      <a class="item" href="glyph-matrix.html">
-        <span class="top">
-          <span class="name">Glyph Matrix</span>
-          <span class="rule"></span>
+      <a class="card" href="glyph-matrix.html">
+        <div class="thumb t-glyph" aria-hidden="true"></div>
+        <div class="meta">
           <span class="no">04</span>
-        </span>
-        <p class="desc">A grid of small marks that reads a picture and redraws it in
-          its own alphabet — rings, bars, crosses, characters — one glyph and colour
-          per tonal band, with a wave running through the lattice over time.</p>
+          <span class="arrow" aria-hidden="true">↗</span>
+        </div>
+        <h3>Glyph Matrix</h3>
+        <p>A grid of small marks that reads a picture or a video and redraws it in its own alphabet — rings, bars, crosses, characters — one glyph and colour per tonal band, with a wave running through the lattice.</p>
       </a>
     </li>
     <li>
-      <a class="item" href="prism-core.html">
-        <span class="top">
-          <span class="name">Prism Core</span>
-          <span class="rule"></span>
+      <a class="card" href="prism-core.html">
+        <div class="thumb t-prism" aria-hidden="true"></div>
+        <div class="meta">
           <span class="no">05</span>
-        </span>
-        <p class="desc">A soft, rounded hexagonal block that glows from the inside —
-          orbs, translucent layers and drifting motes moving through it. Turn it by
-          hand, and build the gradient from as many colours as you like.</p>
+          <span class="arrow" aria-hidden="true">↗</span>
+        </div>
+        <h3>Prism Core</h3>
+        <p>A soft, rounded block that glows from the inside — orbs, translucent layers and drifting motes moving through it. Turn it by hand, change its shape, view and arrangement, and build the gradient from as many colours as you like.</p>
       </a>
     </li>
-  </ul>
+    </ul>
 
-  <footer>
-    Self-contained pages — no build step, no dependencies, no network requests.<br>
-    <a href="https://github.com/sahil639/Moxx-lab">github.com/sahil639/Moxx-lab</a>
-  </footer>
+    <div class="about" id="about">
+      <h2>One page. One idea. No build step.</h2>
+      <div>
+        <p>Every piece is a <b>self-contained HTML file</b> — no dependencies, no network requests. Open it and it runs.</p>
+        <p>Each has a panel for tuning and an export path for capture: press <b>H</b> to clear the interface, <b>S</b> to save a frame, <b>space</b> to pause.</p>
+      </div>
+    </div>
 
-</div>
+    <footer>
+      <a class="brand" href="#top" style="border:0"><img src="logo.svg" alt="">Moxx Lab</a>
+      <span>Self-contained pages · <a href="https://github.com/sahil639/Moxx-lab">github.com/sahil639/Moxx-lab</a></span>
+    </footer>
+  </section>
+</main>
+
+<script>
+// cursor-follow glow on the cards
+for (const c of document.querySelectorAll('.card')) {
+  c.addEventListener('pointermove', e => {
+    const r = c.getBoundingClientRect();
+    c.style.setProperty('--x', (e.clientX - r.left) + 'px');
+    c.style.setProperty('--y', (e.clientY - r.top) + 'px');
+  });
+}
+</script>
 </body>
 </html>

@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Moxx Lab — Line Relief</title>
 <style>
@@ -88,16 +89,18 @@
   #hud a:hover{color:var(--panel-accent)}
   #hud span{pointer-events:none}
   body.ui-hidden #hud{display:none}
+  .mark{width:15px;height:15px;vertical-align:-2px;margin-right:8px;opacity:.95}
+  #hud .mark,#hint .mark{width:12px;height:12px;vertical-align:-1px;margin-right:6px}
 </style>
 </head>
 <body>
 
 <div id="viewport"><div id="stage"><canvas id="c"></canvas></div></div>
 <div id="drop">Drop an image</div>
-<div id="hud"><a href="index.html">← Moxx Lab</a><span> · drop an image · <kbd>H</kbd> panel · <kbd>R</kbd> replay · <kbd>S</kbd> save png · <kbd>space</kbd> pause</span></div>
+<div id="hud"><a href="index.html"><img class="mark" src="logo.svg" alt="">← Moxx Lab</a><span> · drop an image · <kbd>H</kbd> panel · <kbd>R</kbd> replay · <kbd>S</kbd> save png · <kbd>space</kbd> pause</span></div>
 
 <div id="panel">
-  <h1>Line Relief<small>displacement line plot</small></h1>
+  <h1><img class="mark" src="logo.svg" alt="">Line Relief<small>displacement line plot</small></h1>
 
   <details open>
     <summary>Playback</summary>

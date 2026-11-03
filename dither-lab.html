@@ -1,4 +1,5 @@
 <meta charset="utf-8">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Moxx Lab — Dither Lab</title>
 <style>
@@ -75,15 +76,17 @@
   #hint a:hover{color:var(--accent)}
   #hint span{pointer-events:none}
   #err{position:fixed;inset:0;display:none;place-items:center;color:#e88;font:13px ui-monospace,monospace;}
+  .mark{width:15px;height:15px;vertical-align:-2px;margin-right:8px;opacity:.95}
+  #hud .mark,#hint .mark{width:12px;height:12px;vertical-align:-1px;margin-right:6px}
 </style>
 
 <div id="stage"><canvas id="c"></canvas></div>
 <div id="drop">Drop image or video</div>
-<div id="hint"><a href="index.html">← Moxx Lab</a><span> · drag &amp; drop media · hover to focus · click to pulse · [H] panel · [S] save frame</span></div>
+<div id="hint"><a href="index.html"><img class="mark" src="logo.svg" alt="">← Moxx Lab</a><span> · drag &amp; drop media · hover to focus · click to pulse · [H] panel · [S] save frame</span></div>
 <div id="err"></div>
 
 <div id="ui">
-  <h2>Dither Lab <span id="src" style="opacity:.5">demo</span></h2>
+  <h2><img class="mark" src="logo.svg" alt="">Dither Lab <span id="src" style="opacity:.5">demo</span></h2>
 
   <div class="row">
     <label>Preset</label>

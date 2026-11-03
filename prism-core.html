@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Moxx Lab — Prism Core</title>
 <style>
@@ -77,17 +78,19 @@
   #fps{position:fixed;right:calc(var(--panel-w) + 12px);bottom:10px;color:#2f373f;font-size:10px;z-index:9}
   body.ui-hidden #fps{display:none}
   #nogl{position:fixed;inset:0;display:none;place-items:center;color:#e88;font-size:14px;z-index:20;background:#0b0c10}
+  .mark{width:15px;height:15px;vertical-align:-2px;margin-right:8px;opacity:.95}
+  #hud .mark,#hint .mark{width:12px;height:12px;vertical-align:-1px;margin-right:6px}
 </style>
 </head>
 <body>
 
 <div id="viewport"><div id="stage"><canvas id="c"></canvas></div></div>
 <div id="nogl">WebGL2 is not available in this browser.</div>
-<div id="hud"><a href="index.html">← Moxx Lab</a><span> · drag to rotate · scroll to zoom · <kbd>H</kbd> panel · <kbd>R</kbd> reset view · <kbd>S</kbd> save png · <kbd>space</kbd> pause</span></div>
+<div id="hud"><a href="index.html"><img class="mark" src="logo.svg" alt="">← Moxx Lab</a><span> · drag to rotate · scroll to zoom · <kbd>H</kbd> panel · <kbd>R</kbd> reset view · <kbd>S</kbd> save png · <kbd>space</kbd> pause</span></div>
 <div id="fps"></div>
 
 <div id="panel">
-  <h1>Prism Core<small>a lit block with weather inside it</small></h1>
+  <h1><img class="mark" src="logo.svg" alt="">Prism Core<small>a lit block with weather inside it</small></h1>
 
   <details open>
     <summary>Presets</summary>

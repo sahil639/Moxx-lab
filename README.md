@@ -3,7 +3,9 @@
 Mockup animations. Each one is a single self-contained HTML page — no build step,
 no dependencies, no network requests. Open one in a browser and it runs.
 
-`index.html` is the directory; add a new `<li>` to it when a new animation lands.
+`index.html` is the directory; add a new card to its grid when a new animation lands.
+`logo.svg` is the Moxx Lab mark (white on transparent) and `favicon.svg` the same on black;
+every page uses them for the tab icon, the panel header and the back link.
 
 Live at **https://sahil639.github.io/Moxx-lab/** — GitHub Pages serves `main` from
 the repository root, so every push to `main` redeploys.
