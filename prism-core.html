@@ -51,6 +51,8 @@
   .btns button{flex:1}
   #presets{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:2px 0 4px}
   #presets button{display:flex;align-items:center;gap:7px;text-align:left}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:2px 0 4px}
+  .grid button.on{background:var(--panel-accent);border-color:var(--panel-accent);color:#06121c}
   #presets i{flex:0 0 30px;height:12px;border-radius:6px}
 
   /* colour list */
@@ -91,6 +93,19 @@
   </details>
 
   <details open>
+    <summary>Shape</summary>
+    <div class="grid" id="shapes"></div>
+    <div id="sl-shape" style="margin-top:6px"></div>
+    <p class="hint">Thickness applies to the hexagonal and rectangular prisms, roundness to everything but the sphere.</p>
+  </details>
+
+  <details open>
+    <summary>View</summary>
+    <div class="grid" id="views"></div>
+    <div id="sl-persp"></div>
+  </details>
+
+  <details open>
     <summary>Rotation</summary>
     <div id="sl-rot"></div>
     <div class="row"><label>Motion</label><select id="motion">
@@ -122,8 +137,8 @@
   </details>
 
   <details>
-    <summary>Shape &amp; light</summary>
-    <div id="sl-shape"></div>
+    <summary>Surface &amp; light</summary>
+    <div id="sl-light"></div>
     <div class="row"><label>Ground</label><input type="color" id="bg" value="#14151c"><input type="text" id="bgT" value="#14151c"></div>
   </details>
 
@@ -159,7 +174,8 @@ uniform mat3  uInv;          // world -> object
 uniform float uScale, uThick, uRound, uGradAng;
 uniform float uEdgeAmt, uEdgeW, uBase, uCore, uDens, uMoteSize;
 uniform float uRim, uGlow, uSheen;
-uniform int   uN, uOrbs, uLayers, uMotes;
+uniform int   uN, uOrbs, uLayers, uMotes, uShape;
+uniform float uPersp, uDist;
 uniform vec3  uCols[8];
 uniform vec3  uEdge, uBg;
 
@@ -185,7 +201,37 @@ float sdHex(vec3 p){
   vec2 d = vec2(length(q.xy - vec2(clamp(q.x, -k.z * a, k.z * a), a)) * sign(q.y - a), q.z - hz);
   return min(max(d.x, d.y), 0.0) + length(max(d, 0.0)) - r;
 }
-float map(vec3 p){ return sdHex(p / uScale) * uScale; }
+float sdBox(vec3 p, vec3 b, float r){
+  vec3 q = abs(p) - (b - r);
+  return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0) - r;
+}
+float sdCyl(vec3 p, float rad, float h, float r){
+  vec2 d = vec2(length(p.xz) - (rad - r), abs(p.y) - (h - r));
+  return min(max(d.x, d.y), 0.0) + length(max(d, 0.0)) - r;
+}
+float sdPyr(vec3 p, float h){            // base +-0.5 at y=0, apex at y=h
+  float m2 = h * h + 0.25;
+  p.xz = abs(p.xz);
+  p.xz = (p.z > p.x) ? p.zx : p.xz;
+  p.xz -= 0.5;
+  vec3 q = vec3(p.z, h * p.y - 0.5 * p.x, h * p.x + 0.5 * p.y);
+  float s = max(-q.x, 0.0);
+  float t = clamp((q.y - 0.5 * p.z) / (m2 + 0.25), 0.0, 1.0);
+  float a = m2 * (q.x + s) * (q.x + s) + q.y * q.y;
+  float b = m2 * (q.x + 0.5 * t) * (q.x + 0.5 * t) + (q.y - m2 * t) * (q.y - m2 * t);
+  float d2 = min(q.y, -q.x * m2 - q.y * 0.5) > 0.0 ? 0.0 : min(a, b);
+  return sqrt((d2 + q.z * q.z) / m2) * sign(max(q.z, -p.y));
+}
+float sdShape(vec3 p){
+  float r = uRound * 0.3;
+  if (uShape == 1) return sdBox(p, vec3(0.82), r);
+  if (uShape == 2) return sdBox(p, vec3(0.62, 0.95, max(uThick, 0.2)), min(r, 0.18));
+  if (uShape == 3) return sdCyl(p, 0.82, 0.95, min(r, 0.3));
+  if (uShape == 4) return length(p) - 0.95;
+  if (uShape == 5) return sdPyr((p + vec3(0.0, 0.95, 0.0)) / 1.8, 1.055) * 1.8 - r * 0.5;
+  return sdHex(p);
+}
+float map(vec3 p){ float k = uScale * (uShape == 5 ? 0.78 : 1.0); return sdShape(p / k) * k; }
 vec3 normalAt(vec3 p){
   const vec2 e = vec2(1.0, -1.0) * 0.004;
   return normalize(e.xyy * map(p + e.xyy) + e.yyx * map(p + e.yyx) +
@@ -194,12 +240,12 @@ vec3 normalAt(vec3 p){
 
 void main(){
   vec2 uv = (gl_FragCoord.xy * 2.0 - uRes) / uRes.y;
-  vec3 ro = vec3(0.0, 0.0, 5.0);
-  vec3 rd = normalize(vec3(uv * 0.4, -1.0));
+  vec3 ro = vec3(uv * 2.0 * (1.0 - uPersp), uDist);
+  vec3 rd = normalize(vec3(uv * 2.0 / uDist * uPersp, -1.0));
   vec3 roO = uInv * ro, rdO = uInv * rd;
   float px = 4.0 / uRes.y;
 
-  float t = 1.5, minD = 1e9;
+  float t = 0.5, minD = 1e9;
   bool hit = false;
   for (int i = 0; i < 72; i++){
     float d = map(roO + rdO * t);
@@ -340,7 +386,7 @@ const loc = gl.getAttribLocation(prog, 'p');
 gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
 const U = {};
 for (const n of ['uRes','uTime','uInv','uScale','uThick','uRound','uGradAng','uEdgeAmt','uEdgeW','uBase','uCore',
-  'uDens','uMoteSize','uRim','uGlow','uSheen','uN','uOrbs','uLayers','uMotes','uCols','uEdge','uBg'])
+  'uShape','uPersp','uDist','uDens','uMoteSize','uRim','uGlow','uSheen','uN','uOrbs','uLayers','uMotes','uCols','uEdge','uBg'])
   U[n] = gl.getUniformLocation(prog, n);
 
 /* ------------------------------------------------------------ state */
@@ -350,14 +396,14 @@ const S = {
   edge:'#0a4bff', bg:'#14151c',
   yaw:-18, pitch:10, roll:0,
   motion:'sway', motionSpeed:0.5,
-  scale:1.35, thick:0.7, round:0.55,
+  shape:0, persp:1, dist:5, scale:1.35, thick:0.7, round:0.55,
   gradAng:60, edgeAmt:0.85, edgeW:2.2,
   base:0.9, core:0.35, orbs:4, layers:3, motes:8, moteSize:1, dens:1, flow:1,
   rim:0.5, glow:0.8, sheen:0.12,
   preset:'fill', zoom:'fit', quality:'1',
   playing:true, time:0,
 };
-const DEF_VIEW = { yaw:-18, pitch:10, roll:0 };
+const DEF_VIEW = { yaw:-18, pitch:10, roll:0, persp:1, dist:5 };
 
 const SLIDERS = {
   'sl-rot':[
@@ -365,6 +411,7 @@ const SLIDERS = {
     ['pitch','Pitch',-180,180,1,v=>v.toFixed(0)+'°'],
     ['roll','Roll',-180,180,1,v=>v.toFixed(0)+'°'],
   ],
+  'sl-persp':[['persp','Perspective',0,1,0.01,v=>v.toFixed(2)]],
   'sl-motion':[['motionSpeed','Speed',0,3,0.01,v=>v.toFixed(2)]],
   'sl-col':[['gradAng','Gradient angle',0,360,1,v=>v.toFixed(0)+'°']],
   'sl-edge':[
@@ -385,6 +432,8 @@ const SLIDERS = {
     ['scale','Size',0.5,2,0.01,v=>v.toFixed(2)],
     ['thick','Thickness',0.25,1.4,0.01,v=>v.toFixed(2)],
     ['round','Roundness',0,1,0.01,v=>v.toFixed(2)],
+  ],
+  'sl-light':[
     ['rim','Rim light',0,2,0.01,v=>v.toFixed(2)],
     ['glow','Halo',0,2,0.01,v=>v.toFixed(2)],
     ['sheen','Sheen',0,1,0.01,v=>v.toFixed(2)],
@@ -396,7 +445,7 @@ for (const [host, list] of Object.entries(SLIDERS)){
     const row = document.createElement('div'); row.className='row';
     row.innerHTML = `<label>${label}</label><input type="range" min="${min}" max="${max}" step="${step}"><span class="val"></span>`;
     const inp = row.children[1], val = row.children[2];
-    inp.oninput = () => { S[key] = parseFloat(inp.value); val.textContent = fmt(S[key]); vel.x = vel.y = 0; };
+    inp.oninput = () => { S[key] = parseFloat(inp.value); val.textContent = fmt(S[key]); vel.x = vel.y = 0; tween = null; if (key!=='persp'||true) markView(null); };
     $(host).appendChild(row);
     sliderEls[key] = { inp, val, fmt };
   }
@@ -477,6 +526,47 @@ for (const name of Object.keys(PRESETS)){
   $('presets').appendChild(b);
 }
 
+/* ------------------------------------------------------------ shapes & views */
+const SHAPES = ['Hexagonal prism','Cube','Rectangular prism','Cylinder','Sphere','Pyramid'];
+const shapeBtns = SHAPES.map((name,i)=>{
+  const b=document.createElement('button'); b.textContent=name;
+  b.onclick=()=>{ S.shape=i; markShape(); };
+  $('shapes').appendChild(b); return b;
+});
+const markShape=()=>shapeBtns.forEach((b,i)=>b.classList.toggle('on',i===S.shape));
+
+const VIEWS = {
+  '3/4 soft':        { yaw:-18, pitch:10, roll:0, persp:1, dist:5 },
+  'Isometric':       { yaw:45, pitch:35.264, roll:0, persp:0, dist:5 },
+  '3/4 perspective': { yaw:-38, pitch:22, roll:0, persp:1, dist:3.6 },
+  'Front':           { yaw:0, pitch:0, roll:0, persp:0, dist:5 },
+  'Side':            { yaw:90, pitch:0, roll:0, persp:0, dist:5 },
+  'Top':             { yaw:0, pitch:90, roll:0, persp:0, dist:5 },
+};
+const viewBtns = {};
+let tween = null, activeView = null;
+function markView(n){ activeView=n; for (const k in viewBtns) viewBtns[k].classList.toggle('on',k===n); }
+function goView(name){
+  const v = VIEWS[name], sh = (a,b)=>a+((b-a+540)%360-180);   // shortest way round
+  tween = { t:0, from:{yaw:S.yaw+swayOff+spinOff,pitch:S.pitch,roll:S.roll,persp:S.persp,dist:S.dist},
+            to:{yaw:sh(S.yaw+swayOff+spinOff,v.yaw),pitch:sh(S.pitch,v.pitch),roll:sh(S.roll,v.roll),persp:v.persp,dist:v.dist} };
+  swayOff=spinOff=0; vel.x=vel.y=0;
+  S.motion='still'; $('motion').value='still';
+  markView(name);
+}
+for (const name of Object.keys(VIEWS)){
+  const b=document.createElement('button'); b.textContent=name;
+  b.onclick=()=>goView(name); $('views').appendChild(b); viewBtns[name]=b;
+}
+function stepTween(dt){
+  if (!tween) return;
+  tween.t = Math.min(1, tween.t + dt/0.6);
+  const e = 1 - Math.pow(1 - tween.t, 3);
+  for (const k of ['yaw','pitch','roll','persp','dist']) S[k] = tween.from[k] + (tween.to[k]-tween.from[k])*e;
+  if (tween.t>=1){ for (const k of ['yaw','pitch','roll']) S[k]=wrap(S[k]); tween=null; }
+  syncAll();
+}
+
 /* ------------------------------------------------------------ rotation */
 const D2R = Math.PI/180;
 let swayOff = 0, spinOff = 0;
@@ -491,11 +581,11 @@ function rotation(){
 }
 $('motion').onchange = e => { S.motion=e.target.value; swayOff=spinOff=0; };
 $('bReset').onclick = resetView;
-$('bFlat').onclick = () => { Object.assign(S,{yaw:0,pitch:0,roll:0}); swayOff=spinOff=0; vel.x=vel.y=0; syncAll(); };
-function resetView(){ Object.assign(S, DEF_VIEW); swayOff=spinOff=0; vel.x=vel.y=0; syncAll(); }
+$('bFlat').onclick = () => { tween=null; markView(null); Object.assign(S,{yaw:0,pitch:0,roll:0}); swayOff=spinOff=0; vel.x=vel.y=0; syncAll(); };
+function resetView(){ tween=null; Object.assign(S, DEF_VIEW); swayOff=spinOff=0; vel.x=vel.y=0; markView(null); syncAll(); }
 
 let dragging=false, lx=0, ly=0, lastMove=0;
-cv.addEventListener('pointerdown',e=>{ dragging=true; lx=e.clientX; ly=e.clientY; vel.x=vel.y=0; cv.classList.add('drag'); cv.setPointerCapture(e.pointerId); });
+cv.addEventListener('pointerdown',e=>{ tween=null; markView(null); dragging=true; lx=e.clientX; ly=e.clientY; vel.x=vel.y=0; cv.classList.add('drag'); cv.setPointerCapture(e.pointerId); });
 cv.addEventListener('pointermove',e=>{
   if (!dragging) return;
   const dx=e.clientX-lx, dy=e.clientY-ly; lx=e.clientX; ly=e.clientY;
@@ -550,6 +640,7 @@ function render(){
   const flat = new Float32Array(MAXC*3);
   cols.forEach((c,i)=>flat.set(hexRgb(c),i*3));
   gl.uniform1i(U.uN,cols.length); gl.uniform3fv(U.uCols,flat);
+  gl.uniform1i(U.uShape,S.shape); gl.uniform1f(U.uPersp,S.persp); gl.uniform1f(U.uDist,S.dist);
   gl.uniform1i(U.uOrbs,S.orbs); gl.uniform1i(U.uLayers,S.layers); gl.uniform1i(U.uMotes,S.motes);
   gl.uniform3fv(U.uEdge,hexRgb(S.edge)); gl.uniform3fv(U.uBg,hexRgb(S.bg));
   gl.drawArrays(gl.TRIANGLES,0,3);
@@ -558,6 +649,7 @@ function render(){
 let last=performance.now()/1000, acc=0, frames=0, motionT=0;
 function frame(){
   const now=performance.now()/1000, dt=Math.min(.05,now-last); last=now;
+  stepTween(dt);
   if (S.playing){
     S.time += dt*S.flow;
     motionT += dt;
@@ -598,7 +690,7 @@ $('bCopy').onclick=()=>{ const o={...S}; delete o.playing; delete o.time;
     const b=$('bCopy'), t=b.textContent; b.textContent='Copied'; setTimeout(()=>b.textContent=t,1200); }); };
 
 window.PC = { S, render, applyPreset };
-renderColours(); syncAll(); applyStage();
+renderColours(); syncAll(); applyStage(); markShape();
 requestAnimationFrame(frame);
 })();
 </script>

@@ -62,7 +62,10 @@ The edges pull toward a deeper edge colour, with a rim light and a halo outside.
 to rotate it (shift-drag rolls, scroll zooms, and it keeps its momentum), or set it
 to sway or spin; yaw, pitch and roll also have sliders. The gradient takes up to
 eight colours — add, remove, edit, randomise or reverse them — and the orbs, layers
-and motes pick their colours from the same list. Six presets. Needs WebGL2.
+and motes pick their colours from the same list. A shape menu swaps the block for a
+hexagonal prism, cube, rectangular prism, cylinder, sphere or pyramid, and a view menu
+eases the camera to a soft 3/4, isometric, 3/4 perspective, or orthographic front,
+side or top view. Six colour presets. Needs WebGL2.
 
 ## Recording
 
