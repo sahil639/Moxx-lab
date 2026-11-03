@@ -51,6 +51,8 @@
   .btns button{flex:1}
   #presets{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:2px 0 4px}
   #presets button{display:flex;align-items:center;gap:7px;text-align:left}
+  .toggle{display:flex;align-items:center;gap:7px;cursor:pointer;font-size:11px;margin:9px 0}
+  .toggle input{accent-color:var(--panel-accent);width:14px;height:14px}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:2px 0 4px}
   .grid button.on{background:var(--panel-accent);border-color:var(--panel-accent);color:#06121c}
   #presets i{flex:0 0 30px;height:12px;border-radius:6px}
@@ -96,7 +98,16 @@
     <summary>Shape</summary>
     <div class="grid" id="shapes"></div>
     <div id="sl-shape" style="margin-top:6px"></div>
-    <p class="hint">Thickness applies to the hexagonal and rectangular prisms, roundness to everything but the sphere.</p>
+    <p class="hint">Width, height and depth stretch each shape on its own axis. Roundness applies to everything but the sphere.</p>
+  </details>
+
+  <details open>
+    <summary>Arrangement</summary>
+    <div class="grid" id="arrs"></div>
+    <div id="sl-arr"></div>
+    <div class="btns"><button id="bShuffle">Reshuffle random</button></div>
+    <label class="toggle"><input type="checkbox" id="frame" checked> Keep everything in frame</label>
+    <p class="hint">Picking a layout while there is only one shape gives you three, so there is something to arrange. Every shape turns with the view.</p>
   </details>
 
   <details open>
@@ -136,10 +147,25 @@
     <div id="sl-in"></div>
   </details>
 
+  <details open>
+    <summary>Background</summary>
+    <div class="row"><label>Ground</label><select id="bgMode">
+      <option value="0">Solid colour</option>
+      <option value="1">Linear gradient</option>
+      <option value="2">Radial gradient</option>
+    </select></div>
+    <div class="row"><label>Colour</label><input type="color" id="bg" value="#14151c"><input type="text" id="bgT" value="#14151c"></div>
+    <div class="row" id="bg2row"><label>Second colour</label><input type="color" id="bg2" value="#2a2f45"><input type="text" id="bg2T" value="#2a2f45"></div>
+    <div id="sl-bg"></div>
+    <label class="toggle"><input type="checkbox" id="glowOn" checked> Background glow</label>
+    <div id="sl-glow"></div>
+    <label class="toggle"><input type="checkbox" id="guard" checked> Contrast guard — outline shapes against the ground</label>
+    <p class="hint" id="contrast"></p>
+  </details>
+
   <details>
     <summary>Surface &amp; light</summary>
     <div id="sl-light"></div>
-    <div class="row"><label>Ground</label><input type="color" id="bg" value="#14151c"><input type="text" id="bgT" value="#14151c"></div>
   </details>
 
   <details>
@@ -174,10 +200,11 @@ uniform mat3  uInv;          // world -> object
 uniform float uScale, uThick, uRound, uGradAng;
 uniform float uEdgeAmt, uEdgeW, uBase, uCore, uDens, uMoteSize;
 uniform float uRim, uGlow, uSheen;
-uniform int   uN, uOrbs, uLayers, uMotes, uShape;
+uniform int   uN, uOrbs, uLayers, uMotes, uShape, uCount, uBgMode;
 uniform float uPersp, uDist;
 uniform vec3  uCols[8];
-uniform vec3  uEdge, uBg;
+uniform vec3  uEdge, uBg1, uBg2, uPos[12], uSize;
+uniform float uBgAng, uBgLum, uGlowSize, uGuard;
 
 float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 
@@ -231,47 +258,78 @@ float sdShape(vec3 p){
   if (uShape == 5) return sdPyr((p + vec3(0.0, 0.95, 0.0)) / 1.8, 1.055) * 1.8 - r * 0.5;
   return sdHex(p);
 }
-float map(vec3 p){ float k = uScale * (uShape == 5 ? 0.78 : 1.0); return sdShape(p / k) * k; }
-vec3 normalAt(vec3 p){
-  const vec2 e = vec2(1.0, -1.0) * 0.004;
-  return normalize(e.xyy * map(p + e.xyy) + e.yyx * map(p + e.yyx) +
-                   e.yxy * map(p + e.yxy) + e.xxx * map(p + e.xxx));
+float kS(){ return uScale * (uShape == 5 ? 0.78 : 1.0); }
+// distance to instance i. The shape is stretched by uSize, so the result is scaled by the
+// smallest axis to stay a safe (never over-estimating) step for the ray.
+float localSd(vec3 pw, int i){
+  float k = kS();
+  vec3 pl = uInv * (pw - uPos[i]);
+  return sdShape(pl / (k * uSize)) * k * min(uSize.x, min(uSize.y, uSize.z));
+}
+float mapAll(vec3 p, out int id){
+  float k = kS(), R = 1.6 * k * max(uSize.x, max(uSize.y, uSize.z));
+  float best = 1e9; id = 0;
+  for (int i = 0; i < 12; i++){
+    if (i >= uCount) break;
+    float dc = length(p - uPos[i]) - R;               // bounding sphere: cheap lower bound
+    if (dc > 1.3 * k){ best = min(best, dc); }
+    else { float d = localSd(p, i); if (d < best){ best = d; id = i; } }
+  }
+  return best;
 }
 
 void main(){
   vec2 uv = (gl_FragCoord.xy * 2.0 - uRes) / uRes.y;
   vec3 ro = vec3(uv * 2.0 * (1.0 - uPersp), uDist);
   vec3 rd = normalize(vec3(uv * 2.0 / uDist * uPersp, -1.0));
-  vec3 roO = uInv * ro, rdO = uInv * rd;
   float px = 4.0 / uRes.y;
 
   float t = 0.5, minD = 1e9;
-  bool hit = false;
-  for (int i = 0; i < 72; i++){
-    float d = map(roO + rdO * t);
+  bool hit = false; int id = 0;
+  for (int i = 0; i < 90; i++){
+    int hid;
+    float d = mapAll(ro + rd * t, hid);
     minD = min(minD, d);
-    if (d < 0.0015){ hit = true; break; }
+    if (d < 0.0015){ hit = true; id = hid; break; }
     t += d;
-    if (t > 9.0) break;
+    if (t > 12.0) break;
   }
 
-  // soft halo around the block, in the colour of its edge
+  // ground: solid, linear or radial
+  vec2 sp = gl_FragCoord.xy / uRes * 2.0 - 1.0;
+  vec3 bgc = uBg1;
+  if (uBgMode == 1){
+    vec2 dir = vec2(sin(uBgAng), cos(uBgAng));
+    bgc = mix(uBg1, uBg2, clamp(0.5 + 0.5 * dot(sp, dir) / (abs(dir.x) + abs(dir.y)), 0.0, 1.0));
+  } else if (uBgMode == 2){
+    bgc = mix(uBg1, uBg2, clamp(length(vec2(sp.x * uRes.x / uRes.y, sp.y)) * 0.55, 0.0, 1.0));
+  }
+
+  // soft halo around the shapes; on a light ground it turns into a soft shadow instead
   vec3 haloC = mix(uEdge, palette(0.5), 0.35);
   float md = max(minD, 0.0);
-  vec3 col = uBg + haloC * uGlow * (0.55 * exp(-md * 6.5) + 0.22 * exp(-md * 1.8));
+  float prof = 0.55 * exp(-md * 6.5 / uGlowSize) + 0.22 * exp(-md * 1.8 / uGlowSize);
+  vec3 col = bgc + haloC * uGlow * prof * (1.0 - uBgLum * 0.85);
+  col *= 1.0 - uGlow * prof * uBgLum * 0.35;
+
+  vec3 guardC = uBgLum > 0.5 ? uEdge * 0.3 : mix(uEdge, vec3(1.0), 0.5);
 
   if (!hit){
     float cover = 1.0 - smoothstep(0.0, px * 1.5, md);
-    col = mix(col, uEdge * 0.9, cover);
+    col = mix(col, mix(uEdge * 0.9, guardC, uGuard * 0.5), cover);
   } else {
-    vec3 pos = roO + rdO * t;
-    vec3 nO = normalAt(pos);
-    vec3 nW = nO * uInv;                       // object -> world
+    float k = kS();
+    float mn = min(uSize.x, min(uSize.y, uSize.z));
+    vec3 pos = ro + rd * t;
+    vec2 e = vec2(1.0, -1.0) * 0.004;
+    vec3 nW = normalize(e.xyy * localSd(pos + e.xyy, id) + e.yyx * localSd(pos + e.yyx, id) +
+                        e.yxy * localSd(pos + e.yxy, id) + e.xxx * localSd(pos + e.xxx, id));
     float facing = clamp(dot(nW, -rd), 0.0, 1.0);
+    float tm = uTime + float(id) * 5.3;         // every shape has its own weather
 
-    float dtq = 0.05;                          // step, in unit-space
-    float dt  = dtq * uScale;
-    pos += rdO * dt * (0.25 + 0.5 * hash(gl_FragCoord.xy));
+    float dtq = 0.05;
+    float dt  = dtq * k * pow(uSize.x * uSize.y * uSize.z, 0.3333);
+    pos += rd * dt * (0.25 + 0.5 * hash(gl_FragCoord.xy));
 
     float ga = radians(uGradAng);
     vec3 gdir = vec3(cos(ga), sin(ga), 0.35) * 1.15;
@@ -279,74 +337,76 @@ void main(){
     float T = 1.0;
 
     for (int s = 0; s < 110; s++){
-      float d = map(pos);
+      float d = localSd(pos, id);
       if (d > 0.002) break;
-      vec3 q = pos / uScale;
-      float depth = max(-d / uScale, 0.0);
+      vec3 q = (uInv * (pos - uPos[id])) / (k * uSize);
+      float depth = max(-d / (k * mn), 0.0);
 
       float tg = 0.5 + 0.5 * dot(q, gdir);
-      tg += 0.09 * sin(q.y * 3.0 + uTime * 0.45) + 0.06 * sin(q.x * 4.0 - uTime * 0.3);
+      tg += 0.09 * sin(q.y * 3.0 + tm * 0.45) + 0.06 * sin(q.x * 4.0 - tm * 0.3);
       vec3 base = palette(tg);
       base = mix(base, uEdge, exp(-depth * uEdgeW) * uEdgeAmt);
 
       float core = exp(-dot(q.xy * vec2(1.0, 0.7), q.xy * vec2(1.0, 0.7)) * 1.3);
-      vec3 e = base * (uBase + uCore * core) * 1.0;
+      vec3 em = base * (uBase + uCore * core);
       float sig = 0.35;
 
       // orbs: broad drifting pools of colour
       for (int i = 0; i < 8; i++){
         if (i >= uOrbs) break;
         float fi = float(i);
-        vec3 c = vec3(sin(uTime * 0.31 + fi * 2.1 + sin(uTime * 0.17 + fi)),
-                      cos(uTime * 0.27 + fi * 1.3 + cos(uTime * 0.11 + fi * 0.7)),
-                      sin(uTime * 0.21 + fi * 3.7) * 0.6) * vec3(0.62, 0.8, 0.5);
+        vec3 c = vec3(sin(tm * 0.31 + fi * 2.1 + sin(tm * 0.17 + fi)),
+                      cos(tm * 0.27 + fi * 1.3 + cos(tm * 0.11 + fi * 0.7)),
+                      sin(tm * 0.21 + fi * 3.7) * 0.6) * vec3(0.62, 0.8, 0.5);
         float r = 0.36 + 0.16 * fract(fi * 0.618);
         vec3 dv = q - c;
         float w = exp(-dot(dv, dv) / (r * r));
-        e += stop(i) * w * uDens * 1.0;
+        em += stop(i) * w * uDens * 1.0;
         sig += w * uDens * 0.35;
       }
 
-      // layers: thin translucent veils that tilt and slide through the block
+      // layers: thin translucent veils that tilt and slide through the shape
       for (int i = 0; i < 6; i++){
         if (i >= uLayers) break;
         float fi = float(i);
-        vec3 n = normalize(vec3(sin(uTime * 0.11 + fi * 1.9), cos(uTime * 0.13 + fi * 2.3),
-                                0.25 + 0.6 * sin(uTime * 0.07 + fi)));
-        float off = 0.55 * sin(uTime * (0.19 + 0.037 * fi) + fi * 2.0);
+        vec3 n = normalize(vec3(sin(tm * 0.11 + fi * 1.9), cos(tm * 0.13 + fi * 2.3),
+                                0.25 + 0.6 * sin(tm * 0.07 + fi)));
+        float off = 0.55 * sin(tm * (0.19 + 0.037 * fi) + fi * 2.0);
         float x = (dot(q, n) - off) / 0.17;
         float w = exp(-x * x);
-        e += stop(i + 1) * w * uDens * 0.32;
+        em += stop(i + 1) * w * uDens * 0.32;
         sig += w * 0.5;
       }
 
-      // motes: small bright points rising through the block
+      // motes: small bright points rising through the shape
       for (int i = 0; i < 12; i++){
         if (i >= uMotes) break;
         float fi = float(i);
         vec3 c = vec3(fract(sin(fi * 91.7) * 437.5) * 1.5 - 0.75,
-                      fract(uTime * (0.035 + 0.03 * fract(fi * 0.37)) + fi * 0.173) * 2.4 - 1.2,
+                      fract(tm * (0.035 + 0.03 * fract(fi * 0.37)) + fi * 0.173) * 2.4 - 1.2,
                       (fract(sin(fi * 37.1) * 917.3) - 0.5) * 0.8);
-        c.x += sin(uTime * 0.7 + fi * 1.7) * 0.07;
+        c.x += sin(tm * 0.7 + fi * 1.7) * 0.07;
         vec3 dv = q - c;
         float r = 0.1 * uMoteSize;
         float w = exp(-dot(dv, dv) / (r * r));
-        e += mix(vec3(1.0), stop(i), 0.3) * w * 1.9;
+        em += mix(vec3(1.0), stop(i), 0.3) * w * 1.9;
       }
 
-      acc += T * e * dtq;
+      acc += T * em * dtq;
       T *= exp(-sig * dtq);
       if (T < 0.02) break;
-      pos += rdO * dt;
+      pos += rd * dt;
     }
 
-    // facets catch light differently as the block turns
+    // facets catch light differently as the shape turns
     vec3 L = normalize(vec3(-0.4, 0.7, 0.6));
     float diff = 0.82 + 0.3 * dot(nW, L);
     vec3 c = acc * diff;
     c += uEdge * pow(1.0 - facing, 3.0) * uRim;
     c += vec3(1.0) * pow(max(dot(reflect(rd, nW), L), 0.0), 36.0) * uSheen;
     col = pow(1.0 - exp(-c * 1.6), vec3(1.2));
+    // contrast guard: a thin contrasting rim keeps the silhouette readable on any ground
+    col = mix(col, guardC, uGuard * 0.55 * pow(1.0 - facing, 3.2));
   }
 
   col += (hash(gl_FragCoord.xy) - 0.5) / 255.0;
@@ -386,7 +446,7 @@ const loc = gl.getAttribLocation(prog, 'p');
 gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
 const U = {};
 for (const n of ['uRes','uTime','uInv','uScale','uThick','uRound','uGradAng','uEdgeAmt','uEdgeW','uBase','uCore',
-  'uShape','uPersp','uDist','uDens','uMoteSize','uRim','uGlow','uSheen','uN','uOrbs','uLayers','uMotes','uCols','uEdge','uBg'])
+  'uShape','uPersp','uDist','uCount','uBgMode','uPos','uSize','uBg1','uBg2','uBgAng','uBgLum','uGlowSize','uGuard','uDens','uMoteSize','uRim','uGlow','uSheen','uN','uOrbs','uLayers','uMotes','uCols','uEdge'])
   U[n] = gl.getUniformLocation(prog, n);
 
 /* ------------------------------------------------------------ state */
@@ -396,7 +456,8 @@ const S = {
   edge:'#0a4bff', bg:'#14151c',
   yaw:-18, pitch:10, roll:0,
   motion:'sway', motionSpeed:0.5,
-  shape:0, persp:1, dist:5, scale:1.35, thick:0.7, round:0.55,
+  shape:0, count:1, arr:'single', gap:1.25, spread:1.0, seed:1, frame:true, sw:1, sh:1, sd:1,
+  bgMode:0, bg2:'#2a2f45', bgAng:180, glowOn:true, glowSize:1, guard:true, persp:1, dist:5, scale:1.35, thick:0.7, round:0.55,
   gradAng:60, edgeAmt:0.85, edgeW:2.2,
   base:0.9, core:0.35, orbs:4, layers:3, motes:8, moteSize:1, dens:1, flow:1,
   rim:0.5, glow:0.8, sheen:0.12,
@@ -410,6 +471,16 @@ const SLIDERS = {
     ['yaw','Yaw',-180,180,1,v=>v.toFixed(0)+'°'],
     ['pitch','Pitch',-180,180,1,v=>v.toFixed(0)+'°'],
     ['roll','Roll',-180,180,1,v=>v.toFixed(0)+'°'],
+  ],
+  'sl-arr':[
+    ['count','Shapes',1,12,1,v=>v.toFixed(0)],
+    ['gap','Spacing',0.8,2.5,0.01,v=>v.toFixed(2)],
+    ['spread','Random area',0.4,2.2,0.01,v=>v.toFixed(2)],
+  ],
+  'sl-bg':[['bgAng','Gradient angle',0,360,1,v=>v.toFixed(0)+'°']],
+  'sl-glow':[
+    ['glow','Glow intensity',0,2,0.01,v=>v.toFixed(2)],
+    ['glowSize','Glow size',0.4,2.5,0.01,v=>v.toFixed(2)],
   ],
   'sl-persp':[['persp','Perspective',0,1,0.01,v=>v.toFixed(2)]],
   'sl-motion':[['motionSpeed','Speed',0,3,0.01,v=>v.toFixed(2)]],
@@ -430,12 +501,13 @@ const SLIDERS = {
   ],
   'sl-shape':[
     ['scale','Size',0.5,2,0.01,v=>v.toFixed(2)],
-    ['thick','Thickness',0.25,1.4,0.01,v=>v.toFixed(2)],
+    ['sw','Width',0.4,2.2,0.01,v=>v.toFixed(2)],
+    ['sh','Height',0.4,2.2,0.01,v=>v.toFixed(2)],
+    ['sd','Depth',0.3,2.2,0.01,v=>v.toFixed(2)],
     ['round','Roundness',0,1,0.01,v=>v.toFixed(2)],
   ],
   'sl-light':[
     ['rim','Rim light',0,2,0.01,v=>v.toFixed(2)],
-    ['glow','Halo',0,2,0.01,v=>v.toFixed(2)],
     ['sheen','Sheen',0,1,0.01,v=>v.toFixed(2)],
   ],
 };
@@ -445,7 +517,7 @@ for (const [host, list] of Object.entries(SLIDERS)){
     const row = document.createElement('div'); row.className='row';
     row.innerHTML = `<label>${label}</label><input type="range" min="${min}" max="${max}" step="${step}"><span class="val"></span>`;
     const inp = row.children[1], val = row.children[2];
-    inp.oninput = () => { S[key] = parseFloat(inp.value); val.textContent = fmt(S[key]); vel.x = vel.y = 0; tween = null; if (key!=='persp'||true) markView(null); };
+    inp.oninput = () => { S[key] = parseFloat(inp.value); val.textContent = fmt(S[key]); vel.x = vel.y = 0; tween = null; if (key==='count'&&S.arr==='single'&&S.count>1) setArr('row'); if (key==='persp'||key==='yaw'||key==='pitch'||key==='roll') markView(null); };
     $(host).appendChild(row);
     sliderEls[key] = { inp, val, fmt };
   }
@@ -502,7 +574,7 @@ function bindColor(id, key){
   p.oninput=()=>{ S[key]=p.value; t.value=p.value; };
   t.onchange=()=>{ const v=norm(t.value); if(v){ S[key]=v; p.value=v; } else t.value=S[key]; };
 }
-bindColor('edge','edge'); bindColor('bg','bg');
+bindColor('edge','edge'); bindColor('bg','bg'); bindColor('bg2','bg2');
 
 /* ------------------------------------------------------------ presets */
 const PRESETS = {
@@ -512,11 +584,13 @@ const PRESETS = {
   'Lagoon':  { colors:['#004d73','#00c2a8','#7dffd0','#e8fff0'], edge:'#006e8a', bg:'#0a1416' },
   'Acid':    { colors:['#1a6bff','#b6ff00','#ffe94d'],            edge:'#0f3fd0', bg:'#0e1210' },
   'Mono':    { colors:['#2b2f3a','#8a93a8','#e9edf7'],            edge:'#3a4160', bg:'#0c0d10', glow:0.5 },
+  'Paper':   { colors:['#1f3dff','#5aa9ff','#ffd2a8'],            edge:'#1a2fd0', bg:'#e9e6df', glow:0.7 },
 };
 function applyPreset(name){
   const p = PRESETS[name];
-  S.colors = p.colors.slice(); S.edge = p.edge; S.bg = p.bg; S.glow = p.glow ?? 0.8;
+  S.colors = p.colors.slice(); S.edge = p.edge; S.bg = p.bg; S.glow = p.glow ?? 0.8; S.bgMode=0; $('bgMode').value='0';
   $('edge').value=$('edgeT').value=S.edge; $('bg').value=$('bgT').value=S.bg;
+  $('bg2row').style.display='none'; $('sl-bg').style.display='none';
   renderColours(); syncAll();
 }
 for (const name of Object.keys(PRESETS)){
@@ -525,6 +599,98 @@ for (const name of Object.keys(PRESETS)){
   b.onclick=()=>applyPreset(name);
   $('presets').appendChild(b);
 }
+
+/* ------------------------------------------------------------ arrangement */
+const ARRS = { single:'Single', row:'Row', grid:'Grid', hex:'Hexagonal', radial:'Radial', random:'Random' };
+const arrBtns = {};
+for (const [k,name] of Object.entries(ARRS)){
+  const b=document.createElement('button'); b.textContent=name; b.onclick=()=>setArr(k);
+  $('arrs').appendChild(b); arrBtns[k]=b;
+}
+function setArr(k){
+  S.arr=k;
+  if (k==='single') S.count=1; else if (S.count===1) S.count=3;
+  for (const n in arrBtns) arrBtns[n].classList.toggle('on',n===k);
+  syncAll();
+}
+$('bShuffle').onclick=()=>{ S.seed=(Math.random()*1e6)|0; if (S.arr!=='random') setArr('random'); };
+$('frame').onchange=e=>{ S.frame=e.target.checked; };
+
+function rng(seed){ let a=seed>>>0; return ()=>{ a=(a+0x6D2B79F5)>>>0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+// positions in shape units (one unit = the shape's radius), centred on the origin
+function arrange(n, fw, fh, gap){
+  const sx=fw*gap, sy=fh*gap, sp=Math.max(fw,fh)*gap, P=[];
+  const pol=(r,a)=>[r*Math.cos(a), r*Math.sin(a), 0];
+  if (n<=1 || S.arr==='single') return [[0,0,0]];
+  if (S.arr==='row'){
+    for (let i=0;i<n;i++) P.push([(i-(n-1)/2)*sx,0,0]);
+  } else if (S.arr==='grid'){
+    const cols=Math.ceil(Math.sqrt(n)), rows=Math.ceil(n/cols);
+    for (let i=0;i<n;i++){ const r=Math.floor(i/cols), c=i%cols, inRow=Math.min(cols,n-r*cols);
+      P.push([(c-(inRow-1)/2)*sx,((rows-1)/2-r)*sy,0]); }
+  } else if (S.arr==='hex'){
+    const V=k=>(Math.PI/2)+k*Math.PI/3;                 // hexagon corners, point up
+    if (n<=6){
+      const pick={2:[0,3],3:[0,2,4],4:[0,1,3,4],5:[0,1,2,3,4],6:[0,1,2,3,4,5]}[n];
+      const rho = n===2 ? sp/2 : n===3 ? sp/Math.sqrt(3) : sp;
+      for (const k of pick) P.push(pol(rho,V(k)));
+    } else {
+      P.push([0,0,0]); for (let k=0;k<6;k++) P.push(pol(sp,V(k)));
+      for (let k=0;k<6 && P.length<n;k++) P.push(pol(sp*Math.sqrt(3),V(k)+Math.PI/6));
+      for (let k=0;k<6 && P.length<n;k++) P.push(pol(sp*2,V(k)));
+    }
+  } else if (S.arr==='radial'){
+    const rho=Math.max(sp/(2*Math.sin(Math.PI/n)), sp*0.8);
+    for (let i=0;i<n;i++) P.push(pol(rho, Math.PI/2 - i*2*Math.PI/n));
+  } else {                                              // random, inside an area, kept apart
+    const R=rng(S.seed*7919+n), ax=S.spread*2.4, ay=S.spread*1.8;
+    for (let i=0;i<n;i++){
+      let best=null, bd=-1;
+      for (let tries=0;tries<80;tries++){
+        const c=[(R()*2-1)*ax,(R()*2-1)*ay,(R()-0.5)*1.2];
+        let m=1e9; for (const q of P) m=Math.min(m,Math.hypot(c[0]-q[0],c[1]-q[1]));
+        if (m>bd){ bd=m; best=c; } if (m>=sp*0.95) break;
+      }
+      P.push(best);
+    }
+  }
+  // centre on the middle of what was made
+  let cx=0, cy=0; for (const q of P){ cx+=q[0]; cy+=q[1]; } cx/=P.length; cy/=P.length;
+  return S.arr==='random' ? P : P.map(q=>[q[0]-cx,q[1]-cy,q[2]]);
+}
+let layKey='', layCache=null;
+function layout(){
+  const key=[S.arr,S.count,S.gap,S.spread,S.seed,S.sw,S.sh,S.frame,S.scale,W,H].join('|');
+  if (key===layKey) return layCache;
+  layKey=key;
+  const n = S.arr==='single' ? 1 : S.count;
+  const fw=1.8*S.sw, fh=2.0*S.sh;
+  const P=arrange(n,fw,fh,S.gap);
+  let fit=1;
+  if (S.frame){
+    let ex=0, ey=0; for (const q of P){ ex=Math.max(ex,Math.abs(q[0])+fw/2); ey=Math.max(ey,Math.abs(q[1])+fh/2); }
+    fit=Math.min(1, 1.8/(ey*S.scale), 1.8*(W/H)/(ex*S.scale));
+  }
+  const k=S.scale*fit, flat=new Float32Array(36);
+  P.forEach((q,i)=>{ flat[i*3]=q[0]*k; flat[i*3+1]=q[1]*k; flat[i*3+2]=q[2]*k; });
+  return layCache={pos:P, fit, flat};
+}
+
+/* ------------------------------------------------------------ background */
+const lumOf = h => { const [r,g,b]=hexRgb(h).map(v=>v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4)); return 0.2126*r+0.7152*g+0.0722*b; };
+// "how light is the ground", on a perceptual 0..1 scale, to decide glow vs. shadow
+function bgLum(){ const l=S.bgMode===0?lumOf(S.bg):(lumOf(S.bg)+lumOf(S.bg2))/2; return Math.min(1,Math.pow(l,0.45)); }
+function updateContrast(){
+  const cols=S.colors.map(lumOf), shape=(cols.reduce((a,b)=>a+b,0)/cols.length)*0.7+lumOf(S.edge)*0.3;
+  const g=S.bgMode===0?lumOf(S.bg):(lumOf(S.bg)+lumOf(S.bg2))/2;
+  const ratio=(Math.max(shape,g)+0.05)/(Math.min(shape,g)+0.05);
+  $('contrast').textContent = ratio>=2.2
+    ? `Shape to ground contrast ${ratio.toFixed(1)}:1 — reads clearly.`
+    : `Shape to ground contrast ${ratio.toFixed(1)}:1 — low. ${S.guard?'The contrast guard is outlining the shapes; ':''}a darker or lighter ground will separate them more.`;
+}
+$('bgMode').onchange=e=>{ S.bgMode=parseInt(e.target.value); $('bg2row').style.display=S.bgMode?'flex':'none'; $('sl-bg').style.display=S.bgMode===1?'block':'none'; };
+$('glowOn').onchange=e=>{ S.glowOn=e.target.checked; };
+$('guard').onchange=e=>{ S.guard=e.target.checked; };
 
 /* ------------------------------------------------------------ shapes & views */
 const SHAPES = ['Hexagonal prism','Cube','Rectangular prism','Cylinder','Sphere','Pyramid'];
@@ -632,21 +798,27 @@ function render(){
   gl.uniform2f(U.uRes,W,H);
   gl.uniform1f(U.uTime,S.time);
   gl.uniformMatrix3fv(U.uInv,false,new Float32Array(rotation()));
-  gl.uniform1f(U.uScale,S.scale); gl.uniform1f(U.uThick,S.thick); gl.uniform1f(U.uRound,S.round);
+  const lay = layout();
+  gl.uniform1f(U.uScale,S.scale*lay.fit); gl.uniform1f(U.uThick,0.7);
+  gl.uniform1i(U.uCount,lay.pos.length); gl.uniform3fv(U.uPos,lay.flat);
+  gl.uniform3f(U.uSize,S.sw,S.sh,S.sd);
+  gl.uniform1i(U.uBgMode,S.bgMode); gl.uniform3fv(U.uBg1,hexRgb(S.bg)); gl.uniform3fv(U.uBg2,hexRgb(S.bg2));
+  gl.uniform1f(U.uBgAng,S.bgAng*D2R); gl.uniform1f(U.uBgLum,bgLum());
+  gl.uniform1f(U.uGlowSize,S.glowSize); gl.uniform1f(U.uGuard,S.guard?1:0); gl.uniform1f(U.uRound,S.round);
   gl.uniform1f(U.uGradAng,S.gradAng); gl.uniform1f(U.uEdgeAmt,S.edgeAmt); gl.uniform1f(U.uEdgeW,S.edgeW);
   gl.uniform1f(U.uBase,S.base); gl.uniform1f(U.uCore,S.core); gl.uniform1f(U.uDens,S.dens);
-  gl.uniform1f(U.uMoteSize,S.moteSize); gl.uniform1f(U.uRim,S.rim); gl.uniform1f(U.uGlow,S.glow); gl.uniform1f(U.uSheen,S.sheen);
+  gl.uniform1f(U.uMoteSize,S.moteSize); gl.uniform1f(U.uRim,S.rim); gl.uniform1f(U.uGlow,S.glowOn?S.glow:0); gl.uniform1f(U.uSheen,S.sheen);
   const cols = S.colors.length===1 ? [S.colors[0],S.colors[0]] : S.colors;
   const flat = new Float32Array(MAXC*3);
   cols.forEach((c,i)=>flat.set(hexRgb(c),i*3));
   gl.uniform1i(U.uN,cols.length); gl.uniform3fv(U.uCols,flat);
   gl.uniform1i(U.uShape,S.shape); gl.uniform1f(U.uPersp,S.persp); gl.uniform1f(U.uDist,S.dist);
   gl.uniform1i(U.uOrbs,S.orbs); gl.uniform1i(U.uLayers,S.layers); gl.uniform1i(U.uMotes,S.motes);
-  gl.uniform3fv(U.uEdge,hexRgb(S.edge)); gl.uniform3fv(U.uBg,hexRgb(S.bg));
+  gl.uniform3fv(U.uEdge,hexRgb(S.edge));
   gl.drawArrays(gl.TRIANGLES,0,3);
 }
 
-let last=performance.now()/1000, acc=0, frames=0, motionT=0;
+let last=performance.now()/1000, acc=0, frames=0, motionT=0, cf=0;
 function frame(){
   const now=performance.now()/1000, dt=Math.min(.05,now-last); last=now;
   stepTween(dt);
@@ -669,6 +841,7 @@ function frame(){
   if (frames>=30){ $('fps').textContent=`${W}×${H}`; acc=0; frames=0; }
   if (dragging || S.motion==='spin' || Math.abs(vel.x)>0.002) { syncSlider('yaw'); syncSlider('pitch'); syncSlider('roll'); }
   syncSlider('scale');
+  if (++cf%20===0) updateContrast();
   requestAnimationFrame(frame);
 }
 
@@ -690,7 +863,7 @@ $('bCopy').onclick=()=>{ const o={...S}; delete o.playing; delete o.time;
     const b=$('bCopy'), t=b.textContent; b.textContent='Copied'; setTimeout(()=>b.textContent=t,1200); }); };
 
 window.PC = { S, render, applyPreset };
-renderColours(); syncAll(); applyStage(); markShape();
+renderColours(); syncAll(); applyStage(); markShape(); setArr('single'); $('bg2row').style.display='none'; $('sl-bg').style.display='none'; updateContrast();
 requestAnimationFrame(frame);
 })();
 </script>

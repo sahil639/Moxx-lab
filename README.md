@@ -65,7 +65,14 @@ eight colours — add, remove, edit, randomise or reverse them — and the orbs,
 and motes pick their colours from the same list. A shape menu swaps the block for a
 hexagonal prism, cube, rectangular prism, cylinder, sphere or pyramid, and a view menu
 eases the camera to a soft 3/4, isometric, 3/4 perspective, or orthographic front,
-side or top view. Six colour presets. Needs WebGL2.
+side or top view. Up to twelve shapes can be placed at once — a single centred shape,
+a row, a grid, a hexagonal cluster (three shapes form a triangle), a radial ring, or a
+seeded random scatter inside an adjustable area — each with its own drifting interior.
+Width, height and depth stretch the shape independently, and everything is kept in frame
+automatically unless that is switched off. The ground can be a solid colour or a linear
+or radial gradient; the glow behind the shapes can be switched off, sized and dimmed,
+turns into a soft shadow on light grounds, and a contrast guard outlines the silhouettes
+and reports the shape-to-ground contrast ratio. Seven colour presets. Needs WebGL2.
 
 ## Recording
 
