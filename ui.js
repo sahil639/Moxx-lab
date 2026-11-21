@@ -19,7 +19,8 @@
     const r = from.getBoundingClientRect();
     root.style.setProperty('--vt-x', (r.left + r.width/2) + 'px');
     root.style.setProperty('--vt-y', (r.top + r.height/2) + 'px');
-    document.startViewTransition(() => apply(t));
+    const vt = document.startViewTransition(() => apply(t));
+    vt.ready.catch(() => {}); vt.finished.catch(() => {});   // a hidden tab aborts the animation; the theme still applies
   }
   root.dataset.theme = stored() || system();
   mq.addEventListener('change', () => { if (!stored()) apply(system()); });   // follow the system until the user chooses
