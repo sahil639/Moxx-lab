@@ -12,8 +12,8 @@
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <style>
   :root{
-    --bg:#000; --fg:#f4f4f5; --dim:#868690; --faint:#4a4a52; --line:#1b1b1f;
-    --accent:#fff;
+    --bg:#000; --fg:#f4f4f5; --dim:#868690; --faint:#4a4a52; --line:#1b1b1f; --line2:#3a3a42;
+    --accent:#fff; --thumb:#0a0a0c; --thumb-line:#232328;
     --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
   }
   *{box-sizing:border-box}
@@ -43,13 +43,13 @@
   .desc{margin:8px 0 0;color:var(--dim);font-size:12.5px;max-width:62ch}
 
   a.item:hover .name,a.item:focus-visible .name{color:var(--accent)}
-  a.item:hover .rule,a.item:focus-visible .rule{background:#3a3a42}
+  a.item:hover .rule,a.item:focus-visible .rule{background:var(--line2)}
 
   /* hover preview — a blank frame for now */
   .thumb{
     position:absolute;left:calc(100% + 32px);top:50%;width:300px;aspect-ratio:16/10;
     transform:translateY(-50%) translateX(-6px);
-    background:#0a0a0c;border:1px solid #232328;
+    background:var(--thumb);border:1px solid var(--thumb-line);
     opacity:0;visibility:hidden;pointer-events:none;
     transition:opacity .15s ease,transform .15s ease,visibility 0s linear .15s;
   }
@@ -65,7 +65,16 @@
     .wrap{padding:40px 0 80px}
     .logo{margin-bottom:48px}
   }
+  html[data-theme=light]{
+    --bg:#f3f3f0; --fg:#1b1b1a; --dim:#6f6f69; --faint:#a9a9a3; --line:#dfdfda; --line2:#b9b9b3;
+    --accent:#000; --thumb:#fff; --thumb-line:#dfdfda;
+  }
+  html:root[data-theme]{--u-bg:var(--bg);--u-fg:var(--fg)}
+  html[data-theme=light] .logo{filter:invert(1)}
+  body,.rule,ul,li{transition:background-color .25s ease,border-color .25s ease,color .25s ease}
 </style>
+<link rel="stylesheet" href="ui.css">
+<script src="ui.js"></script>
 </head>
 <body>
 <div class="wrap">

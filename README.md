@@ -83,9 +83,20 @@ and reports the shape-to-ground contrast ratio. Seven colour presets. Needs WebG
 thin "spiral channels" cut as the sliver between a big circle and a slightly smaller,
 offset one. The construction circles stay visible over the mark. Six presets, saved
 versions (kept in this browser's localStorage), a preview strip at 16–96 px, drag to
-turn, scroll to zoom, and export as PNG, transparent mark PNG or SVG. Canvas 2D only;
+turn, scroll to zoom, four preview views (build, icon sizes, app icon, 24 px grid), and export as PNG, transparent mark PNG or SVG. Canvas 2D only;
 the outline is one SVG arc path, so canvas and SVG export share the same geometry.
 **R** replays the build-in of the construction, **space** pauses, **S** saves a PNG.
+
+## Interface
+
+Every page loads two shared files, `ui.css` and `ui.js`. Together they give the site a
+light and a dark mode — the switch sits at the top of each controls panel (top-right on
+the index), follows the system setting until you choose, and remembers the choice in
+`localStorage` — and one look for the controls: collapsible sections with a chevron,
+flat bar sliders with the label and value inside and the filled part showing the value,
+tile buttons with a dark outline when selected, and switch-style checkboxes. The theme
+only changes the interface; each effect keeps its own colours, except Compass Mark,
+whose default mark and ground follow the theme until you pick your own.
 
 ## Recording
 

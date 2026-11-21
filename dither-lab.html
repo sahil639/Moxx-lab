@@ -92,7 +92,15 @@
   body.ui-hidden #back,body:has(#ui[hidden]) #back{opacity:0}
   body.ui-hidden #back:hover,body.ui-hidden #back:focus-visible,
   body:has(#ui[hidden]) #back:hover,body:has(#ui[hidden]) #back:focus-visible{opacity:1}
+  /* docked side panel (shared look comes from ui.css) */
+  #ui{top:0;right:0;bottom:0;width:340px;max-height:none;border-radius:0;display:block;font-size:12px}
+  #stage{right:340px}
+  body:has(#ui[hidden]) #stage{right:0}
+  .swatches{flex:1;gap:6px}
+  #hint{mix-blend-mode:difference}
 </style>
+<link rel="stylesheet" href="ui.css">
+<script src="ui.js"></script>
 
 <div id="stage"><canvas id="c"></canvas></div>
 <div id="drop">Drop image or video</div>
@@ -101,86 +109,53 @@
 <div id="err"></div>
 
 <div id="ui">
-  <h2><img class="mark" src="logo.svg" alt="">Dither Lab <span id="src" style="opacity:.5">demo</span></h2>
+  <h2><img class="mark" src="logo.svg" alt="">Dither Lab <span id="src" style="opacity:.5;margin-left:8px">demo</span></h2>
 
-  <div class="row">
-    <label>Preset</label>
+  <details open>
+    <summary>Presets</summary>
     <div class="chips" id="presets"></div>
-  </div>
+  </details>
 
-  <div class="sep"></div>
+  <details open>
+    <summary>Dither</summary>
+    <div class="row"><label>Cell size <b id="vPix">6</b></label><input type="range" id="pix" min="1" max="24" step="1" value="6"></div>
+    <div class="row"><label>Tone steps <b id="vLev">3</b></label><input type="range" id="lev" min="2" max="8" step="1" value="3"></div>
+    <div class="row"><label>Dither amt <b id="vDit">1</b></label><input type="range" id="dit" min="0" max="1.6" step="0.02" value="1"></div>
+    <div class="chips" id="mats" style="margin-top:8px"></div>
+  </details>
 
-  <div class="row">
-    <label>Cell size <b id="vPix">6</b></label>
-    <input type="range" id="pix" min="1" max="24" step="1" value="6">
-  </div>
-  <div class="row">
-    <label>Tone steps <b id="vLev">3</b></label>
-    <input type="range" id="lev" min="2" max="8" step="1" value="3">
-  </div>
-  <div class="row">
-    <label>Dither amt <b id="vDit">1.00</b></label>
-    <input type="range" id="dit" min="0" max="1.6" step="0.02" value="1">
-  </div>
-  <div class="row">
-    <label>Matrix</label>
-    <div class="chips" id="mats"></div>
-  </div>
+  <details open>
+    <summary>Tone</summary>
+    <div class="row"><label>Contrast <b id="vCon">1.35</b></label><input type="range" id="con" min="0.3" max="3" step="0.01" value="1.35"></div>
+    <div class="row"><label>Exposure <b id="vBri">0</b></label><input type="range" id="bri" min="-0.4" max="0.4" step="0.01" value="0"></div>
+    <div class="row"><label>Gamma <b id="vGam">1</b></label><input type="range" id="gam" min="0.4" max="2.4" step="0.01" value="1"></div>
+  </details>
 
-  <div class="sep"></div>
-
-  <div class="row">
-    <label>Contrast <b id="vCon">1.35</b></label>
-    <input type="range" id="con" min="0.3" max="3" step="0.01" value="1.35">
-  </div>
-  <div class="row">
-    <label>Exposure <b id="vBri">0.00</b></label>
-    <input type="range" id="bri" min="-0.4" max="0.4" step="0.01" value="0">
-  </div>
-  <div class="row">
-    <label>Gamma <b id="vGam">1.00</b></label>
-    <input type="range" id="gam" min="0.4" max="2.4" step="0.01" value="1">
-  </div>
-
-  <div class="sep"></div>
-
-  <div class="row">
-    <label>Palette</label>
+  <details open>
+    <summary>Palette</summary>
     <div class="swatches">
       <input type="color" id="c0" value="#0b1d26">
       <input type="color" id="c1" value="#3f8ea3">
       <input type="color" id="c2" value="#b8e6f2">
     </div>
-  </div>
+  </details>
 
-  <div class="sep"></div>
+  <details open>
+    <summary>Screen</summary>
+    <div class="row"><label>Focus lens <b id="vRad">0.22</b></label><input type="range" id="rad" min="0" max="0.7" step="0.01" value="0.22"></div>
+    <div class="row"><label>RGB split <b id="vAbr">0.35</b></label><input type="range" id="abr" min="0" max="2" step="0.01" value="0.35"></div>
+    <div class="row"><label>Scanlines <b id="vScn">0.25</b></label><input type="range" id="scn" min="0" max="1" step="0.01" value="0.25"></div>
+    <div class="row"><label>Grain / flicker <b id="vNoi">0.15</b></label><input type="range" id="noi" min="0" max="1" step="0.01" value="0.15"></div>
+    <div class="row"><label>Bloom <b id="vBlm">0.30</b></label><input type="range" id="blm" min="0" max="1" step="0.01" value="0.30"></div>
+  </details>
 
-  <div class="row">
-    <label>Focus lens <b id="vRad">0.22</b></label>
-    <input type="range" id="rad" min="0" max="0.7" step="0.01" value="0.22">
-  </div>
-  <div class="row">
-    <label>RGB split <b id="vAbr">0.35</b></label>
-    <input type="range" id="abr" min="0" max="2" step="0.01" value="0.35">
-  </div>
-  <div class="row">
-    <label>Scanlines <b id="vScn">0.25</b></label>
-    <input type="range" id="scn" min="0" max="1" step="0.01" value="0.25">
-  </div>
-  <div class="row">
-    <label>Grain / flicker <b id="vNoi">0.15</b></label>
-    <input type="range" id="noi" min="0" max="1" step="0.01" value="0.15">
-  </div>
-  <div class="row">
-    <label>Bloom <b id="vBlm">0.30</b></label>
-    <input type="range" id="blm" min="0" max="1" step="0.01" value="0.30">
-  </div>
-
-  <div class="sep"></div>
-  <div class="btns">
-    <button class="chip" id="load">Load file</button>
-    <button class="chip" id="save">Save PNG</button>
-  </div>
+  <details open>
+    <summary>File</summary>
+    <div class="btns">
+      <button class="chip" id="load">Load file</button>
+      <button class="chip" id="save">Save PNG</button>
+    </div>
+  </details>
   <input type="file" id="file" accept="image/*,video/*" hidden>
 </div>
 
@@ -503,7 +478,7 @@ $('save').onclick = () => {
 
 addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
-  if(k === 'h'){ $('ui').hidden = !$('ui').hidden; }
+  if(k === 'h'){ $('ui').hidden = !$('ui').hidden; resize(); }
   if(k === 's'){ $('save').click(); }
 });
 
@@ -538,7 +513,8 @@ canvas.addEventListener('pointerdown', e => {
 let hoverEased = 0;
 function resize(){
   const dpr = Math.min(devicePixelRatio || 1, 2);
-  const w = Math.round(innerWidth * dpr), h = Math.round(innerHeight * dpr);
+  const box = canvas.parentNode.getBoundingClientRect();
+  const w = Math.max(1, Math.round(box.width * dpr)), h = Math.max(1, Math.round(box.height * dpr));
   if(canvas.width !== w || canvas.height !== h){
     canvas.width = w; canvas.height = h;
     gl.viewport(0, 0, w, h);
