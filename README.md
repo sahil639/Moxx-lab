@@ -78,6 +78,15 @@ or radial gradient; the glow behind the shapes can be switched off, sized and di
 turns into a soft shadow on light grounds, and a contrast guard outlines the silhouettes
 and reports the shape-to-ground contrast ratio. Seven colour presets. Needs WebGL2.
 
+**`compass-mark.html` — Compass Mark.** A parametric logo builder: equal circles
+(lobes) set around a ring, a fillet circle rolled into each notch, a centre hole, and
+thin "spiral channels" cut as the sliver between a big circle and a slightly smaller,
+offset one. The construction circles stay visible over the mark. Six presets, saved
+versions (kept in this browser's localStorage), a preview strip at 16–96 px, drag to
+turn, scroll to zoom, and export as PNG, transparent mark PNG or SVG. Canvas 2D only;
+the outline is one SVG arc path, so canvas and SVG export share the same geometry.
+**R** replays the build-in of the construction, **space** pauses, **S** saves a PNG.
+
 ## Recording
 
 Every page is built to be screen-recorded. **H** clears the panel on any of them.
