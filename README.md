@@ -87,6 +87,63 @@ turn, scroll to zoom, four preview views (build, icon sizes, app icon, 24 px gri
 the outline is one SVG arc path, so canvas and SVG export share the same geometry.
 **R** replays the build-in of the construction, **space** pauses, **S** saves a PNG.
 
+**`brand-engine.html` — Brand Engine.** A seeded generative brand system: one integer seed
+and one fixed palette produce every visual for a brand, and the same seed always gives the
+same output (a seeded PRNG throughout, never `Math.random`). The whole state is mirrored in
+the URL hash, so any output is a link. It is self-contained and does not load `ui.css` /
+`ui.js`, though it follows the site's saved light / dark choice.
+
+- **Shell.** A pill nav (Scene · Sheet · Layout · Logo · Kit), a left rail of scene
+  thumbnails that re-render live, a right panel with seed, reroll, ground swatches and
+  formats (1:1, 4:5, 9:16, 16:9, 3:2), and an export footer: PNG at 1×/2×/4×, SVG, copy to
+  clipboard and WebM video with an optional lockup intro.
+- **Scene.** *Hero Diagram* — workspaces (✕), bonded pairs of people (dumbbells), agent
+  squads (dot clusters), artifacts (four-point stars, `ARTIFACT#n`) and pipes (hairlines) in
+  Ring, Tree, Mirror or Loose layouts, complexity 1–5, flat or on a tilted 2.5D plane.
+  *Mosaic* — the same graph with the workspace pasted up from checker and stripe tiles.
+  *Rewrite* — an animated chat where people type and the agent rewrites a big brand line in
+  a glyph scramble, from an editable script (`name: text`, `name (mo's agent): text`,
+  `> New line`). *Avatar* — a dot-matrix H-shaped head and two eyes in exactly three
+  colours; the seed is the identity.
+- **Layout.** Split, Blob, Bleed, Poster and Manifesto: brand copy fitted by measuring, a
+  dimmed second line, shuffle, type size, lockup, scene picker and page colour. A `-` typed
+  between two letters marks where a word may break.
+- **Logo.** The mark, the wordmark and a coloured shape (Auto, Circle, Pill, Two, Many)
+  holding a sub-brand name; the type stays one size and the shape grows. SVG exports the
+  logo alone from the same display list the canvas draws (names are live `<text>`).
+- **Sheet.** The current scene across 12–24 consecutive seeds; click a frame to adopt its
+  seed, export the sheet as one PNG.
+- **Kit.** Brand name, concepts, brand lines, sub-brands and palette (kept in
+  localStorage), display and label fonts by file drop (session only), and **Download kit**:
+  one zip with every scene and layout at all five formats, the logo, the sheet and the kit
+  card as numbered PNGs, plus an SVG logo per sub-brand.
+- **Print.** Screen, Riso wet or Riso dry, applied to the finished pixels in every mode, to
+  PNG and to video: each colour becomes a flat ink layer printed slightly out of register
+  with grain; wet spreads the ink, dry breaks the fill into speckle. SVG stays vector.
+
+Keys: **R** reroll, **1–5** complexity, **L** layout, **D** 2.5D, **P** print, **←/→** scene,
+**space** play / pause, **S** sheet, **K** kit, **B** layout mode, **E** export PNG, **H**
+panels.
+
+**`jelly-pitch.html` — Jelly Pitch.** A WebGPU soft-body experiment: a tennis ball, a
+football or a basketball made of translucent jelly on reactive artificial turf. The body is
+a tetrahedral mesh solved with XPBD at a fixed 60 Hz step with 10 substeps — a co-rotational
+elastic constraint and a volume constraint per tet, damping along mesh edges only, ground
+contact with friction, and a soft grab on a patch of particles. **Hand** grabs and pulls
+(scroll or a second finger twists); **Knife** takes a drawn stroke as a vertical blade
+plane, presses a groove, then splits every tet the plane crosses, so each piece becomes its
+own soft body that can be grabbed and cut again and collides with the others. The smooth
+skin is a subdivided surface bound to the tets by barycentric weights; seams, panels, ribs
+and an uploaded face are drawn in rest space, so they stretch and travel with the jelly and
+are cut with it. Rendering is a thickness pass (back faces minus front faces), refraction
+by thickness, Beer–Lambert absorption, milky scattering, back-lit glow, Fresnel reflections
+of a procedural studio and GGX highlights. The floor is 90,000 instanced grass blades that
+flatten, lean away and ripple from a small pressure field. Controls sit in a liquid-glass
+panel drawn by WebGPU (blurred, lensed copy of the frame with a rim and a cursor highlight).
+Real sizes and a 1.3 g/cm³ gummy density. It needs WebGPU and shows a message without it.
+Keys: **H** hand, **K** knife, **R** reset, **space** pause. Written from scratch for this
+site, following the description of a jelly-cutting experiment by another author.
+
 ## Interface
 
 Every page loads two shared files, `ui.css` and `ui.js`. Together they give the site a

@@ -1,0 +1,1371 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Moxx Lab — Brand Engine</title>
+<script>
+  /* theme before first paint; shares the site-wide key with ui.js */
+  (() => { let t=null; try{ t=localStorage.getItem('moxx-theme'); }catch(e){}
+    document.documentElement.dataset.theme = t==='light'||t==='dark' ? t : (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'); })();
+</script>
+<style>
+  html[data-theme=dark]{ color-scheme:dark;
+    --stage:#5b5b5b; --card:#141312; --card2:#1d1c1a; --line:#2a2927; --fg:#efece4; --dim:#98958d;
+    --tile:#201f1d; --tile-h:#2b2a27; --on:#efe9d8; --on-ink:#15130f; --go:#d2f72b; --go-ink:#15130f; --logo:none; }
+  html[data-theme=light]{ color-scheme:light;
+    --stage:#dcdcd8; --card:#ffffff; --card2:#f6f6f3; --line:#e6e6e2; --fg:#1b1b1a; --dim:#7c7c76;
+    --tile:#f3f3f0; --tile-h:#e9e9e5; --on:#1b1b1a; --on-ink:#ffffff; --go:#c4ee12; --go-ink:#15130f; --logo:invert(1); }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--stage);color:var(--fg);overflow:hidden;
+    font:12px/1.45 'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;transition:background-color .3s ease}
+  button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;padding:0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:0 12px 40px rgba(0,0,0,.28);
+    transition:background-color .3s ease,border-color .3s ease,transform .22s cubic-bezier(.2,.8,.2,1),opacity .22s ease}
+
+  /* ------------------------------------------------ stage */
+  #stage{position:fixed;inset:86px 412px 30px 262px;display:grid;place-items:center}
+  #c{display:block;box-shadow:0 18px 60px rgba(0,0,0,.35)}
+  body.ui-hidden #stage{inset:24px}
+  body.ui-hidden .card{opacity:0;pointer-events:none}
+  body.ui-hidden #rail{transform:translateX(-20px)} body.ui-hidden #side,body.ui-hidden #foot{transform:translateX(20px)}
+  body.ui-hidden #nav{transform:translate(-50%,-20px)}
+
+  /* ------------------------------------------------ top nav */
+  #nav{position:fixed;left:calc(50% - 75px);top:14px;transform:translateX(-50%);z-index:12;display:flex;align-items:center;gap:2px;
+    padding:6px;border-radius:999px}
+  #nav button{padding:9px 16px;border-radius:999px;color:var(--dim);letter-spacing:.02em;white-space:nowrap;
+    transition:background .15s ease,color .15s ease,transform .12s ease}
+  #nav button:hover{color:var(--fg);background:var(--tile)}
+  #nav button:active{transform:scale(.95)}
+  #nav button.on{background:var(--on);color:var(--on-ink)}
+  #nav i{width:1px;height:18px;background:var(--line);margin:0 6px}
+  #theme{width:34px;padding:9px 0 !important;text-align:center}
+
+  /* ------------------------------------------------ left rail */
+  #rail{position:fixed;left:12px;top:12px;bottom:12px;width:238px;z-index:11;padding:12px;overflow-y:auto;scrollbar-width:none}
+  #rail::-webkit-scrollbar{display:none}
+  #back{display:flex;align-items:center;gap:8px;padding:8px 10px;margin-bottom:10px;border-radius:10px;color:var(--fg);
+    text-decoration:none;font-weight:500;letter-spacing:.06em;background:var(--tile);transition:background .15s ease}
+  #back:hover,#back:focus-visible{background:var(--tile-h);outline:none}
+  #back img{width:13px;height:13px;filter:var(--logo)}
+  .thumb{display:block;width:100%;padding:6px 6px 10px;border-radius:14px;text-align:left;color:var(--dim);margin-bottom:6px;
+    transition:background .15s ease,transform .12s ease,color .15s ease}
+  .thumb:hover{background:var(--tile);color:var(--fg)}
+  .thumb:active{transform:scale(.97)}
+  .thumb canvas{display:block;width:100%;aspect-ratio:1;border-radius:9px;outline:2px solid transparent;outline-offset:2px;transition:outline-color .15s ease}
+  .thumb.on{color:var(--fg);background:var(--tile)}
+  .thumb.on canvas{outline-color:var(--on)}
+  .thumb span{display:block;margin:10px 4px 0;font-size:12px}
+
+  /* ------------------------------------------------ right panel */
+  #side{position:fixed;right:12px;top:12px;bottom:206px;width:388px;z-index:11;overflow-y:auto;padding:22px 22px 26px;scrollbar-width:thin;
+    scrollbar-color:var(--line) transparent}
+  #side h1{margin:0 0 6px;font-size:16px;font-weight:600;letter-spacing:.01em}
+  #side p{margin:0;color:var(--dim);line-height:1.6}
+  .sec{border-top:1px solid var(--line);margin:20px -22px 0;padding:18px 22px 0}
+  .sec h2{margin:0 0 12px;font-size:10.5px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+  .lab{display:flex;justify-content:space-between;align-items:baseline;margin:14px 0 8px;color:var(--dim)}
+  .lab b{font-weight:400;color:var(--fg)}
+  .seed{display:flex;gap:8px;margin-top:8px}
+  input[type=text],input[type=number]{flex:1;min-width:0;background:var(--card2);color:var(--fg);border:1px solid var(--line);border-radius:10px;
+    padding:10px 12px;font:inherit;font-size:13px;outline:none;transition:border-color .15s ease;-moz-appearance:textfield;appearance:textfield}
+  .sec > input[type=text]{width:100%}
+  input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none}
+  input[type=text]:focus,input[type=number]:focus{border-color:var(--on)}
+  .btn{background:var(--tile);border-radius:10px;padding:10px 14px;white-space:nowrap;transition:background .15s ease,transform .12s ease}
+  .btn:hover{background:var(--tile-h)} .btn:active{transform:scale(.95)}
+  .btn:disabled{opacity:.4;cursor:default;transform:none}
+  .seg{display:flex;gap:2px;background:var(--card2);border-radius:11px;padding:3px}
+  .seg button{flex:1;padding:8px 4px;border-radius:9px;color:var(--dim);transition:background .15s ease,color .15s ease,transform .12s ease}
+  .seg button:hover{color:var(--fg)} .seg button:active{transform:scale(.94)}
+  .seg button.on{background:var(--on);color:var(--on-ink)}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:20px;margin:0;cursor:ew-resize;outline:none;
+    background:linear-gradient(var(--line),var(--line)) center/100% 2px no-repeat}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--fg);border:0;transition:transform .12s ease}
+  input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--fg);border:0}
+  input[type=range]:hover::-webkit-slider-thumb,input[type=range]:focus-visible::-webkit-slider-thumb{transform:scale(1.25)}
+  .note{margin:10px 0 0 !important}
+  .switch{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:16px 0 2px;cursor:pointer}
+  .switch input{-webkit-appearance:none;appearance:none;flex:0 0 38px;width:38px;height:22px;margin:0;border-radius:11px;background:var(--tile-h);
+    position:relative;cursor:pointer;outline:none;transition:background .18s ease}
+  .switch input::after{content:"";position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:var(--dim);
+    transition:transform .2s cubic-bezier(.3,1.4,.5,1),background .18s ease}
+  .switch input:checked{background:var(--on)} .switch input:checked::after{transform:translateX(16px);background:var(--on-ink)}
+  .switch input:focus-visible{box-shadow:0 0 0 2px var(--card),0 0 0 3.5px var(--on)}
+  .sw{display:flex;gap:6px;flex-wrap:wrap}
+  .sw button{width:32px;height:32px;border-radius:8px;border:1px solid var(--line);outline:2px solid transparent;outline-offset:2px;
+    display:grid;place-items:center;transition:transform .12s ease,outline-color .15s ease}
+  .sw button:hover{transform:translateY(-2px)} .sw button:active{transform:scale(.9)}
+  .sw button.on{outline-color:var(--fg)}
+  .kitrow{display:flex;align-items:center;gap:8px;margin:6px 0}
+  .kitrow input[type=color]{-webkit-appearance:none;appearance:none;width:34px;height:34px;flex:0 0 34px;padding:0;border:1px solid var(--line);
+    border-radius:8px;background:none;cursor:pointer;overflow:hidden}
+  .kitrow input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+  .kitrow input[type=color]::-webkit-color-swatch{border:0}
+  .kitrow span{flex:0 0 64px;color:var(--dim)}
+  .keys{color:var(--dim);line-height:1.8} .keys b{color:var(--fg);font-weight:500}
+  .soon{display:inline-block;margin-top:10px;padding:3px 8px;border-radius:6px;background:var(--tile);color:var(--dim);font-size:10.5px;letter-spacing:.08em}
+
+  /* ------------------------------------------------ export footer */
+  #foot{position:fixed;right:12px;bottom:12px;width:388px;z-index:11;padding:16px 22px}
+  #foot .top{display:flex;gap:8px}
+  #foot .seg{flex:0 0 132px}
+  #bPng{flex:1;background:var(--go);color:var(--go-ink);border-radius:11px;font-weight:600;padding:11px 10px;transition:transform .12s ease,filter .15s ease}
+  #bPng:hover{filter:brightness(1.06)} #bPng:active{transform:scale(.96)}
+  #foot .row{display:flex;gap:8px;margin-top:8px}
+  #foot .row .btn{flex:1;text-align:center}
+
+  #transport{position:fixed;left:calc(50% - 75px);bottom:14px;transform:translateX(-50%);z-index:12;display:flex;align-items:center;gap:6px;
+    padding:8px 16px 8px 10px;border-radius:999px;width:360px}
+  #transport[hidden]{display:none}
+  #transport button{width:30px;height:30px;border-radius:50%;color:var(--fg);font-size:12px;transition:background .15s ease,transform .12s ease}
+  #transport button:hover{background:var(--tile)} #transport button:active{transform:scale(.9)}
+  #transport input{flex:1}
+  body.norail #transport{left:calc(50% - 194px)}
+  body.ui-hidden #transport{transform:translate(-50%,20px)}
+  body.has-transport #stage{bottom:74px}
+  .drop{display:block;width:100%;text-align:left;border:1px dashed var(--line);border-radius:10px;padding:12px;margin:8px 0;color:var(--dim);
+    transition:border-color .15s ease,background .15s ease}
+  .drop b{display:block;color:var(--fg);font-weight:500;margin-bottom:3px}
+  .drop:hover,.drop.hot{border-color:var(--on);background:var(--tile)}
+  .btn.wide{width:100%;text-align:center;padding:12px}
+  #c.pick{cursor:pointer}
+  body.norail #rail{transform:translateX(-20px);opacity:0;pointer-events:none}
+  body.norail #stage{inset:86px 412px 30px 24px}
+  body.ui-hidden.norail #stage{inset:24px}
+  textarea,select{width:100%;background:var(--card2);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;
+    font:inherit;font-size:13px;outline:none;resize:vertical;transition:border-color .15s ease}
+  textarea:focus,select:focus{border-color:var(--on)}
+  textarea{display:block;line-height:1.45;min-height:64px}
+  .sec > input[type=text]{margin-top:8px}
+  .presets{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .presets.two{grid-template-columns:1fr 1fr}
+  .presets .btn{text-align:center;padding:11px 6px}
+  .btn.on{background:var(--on);color:var(--on-ink)}
+  .sec h2.split{display:flex;justify-content:space-between;align-items:center}
+  .sec h2 button{font-size:11.5px;letter-spacing:.02em;text-transform:none;color:var(--fg);padding:4px 8px;border-radius:7px;transition:background .15s ease,transform .12s ease}
+  .sec h2 button:hover{background:var(--tile)} .sec h2 button:active{transform:scale(.93)}
+  @media (max-width:1100px){ #rail{display:none} #stage{inset:86px 412px 30px 24px} #nav{left:calc(50% - 200px)} }
+  @media (prefers-reduced-motion:reduce){ *{transition:none !important} }
+</style>
+</head>
+<body>
+
+<div id="stage"><canvas id="c"></canvas></div>
+
+<nav id="nav" class="card" aria-label="Modes"></nav>
+
+<aside id="rail" class="card">
+  <a id="back" href="index.html" aria-label="Back to Moxx Lab index"><img src="logo.svg" alt="">← Moxx Lab</a>
+  <div id="thumbs"></div>
+</aside>
+
+<div id="transport" class="card" hidden>
+  <button id="tPlay" title="Play / pause (Space)" aria-label="Play or pause">❚❚</button>
+  <button id="tBack" title="Back to the start" aria-label="Restart">↺</button>
+  <input type="range" id="tScrub" min="0" max="1000" step="1" value="0" aria-label="Scrub">
+</div>
+
+<aside id="side" class="card"></aside>
+
+<div id="foot" class="card">
+  <label class="switch" style="margin:0 0 14px"><span>Open the video with the intro</span><input type="checkbox" id="intro"></label>
+  <div class="top">
+    <div class="seg" id="scale"></div>
+    <button id="bPng">↓ Export PNG</button>
+  </div>
+  <div class="row">
+    <button class="btn" id="bSvg" disabled>SVG</button>
+    <button class="btn" id="bCopy">Copy</button>
+    <button class="btn" id="bVideo">Video</button>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const el = (tag, props, ...kids) => { const n=document.createElement(tag); Object.assign(n, props||{}); n.append(...kids); return n; };
+const TAU = Math.PI*2;
+
+/* ==================================================================== 1. SEEDED RANDOM
+   Every generator draws from one of these. Nothing in a generator may call Math.random. */
+function mulberry32(a){ return () => { a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+function hash(str){ let h=2166136261; for (let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; }
+function makeRng(seed, salt){
+  const r = mulberry32((seed>>>0) ^ hash(salt||''));
+  r.range = (a,b) => a + (b-a)*r();
+  r.int   = (a,b) => Math.floor(r.range(a,b+1));
+  r.pick  = arr => arr[Math.floor(r()*arr.length)];
+  r.chance= p => r() < p;
+  return r;
+}
+// a fresh seed is the one place entropy comes from outside the generator
+const freshSeed = () => { const b=new Uint32Array(1); crypto.getRandomValues(b); return b[0] % 100000; };
+
+/* ==================================================================== 2. BRAND KIT
+   The fixed inputs every visual is made from. Edited in Kit mode, kept in localStorage. */
+const KIT_KEY = 'moxx-brand-kit';
+const DEFAULT_KIT = {
+  name: 'Moxx',
+  concepts: ['workspaces','people','agent squads','artifacts','pipes'],
+  palette: [
+    ['ink','#14110f'], ['stone','#a89f8d'], ['paper','#f1ead9'], ['red','#f24a1d'], ['pink','#f792e6'], ['blue','#1433e0'],
+    ['lime','#d2f72b'], ['sky','#58d6f5'], ['green','#0fb76b'], ['amber','#f7b51d'], ['violet','#8f8cf7'], ['sand','#d6cdb6'],
+  ],
+  lines: ['One seed, every surface.','Make it once. Ship it everywhere.','The brand that draws itself.','Same number, same picture.',
+          'Reroll until it sings.','Systems over one-offs.','Draw the rule, not the poster.'],
+  family: ['Lab','Studio','Engine','Press','API','Open Projects'],
+  display: '"Helvetica Neue",Helvetica,Arial,sans-serif',
+  mono: '"IBM Plex Mono",ui-monospace,Menlo,monospace',
+};
+let kit = structuredClone(DEFAULT_KIT);
+try { const k=JSON.parse(localStorage.getItem(KIT_KEY)||'null'); if (k && Array.isArray(k.palette)){ delete k.display; delete k.mono; kit = {...kit, ...k}; } } catch(e){}
+const saveKit = () => { try{ const {display,mono,...keep}=kit; localStorage.setItem(KIT_KEY, JSON.stringify(keep)); }catch(e){} };   // dropped fonts are not kept
+const colour = key => (kit.palette.find(p=>p[0]===key) || kit.palette[0])[1];
+
+const lum = hex => { const n=parseInt(hex.slice(1),16), f=v=>{ v/=255; return v<=.03928 ? v/12.92 : Math.pow((v+.055)/1.055,2.4); };
+  return .2126*f(n>>16&255) + .7152*f(n>>8&255) + .0722*f(n&255); };
+const contrast = (a,b) => { const x=lum(a), y=lum(b); return (Math.max(x,y)+.05)/(Math.min(x,y)+.05); };
+const inkOn = bg => contrast(bg,colour('ink')) >= contrast(bg,colour('paper')) ? colour('ink') : colour('paper');   // WCAG pick
+
+/* ==================================================================== 3. STATE
+   One object, mirrored in the URL hash so any output is a link. */
+const FORMATS = { '1:1':[1200,1200], '4:5':[1200,1500], '9:16':[1080,1920], '16:9':[1920,1080], '3:2':[1800,1200] };
+const MODES = [['scene','Scene'],['sheet','Sheet'],['layout','Layout'],['logo','Logo'],['kit','Kit']];
+// the default Rewrite script lives here because the state below needs it (format: see section 5.3)
+const REWRITE_SCRIPT = `rae: the homepage line still reads flat
+mo: @fern give it three tries, shortest first
+fern (mo's agent): on it. trying the short one
+> Draw the rule.
+rae: closer. can it be about the number?
+fern (mo's agent): swapping the noun
+> Same number, same picture.
+ines: that's the one. ship it
+fern (mo's agent): locked, and pushed to the kit`;
+const state = { mode:'scene', scene:'hero', seed:28698, ground:'auto', format:'1:1', scale:2, complexity:5, layout:'ring', d25:0, tilt:50, head:100, blink:1, print:'screen', playing:1,
+  sheetN:12,
+  rline:'One seed, every surface.', rsub:'A brand you can run.', rscript:REWRITE_SCRIPT, intro:0,
+  sub:'Lab', shape:'auto', scol:'blue', stype:'auto', larr:'row', lpage:'paper',
+  lay:'split', copy:'One seed, every surface.', copy2:'', type:100, lockup:1, lscene:'mosaic', page:'ink', align:'centre',
+  mani:'A brand is not a logo. It is a rule you can run. Give the rule one number and it draws the poster, the avatar, the diagram and the deck. Give it another and everything changes together. Nothing is drawn twice. Nothing drifts. Change the number, keep the brand.' };
+const DEFAULTS = {...state};                                    // the hash only carries what differs from these
+const HASH = { mode:'m', scene:'s', seed:'seed', ground:'g', format:'f', scale:'x', complexity:'c', layout:'l', d25:'d', tilt:'t', head:'hs', blink:'b', print:'p',
+  sheetN:'n',
+  rline:'rl', rsub:'rs', rscript:'rw', intro:'in',
+  sub:'sb', shape:'sh', scol:'sc', stype:'st', larr:'la', lpage:'lp',
+  lay:'ly', copy:'h', copy2:'h2', type:'ts', lockup:'lk', lscene:'ls', page:'pg', align:'al', mani:'mf' };
+
+function readHash(){
+  const q = new URLSearchParams(location.hash.slice(1));
+  for (const k in HASH) state[k]=DEFAULTS[k];                       // a link is the defaults plus what it names
+  for (const k in HASH){ const v=q.get(HASH[k]); if (v===null) continue;
+    state[k] = typeof state[k]==='number' ? (Number.isFinite(+v) ? +v : state[k]) : v; }
+  if (!FORMATS[state.format]) state.format='1:1';
+  if (!MODES.some(m=>m[0]===state.mode)) state.mode='scene';
+  state.seed = Math.abs(Math.floor(state.seed)) % 1e9;
+  state.scale = [1,2,4].includes(state.scale) ? state.scale : 2;
+  state.complexity = Math.max(1,Math.min(5,Math.round(state.complexity)||5));
+  if (!LAYOUTS[state.layout]) state.layout='ring';
+  state.d25 = state.d25 ? 1 : 0; state.tilt = Math.max(0,Math.min(80,+state.tilt||0));
+  state.intro = state.intro ? 1 : 0; if (!SHEET_COUNTS.includes(state.sheetN)) state.sheetN=12;
+  if (!PRINTS.some(x=>x[0]===state.print)) state.print='screen'; if (!SCENES[state.scene]) state.scene='hero';
+  const has=k=>kit.palette.some(p=>p[0]===k);
+  if (!SHAPES.some(x=>x[0]===state.shape)) state.shape='auto';
+  if (!has(state.scol)) state.scol='blue'; if (!has(state.lpage)) state.lpage='paper';
+  if (!['auto','paper','ink'].includes(state.stype)) state.stype='auto'; state.larr = state.larr==='stack' ? 'stack' : 'row';
+  if (!LAYOUT_PRESETS[state.lay]) state.lay='split';
+  if (!SCENES[state.lscene]) state.lscene='mosaic';
+  if (!kit.palette.some(p=>p[0]===state.page)) state.page='ink';
+  state.lockup = state.lockup ? 1 : 0; state.type = Math.max(40,Math.min(130,+state.type||100)); state.align = state.align==='stagger' ? 'stagger' : 'centre';
+  state.blink = state.blink ? 1 : 0; state.head = Math.max(40,Math.min(100,+state.head||100));
+}
+let hashTimer=0;
+function writeHash(){ clearTimeout(hashTimer); hashTimer=setTimeout(()=>{
+  const q=new URLSearchParams(); for (const k in HASH) if (state[k]!==DEFAULTS[k] || k==='seed' || k==='mode') q.set(HASH[k], state[k]);
+  history.replaceState(null,'','#'+q.toString().replace(/%3A/g,':')); },120); }
+
+/* ==================================================================== 4. DRAWING VOCABULARY
+   The brand's five marks. Shared by every generator. All sizes are in format pixels. */
+const Mark = {
+  // workspace: a heavy, round-ended cross
+  cross(ctx,x,y,s,col){ ctx.save(); ctx.strokeStyle=col; ctx.lineWidth=s*.42; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(x-s,y-s); ctx.lineTo(x+s,y+s); ctx.moveTo(x+s,y-s); ctx.lineTo(x-s,y+s); ctx.stroke(); ctx.restore(); },
+  // bonded pair: two circles joined by a waist
+  pair(ctx,x1,y1,x2,y2,r,col){ ctx.save(); ctx.fillStyle=ctx.strokeStyle=col;
+    ctx.beginPath(); ctx.arc(x1,y1,r,0,TAU); ctx.arc(x2,y2,r,0,TAU); ctx.fill();
+    ctx.lineWidth=r*1.15; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); ctx.restore(); },
+  // agent squad: a loose cluster of small dots
+  squad(ctx,x,y,n,spread,col,rng){ ctx.save(); ctx.fillStyle=col;
+    for (let i=0;i<n;i++){ const a=rng()*TAU, d=Math.sqrt(rng())*spread;
+      ctx.beginPath(); ctx.arc(x+Math.cos(a)*d, y+Math.sin(a)*d, spread*rng.range(.14,.26), 0, TAU); ctx.fill(); }
+    ctx.restore(); },
+  // artifact: a four-point star
+  star(ctx,x,y,s,col){ ctx.save(); ctx.fillStyle=col; ctx.beginPath();
+    for (let i=0;i<8;i++){ const a=i*TAU/8 - Math.PI/2, r=i%2 ? s*.3 : s; ctx.lineTo(x+Math.cos(a)*r, y+Math.sin(a)*r); }
+    ctx.closePath(); ctx.fill(); ctx.restore(); },
+  // pipe: a hairline
+  pipe(ctx,x1,y1,x2,y2,col,w){ ctx.save(); ctx.strokeStyle=col; ctx.lineWidth=w||1; ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); ctx.restore(); },
+};
+function mono(ctx,text,x,y,size,col,align){ ctx.save(); ctx.font=`500 ${size}px ${kit.mono}`; ctx.fillStyle=col;
+  ctx.textAlign=align||'left'; ctx.textBaseline='middle'; ctx.fillText(text,x,y); ctx.restore(); }
+// faint grid of small crosses behind everything
+function crossGrid(ctx,env,step,alpha){ const {W,H,ink}=env; ctx.save(); ctx.globalAlpha=alpha; ctx.strokeStyle=ink; ctx.lineWidth=1; ctx.beginPath();
+  const s=step*.16, ox=(W%step)/2+step/2, oy=(H%step)/2+step/2;
+  for (let y=oy;y<H;y+=step) for (let x=ox;x<W;x+=step){ ctx.moveTo(x-s,y-s); ctx.lineTo(x+s,y+s); ctx.moveTo(x+s,y-s); ctx.lineTo(x-s,y+s); }
+  ctx.stroke(); ctx.restore(); }
+// corner IDs in mono type
+function corners(ctx,env,rng,caption){ const {W,H,u,ink}=env, glyphs='#<>/+=_:.', code=()=>{ let s=''; for(let i=0;i<3;i++) s+=rng.pick(glyphs); return s; };
+  const word = rng.pick(env.kit.concepts).split(' ')[0].toUpperCase().slice(0,5);
+  ctx.save(); ctx.globalAlpha=.75;
+  mono(ctx, word+code(), W-u*4, u*4, u*1.05, ink, 'right');
+  mono(ctx, caption||('ID.'+String(env.state.seed).padStart(5,'0')), u*4, H-u*4, u*1.05, ink, 'left');
+  ctx.restore(); }
+
+/* ==================================================================== 5. GENERATORS
+   Each one is a pure function render(ctx, env, rng, t): same env + same seed = same pixels.
+   env = { W, H, u (1% of the short side), ground, ink, colours (palette minus the ground), kit, state }.
+   Four scenes: Hero Diagram, Mosaic, Rewrite and Avatar. */
+const SCENES = {};
+
+/* ---- 5.1 Hero Diagram
+   A graph of the brand's concepts: workspaces, bonded pairs of people, agent squads, artifacts and the pipes between them.
+   buildHero() lays the graph out as a flat list of items, each tagged with the complexity level (lv) it first appears at;
+   paintHero() draws the list. Four layouts share the same item kinds, so Mosaic can reuse the graph in phase 3. */
+const LAYOUTS = {
+  ring:  ['Ring',  'People in a circle, agents at the edge, work leaving.'],
+  tree:  ['Tree',  'Who invited whom, generation by generation.'],
+  mirror:['Mirror','The same team seen twice, left answering right.'],
+  loose: ['Loose', 'Everyone where they landed, pulled together by who they work with.'],
+};
+const LEVELS = ['Workspace only','People and bonds','Agent squads','Artifacts and pipes','Full diagram'];
+const EDGE_WORDS = ['fed','on behalf of','who','invited','asked','handoff'];
+
+function heroRoles(env,rng){
+  // big marks need a little contrast with the ground, small ones need more; when nothing in the palette manages it, use ink
+  const g=env.ground, pick=(min,ks)=>{ for (const k of ks){ const h=colour(k); if (h!==g && contrast(h,g)>=min) return h; } return env.ink; };
+  const first=(...ks)=>pick(1.5,ks), small=(...ks)=>pick(2,ks);
+  const A=first('red','amber','pink'), B=first('blue','violet','sky'), flip=rng.chance(.5);
+  return { a:flip?B:A, b:flip?A:B, people:B, bond:first('red','amber','blue'), squad:small('green','lime','sky'), art:small('violet','sky','pink'), ws:first('violet','blue','red') };
+}
+
+function buildHero(env,rng,recolour){
+  const {W,H,u}=env, S=Math.min(W,H), C=Object.assign(heroRoles(env,rng),recolour||{}), items=[], g={items, grid:{x:W/2,y:H/2,r:S*.36}};
+  let artN=0;
+  const F = {
+    ws:(x,y,s,col)=>items.push({k:'ws',lv:1,x,y,s,col}),
+    pair:(x,y,ang,r,gap,col,split)=>items.push({k:'pair',lv:2,x,y,ang,r,gap,col,split:!!split}),
+    bond:(a,b,w,col)=>items.push({k:'bond',lv:2,a,b,w,col}),
+    branch:(pts,w,col)=>items.push({k:'branch',lv:2,pts,w,col}),
+    squad:(x,y,spread)=>{ const style=rng.pick(['cluster','cluster','quad','grid']), dots=[];
+      if (style==='cluster'){ const n=rng.int(5,11); for (let i=0;i<n;i++){ const a=rng()*TAU, d=Math.sqrt(rng())*spread; dots.push([Math.cos(a)*d,Math.sin(a)*d,spread*rng.range(.14,.26)]); } }
+      else { const n=style==='quad'?2:3, st=spread*(style==='quad'?.9:.62); for (let j=0;j<n;j++) for (let i=0;i<n;i++) dots.push([(i-(n-1)/2)*st,(j-(n-1)/2)*st,st*(style==='quad'?.4:.3)]); }
+      items.push({k:'squad',lv:3,x,y,dots,col:C.squad}); },
+    art:(x,y,s,labelSide)=>{ artN++; items.push({k:'art',lv:4,x,y,s,col:C.art});
+      if (labelSide) items.push({k:'label',lv:5,x:x+(labelSide==='right'?s*1.6:labelSide==='left'?-s*1.6:0),y:y+(labelSide==='below'?s*2.2:0),
+        text:'ARTIFACT#'+artN, align:labelSide==='right'?'left':labelSide==='left'?'right':'center'}); },
+    pipe:(pts,lv,dotAt)=>{ items.push({k:'pipe',lv:lv||4,pts});
+      if (dotAt!=null){ const a=pts[0], b=pts[pts.length-1]; items.push({k:'dot',lv:5,x:a[0]+(b[0]-a[0])*dotAt,y:a[1]+(b[1]-a[1])*dotAt,col:rng.chance(.3)?C.bond:env.ink}); } },
+    word:(x,y,align)=>items.push({k:'label',lv:5,x,y,text:rng.pick(EDGE_WORDS)+rng.pick([':','>','','']),align:align||'left'}),
+  };
+  ({ring:layRing, tree:layTree, mirror:layMirror, loose:layLoose}[env.state.layout] || layRing)(env,rng,C,F,g);
+  return g;
+}
+
+/* ---- Ring: people in a circle, squads outside them, artifacts leaving at the edge */
+function layRing(env,rng,C,F,g){
+  const {W,H,u}=env, S=Math.min(W,H), cx=W/2, cy=H/2, n=rng.int(5,8), R1=S*.2, R2=S*.315, R3=S*.415, rot=rng()*TAU, r=u*1.45, gap=u*3.3;
+  F.ws(cx,cy,u*2,C.ws);
+  const P=[];
+  for (let i=0;i<n;i++){
+    const a=rot+i*TAU/n+rng.range(-.05,.05), x=cx+Math.cos(a)*R1, y=cy+Math.sin(a)*R1, ang=a+Math.PI/2+rng.range(-.3,.3);
+    P.push({a,x,y,ang}); F.pair(x,y,ang,r,gap,i%2?C.a:C.b);
+    if (rng.chance(.65)){ const p0=[cx+Math.cos(a)*u*3.4,cy+Math.sin(a)*u*3.4], p1=[x-Math.cos(a)*u*3,y-Math.sin(a)*u*3];
+      F.pipe([p0,p1],4,rng.chance(.7)?rng.range(.2,.8):null);
+      if (rng.chance(.3)) F.word((p0[0]+p1[0])/2+u,(p0[1]+p1[1])/2-u); }
+  }
+  for (let i=0;i<n;i++){ if (!rng.chance(.78)) continue; const p=P[i], q=P[(i+1)%n], e=gap/2+r*1.45;
+    F.bond([p.x+Math.cos(p.ang)*e,p.y+Math.sin(p.ang)*e],[q.x-Math.cos(q.ang)*e,q.y-Math.sin(q.ang)*e],u*.36,C.bond); }
+  for (let i=0;i<n;i++){
+    if (!rng.chance(.82)) continue;
+    const p=P[i], sa=p.a+rng.range(-.2,.2), sr=R2*rng.range(.95,1.07), sx=cx+Math.cos(sa)*sr, sy=cy+Math.sin(sa)*sr;
+    F.squad(sx,sy,u*1.9);
+    F.pipe([[p.x+Math.cos(p.a)*u*2.6,p.y+Math.sin(p.a)*u*2.6],[sx-Math.cos(sa)*u*2.6,sy-Math.sin(sa)*u*2.6]],4);
+    const k=rng.int(1,2);
+    for (let j=0;j<k;j++){ const aa=sa+(j-(k-1)/2)*.24+rng.range(-.04,.04), ar=R3*rng.range(.96,1.06), ax=cx+Math.cos(aa)*ar, ay=cy+Math.sin(aa)*ar;
+      F.pipe([[sx+Math.cos(aa)*u*2.6,sy+Math.sin(aa)*u*2.6],[ax-Math.cos(aa)*u*2,ay-Math.sin(aa)*u*2]],4,rng.chance(.45)?rng.range(.25,.75):null);
+      F.art(ax,ay,u*1.5,rng.chance(.3)?(Math.cos(aa)>0?'right':'left'):null); }
+  }
+}
+
+/* ---- Tree: who invited whom. Runs top to bottom, or left to right in wide formats */
+function layTree(env,rng,C,F,g){
+  const {W,H,u}=env, horiz=W>H*1.25, m=u*9, BL=(horiz?H:W)-2*m;
+  const at=(b,d)=> horiz ? [m+d*(W-2*m), m+b*(H-2*m)] : [m+b*(W-2*m), m+d*(H-2*m)];
+  const D=[.03,.23,.43,.63,.81,.96], leaves=[], all=[];
+  const mk=(depth,parent)=>{ const n={depth,parent,kids:[]}; all.push(n);
+    if (depth<3){ const c=depth<2?2:rng.int(1,2); for (let i=0;i<c;i++) n.kids.push(mk(depth+1,n)); } else leaves.push(n); return n; };
+  const roots=[mk(0,null),mk(0,null)];
+  leaves.forEach((n,i)=>n.b=(i+.5)/leaves.length);
+  const place=n=>{ if (n.kids.length){ n.kids.forEach(place); n.b=n.kids.reduce((s,k)=>s+k.b,0)/n.kids.length; } }; roots.forEach(place);
+  const sp=BL/leaves.length, r=Math.min(u*1.3,sp*.2), gap=r*2.1, bw=r*1.05, ang=horiz?Math.PI/2:0;
+  g.grid={x:W/2,y:H/2,r:Math.min(W,H)*.4};
+  for (const n of all){
+    const [x,y]=at(n.b,D[n.depth]);
+    if (n.parent){ const md=D[n.parent.depth]+(D[n.depth]-D[n.parent.depth])*.5;
+      F.branch([at(n.parent.b,D[n.parent.depth]), at(n.parent.b,md), at(n.b,md), [x,y]], bw, C.bond);
+      if (rng.chance(.09)){ const [lx,ly]=at(n.b,md); F.word(lx+u*.8,ly+(horiz?-u*1.2:u*1.4)); } }
+  }
+  for (const n of all){
+    const [x,y]=at(n.b,D[n.depth]);
+    if (n.depth===0) F.ws(x,y,r*1.5,C.people); else F.pair(x,y,ang,r,gap,C.people,rng.chance(.14));
+    if ((n.depth===1||n.depth===2) && rng.chance(.3)){                       // an agent squad hanging off an inviter
+      const side=rng.chance(.5)?-1:1, [sx,sy]=at(n.b+side*sp/BL*.75, D[n.depth]+.075), [ex,ey]=at(n.b+side*sp/BL*.75, D[n.depth]+.02);
+      F.squad(sx,sy,r*1.25); F.pipe([[x+(horiz?0:side*r*2.2),y+(horiz?side*r*2.2:0)],[ex,ey],[sx,sy]],4); }
+  }
+  leaves.forEach(n=>{
+    const hasArt=rng.chance(.9), hasSquad=rng.chance(.88), [x0,y0]=at(n.b,D[3]+.035), [sx,sy]=at(n.b,D[4]), [ax,ay]=at(n.b,D[5]);
+    if (hasArt){ F.pipe([[x0,y0],[ax,ay]],4,rng.chance(.4)?rng.range(.1,.85):null); F.art(ax,ay,r*1.05,rng.chance(.18)?(horiz?'right':'below'):null); }
+    if (hasSquad) F.squad(sx,sy,r*1.25);
+  });
+}
+
+/* ---- Mirror: one side is generated, the other is its reflection */
+function layMirror(env,rng,C,F,g){
+  const {W,H,u}=env, S=Math.min(W,H), cx=W/2, cy=H/2, r=u*1.5, gap=u*3.4, R1=S*.21, R2=S*.32, R3=S*.41, start=g.items.length;
+  const arms=rng.int(2,3), P=[];
+  for (let i=0;i<arms;i++){
+    const a=-1.05+2.1*(i+.5)/arms+rng.range(-.14,.14), pr=R1*rng.range(.88,1.16), x=cx+Math.cos(a)*pr, y=cy+Math.sin(a)*pr, ang=a+Math.PI/2+rng.range(-.25,.25);
+    P.push({x,y,ang,a}); F.pair(x,y,ang,r,gap,i%2?C.a:C.b);
+    F.pipe([[cx+Math.cos(a)*u*3.4,cy+Math.sin(a)*u*3.4],[x-Math.cos(a)*u*3,y-Math.sin(a)*u*3]],4,rng.chance(.6)?rng.range(.2,.8):null);
+    { const sa=a+rng.range(-.16,.16), sr=R2*rng.range(.95,1.1), sx=cx+Math.cos(sa)*sr, sy=cy+Math.sin(sa)*sr;
+      F.squad(sx,sy,u*1.9); F.pipe([[x+Math.cos(a)*u*2.6,y+Math.sin(a)*u*2.6],[sx-Math.cos(sa)*u*2.6,sy-Math.sin(sa)*u*2.6]],4);
+      const k=rng.int(1,2); for (let j=0;j<k;j++){ const aa=sa+(j-(k-1)/2)*.26, ar=R3*rng.range(.95,1.08), ax=cx+Math.cos(aa)*ar, ay=cy+Math.sin(aa)*ar;
+        F.pipe([[sx+Math.cos(aa)*u*2.6,sy+Math.sin(aa)*u*2.6],[ax-Math.cos(aa)*u*2,ay-Math.sin(aa)*u*2]],4,rng.chance(.4)?.5:null);
+        F.art(ax,ay,u*1.5,rng.chance(.3)?'right':null); } }
+  }
+  const e=gap/2+r*1.45, top={x:cx,y:cy-R1*1.05,ang:0}, bot={x:cx,y:cy+R1*1.05,ang:0};
+  for (let i=0;i<arms-1;i++) F.bond([P[i].x+Math.cos(P[i].ang)*e,P[i].y+Math.sin(P[i].ang)*e],[P[i+1].x-Math.cos(P[i+1].ang)*e,P[i+1].y-Math.sin(P[i+1].ang)*e],u*.36,C.bond);
+  F.bond([top.x+e,top.y],[P[0].x-Math.cos(P[0].ang)*e,P[0].y-Math.sin(P[0].ang)*e],u*.36,C.bond);
+  F.bond([P[arms-1].x+Math.cos(P[arms-1].ang)*e,P[arms-1].y+Math.sin(P[arms-1].ang)*e],[bot.x+e,bot.y],u*.36,C.bond);
+  // reflect everything made so far across the vertical axis
+  const mx=x=>2*cx-x, half=g.items.slice(start);
+  for (const it of half){ const c={...it};
+    if ('x' in c) c.x=mx(c.x);
+    if (c.pts) c.pts=c.pts.map(p=>[mx(p[0]),p[1]]);
+    if (c.a && c.b){ c.a=[mx(it.a[0]),it.a[1]]; c.b=[mx(it.b[0]),it.b[1]]; }
+    if (c.k==='pair') c.ang=Math.PI-it.ang;
+    if (c.dots) c.dots=it.dots.map(d=>[-d[0],d[1],d[2]]);
+    if (c.k==='label'){ if (/^ARTIFACT/.test(c.text)) continue; c.align=it.align==='left'?'right':it.align==='right'?'left':it.align; }
+    g.items.push(c); }
+  // the pieces that sit on the axis
+  F.ws(cx,cy,u*2,C.ws);
+  const axisCol=arms%2?C.a:C.b;
+  F.pair(top.x,top.y,0,r,gap,axisCol); F.pair(bot.x,bot.y,0,r,gap,axisCol);
+  F.pipe([[cx,cy-u*3.4],[cx,top.y+u*3]],4,.5); F.pipe([[cx,cy+u*3.4],[cx,bot.y-u*3]],4);
+  F.squad(cx,cy-R2*1.02,u*1.9); F.pipe([[cx,top.y-u*2.6],[cx,cy-R2*1.02+u*2.6]],4);
+  F.art(cx,cy+R3*1.0,u*1.6,'below'); F.pipe([[cx,bot.y+u*2.6],[cx,cy+R3-u*2]],4,.4);
+}
+
+/* ---- Loose: a force-relaxed scatter. Springs pull collaborators together, everything else pushes apart */
+function layLoose(env,rng,C,F,g){
+  const {W,H,u}=env, N=[], E=[], node=(k,extra)=>{ const n={k,x:rng.range(-1,1),y:rng.range(-1,1),...extra}; N.push(n); return n; };
+  const link=(a,b,len,kind)=>E.push({a,b,len,kind});
+  const wss=[]; for (let i=0,c=rng.int(1,2);i<c;i++) wss.push(node('ws'));
+  if (wss.length>1) link(wss[0],wss[1],1.1,'pipe');
+  const pairs=[]; for (let i=0,c=rng.int(6,9);i<c;i++){ const w=rng.pick(wss), p=node('pair',{w,col:i%2?C.a:C.b}); pairs.push(p); link(w,p,.5,'pipe'); }
+  for (let i=0;i<pairs.length-1;i++) if (pairs[i].w===pairs[i+1].w && rng.chance(.55)) link(pairs[i],pairs[i+1],.34,'bond');
+  for (const p of pairs){ if (!rng.chance(.78)) continue; const s=node('squad'); link(p,s,.32,'pipe');
+    for (let j=0,c=rng.int(1,2);j<c;j++){ const a=node('art'); link(s,a,.3,'pipe'); } }
+  for (let it=0;it<220;it++){
+    const cool=1-it/220;
+    for (let i=0;i<N.length;i++) for (let j=i+1;j<N.length;j++){ const a=N[i], b=N[j]; let dx=b.x-a.x, dy=b.y-a.y, d=Math.hypot(dx,dy)||1e-3;
+      const f=.012/(d*d), fx=dx/d*Math.min(f,.2), fy=dy/d*Math.min(f,.2); a.x-=fx; a.y-=fy; b.x+=fx; b.y+=fy; }
+    for (const e of E){ const dx=e.b.x-e.a.x, dy=e.b.y-e.a.y, d=Math.hypot(dx,dy)||1e-3, f=(d-e.len)*.12*cool+(d-e.len)*.03; e.a.x+=dx/d*f; e.a.y+=dy/d*f; e.b.x-=dx/d*f; e.b.y-=dy/d*f; }
+    for (const n of N){ n.x*=.992; n.y*=.992; }
+  }
+  let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9; for (const n of N){ x0=Math.min(x0,n.x); x1=Math.max(x1,n.x); y0=Math.min(y0,n.y); y1=Math.max(y1,n.y); }
+  const m=u*12; for (const n of N){ n.x=m+(n.x-x0)/(x1-x0||1)*(W-2*m); n.y=m+(n.y-y0)/(y1-y0||1)*(H-2*m); }
+  const r=u*1.45, gap=u*3.3, pad={ws:u*3.2,pair:u*3.2,squad:u*2.6,art:u*2}, seg=(a,b)=>{ const dx=b.x-a.x, dy=b.y-a.y, d=Math.hypot(dx,dy)||1;
+    return [[a.x+dx/d*pad[a.k],a.y+dy/d*pad[a.k]],[b.x-dx/d*pad[b.k],b.y-dy/d*pad[b.k]]]; };
+  for (const e of E){ const s=seg(e.a,e.b);
+    if (e.kind==='bond') F.bond(s[0],s[1],u*.36,C.bond);
+    else { F.pipe(s,4,rng.chance(.4)?rng.range(.25,.75):null); if (e.a.k==='ws' && rng.chance(.22)) F.word((s[0][0]+s[1][0])/2+u,(s[0][1]+s[1][1])/2-u); } }
+  for (const n of N){
+    if (n.k==='ws') F.ws(n.x,n.y,u*2,C.ws);
+    else if (n.k==='pair') F.pair(n.x,n.y,Math.atan2(n.w.y-n.y,n.w.x-n.x)+Math.PI/2,r,gap,n.col);
+    else if (n.k==='squad') F.squad(n.x,n.y,u*1.9);
+    else F.art(n.x,n.y,u*1.5,rng.chance(.3)?(n.x>W/2?'right':'left'):null);
+  }
+  g.grid={x:W/2,y:H/2,r:Math.min(W,H)*.42};
+}
+
+/* ---- painting */
+// a blobby patch of the cross grid: coarse seeded noise decides how far it reaches
+function blobGrid(ctx,env,grid){
+  const {u,ink}=env, step=u*1.9, s=step*.2, seed=env.state.seed, n=Math.ceil(grid.r*1.5/step);
+  ctx.save(); ctx.globalAlpha=.17; ctx.strokeStyle=ink; ctx.lineWidth=Math.max(1,u*.09); ctx.beginPath();
+  for (let j=-n;j<=n;j++) for (let i=-n;i<=n;i++){
+    const k=mulberry32(hash(seed+'g'+Math.floor(i/3)+','+Math.floor(j/3)))(), x=grid.x+i*step, y=grid.y+j*step;
+    if (Math.hypot(i,j)*step > grid.r*(.5+.7*k)) continue;
+    ctx.moveTo(x-s,y-s); ctx.lineTo(x+s,y+s); ctx.moveTo(x+s,y-s); ctx.lineTo(x-s,y+s); }
+  ctx.stroke(); ctx.restore();
+}
+function tracePath(ctx,pts,rad){ ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]);
+  for (let i=1;i<pts.length-1;i++) ctx.arcTo(pts[i][0],pts[i][1],pts[i+1][0],pts[i+1][1],rad);
+  ctx.lineTo(pts[pts.length-1][0],pts[pts.length-1][1]); }
+function paintHero(ctx,env,g,rng,under){
+  const {u,ink,ground}=env, lv=env.state.complexity, hair=Math.max(1,u*.09), of=k=>g.items.filter(i=>i.k===k && i.lv<=lv);
+  under ? under(ctx) : blobGrid(ctx,env,g.grid);
+  ctx.save(); ctx.lineJoin='round';
+  ctx.strokeStyle=ink; ctx.lineWidth=hair; ctx.lineCap='butt';
+  for (const p of of('pipe')){ tracePath(ctx,p.pts,u*1.2); ctx.stroke(); }
+  ctx.lineCap='round';
+  for (const b of of('branch')){ tracePath(ctx,b.pts,b.w*1.9); ctx.strokeStyle=b.col; ctx.lineWidth=b.w; ctx.stroke(); ctx.strokeStyle=ground; ctx.lineWidth=b.w*.2; ctx.stroke(); }
+  for (const b of of('bond')){ const dx=b.b[0]-b.a[0], dy=b.b[1]-b.a[1], d=Math.hypot(dx,dy)||1, nx=-dy/d*b.w*1.15, ny=dx/d*b.w*1.15;
+    ctx.strokeStyle=b.col; ctx.lineWidth=b.w; ctx.beginPath();
+    for (const s of [-1,1]){ ctx.moveTo(b.a[0]+nx*s,b.a[1]+ny*s); ctx.lineTo(b.b[0]+nx*s,b.b[1]+ny*s); } ctx.stroke(); }
+  ctx.restore();
+  for (const w of of('ws')) Mark.cross(ctx,w.x,w.y,w.s,w.col);
+  for (const p of of('pair')){ const cx=Math.cos(p.ang)*p.gap/2, cy=Math.sin(p.ang)*p.gap/2;
+    if (p.split){ ctx.fillStyle=p.col; for (const s of [-1,1]){ ctx.beginPath(); ctx.arc(p.x+cx*s,p.y+cy*s,p.r,0,TAU); ctx.fill(); } }
+    else Mark.pair(ctx,p.x-cx,p.y-cy,p.x+cx,p.y+cy,p.r,p.col); }
+  for (const s of of('squad')){ ctx.fillStyle=s.col; for (const d of s.dots){ ctx.beginPath(); ctx.arc(s.x+d[0],s.y+d[1],d[2],0,TAU); ctx.fill(); } }
+  for (const a of of('art')) Mark.star(ctx,a.x,a.y,a.s,a.col);
+  for (const d of of('dot')){ ctx.fillStyle=d.col; ctx.beginPath(); ctx.arc(d.x,d.y,u*.38,0,TAU); ctx.fill(); }
+  for (const l of of('label')) mono(ctx,l.text.toUpperCase(),l.x,l.y,u*.92,ink,l.align);
+  if (lv>=5) corners(ctx,env,rng);
+}
+
+// 2.5D: paint the flat picture on its own layer, then lay that layer on a tilted, turned plane with a soft shadow
+function onPlane(ctx,env,paint){
+  if (!env.state.d25){ paint(ctx); return; }
+  const {W,H,u}=env, m=ctx.getTransform(), k=Math.hypot(m.a,m.b)||1, layer=document.createElement('canvas');
+  layer.width=Math.ceil(W*k); layer.height=Math.ceil(H*k);
+  const lx=layer.getContext('2d'); lx.setTransform(k,0,0,k,0,0); paint(lx);
+  const tilt=Math.max(0,Math.min(80,env.state.tilt))*Math.PI/180;
+  ctx.save(); ctx.translate(W/2,H/2); ctx.scale(1,Math.cos(tilt)); ctx.rotate(-.62*Math.min(1,tilt*1.6)); ctx.scale(.8,.8); ctx.translate(-W/2,-H/2);
+  ctx.shadowColor='rgba(0,0,0,.3)'; ctx.shadowBlur=u*1.6*k; ctx.shadowOffsetX=u*.6*k*Math.sin(tilt); ctx.shadowOffsetY=u*2.2*k*Math.sin(tilt);
+  ctx.drawImage(layer,0,0,W,H); ctx.restore();
+}
+
+SCENES.hero = {
+  title:'Hero Diagram',
+  about:() => `The hero diagram. ${cap(kit.concepts.join(', '))}.`,
+  phase:0, graph:true,
+  render(ctx,env,rng,t){ const g=buildHero(env,rng); onPlane(ctx,env,c=>paintHero(c,env,g,rng)); }
+};
+
+/* ---- 5.2 Mosaic
+   The same graph as the Hero Diagram (same seed, same layout), with the workspace pasted up from solid, checker and
+   stripe tiles. The tiles mirror left to right, and the people are recoloured so they still read on top of them. */
+function mosaicTiles(env,grid,T){
+  const {u,ink}=env, cell=u*4.1, n=Math.ceil(grid.r*1.25/cell), seed=env.state.seed, out=[];
+  const h=(tag,a,b)=>mulberry32(hash(seed+tag+a+','+b))();
+  for (let j=-n;j<n;j++) for (let i=-n;i<n;i++){
+    const mi=i>=0?i:-i-1, d=Math.hypot(mi+.5,j+.5)*cell;
+    if (d > grid.r*(.42+.5*h('r',Math.floor(mi/2),Math.floor((j+n)/2)))) continue;
+    const v=h('t',mi,j), w=h('c',mi,j), tile={x:grid.x+i*cell,y:grid.y+j*cell,s:cell};
+    if (v<.46) tile.kind='solid', tile.c1=T[0];
+    else if (v<.64) tile.kind='solid', tile.c1=T[1];
+    else if (v<.76) tile.kind='solid', tile.c1=T[2];
+    else if (v<.9) tile.kind='check', tile.c1=T[w<.5?0:1], tile.c2=T[w<.5?2:0], tile.n=w<.7?2:4;
+    else tile.kind='stripe', tile.c1=T[w<.5?1:2], tile.c2=w<.6?ink:T[0], tile.dir=h('d',mi,j)<.5;
+    out.push(tile); }
+  return out;
+}
+function paintTiles(ctx,tiles){
+  for (const t of tiles){ const {x,y,s}=t, o=.6;                                  // a hair of overlap hides the seams
+    ctx.fillStyle=t.c1; ctx.fillRect(x,y,s+o,s+o);
+    if (t.kind==='check'){ const q=s/t.n; ctx.fillStyle=t.c2;
+      for (let b=0;b<t.n;b++) for (let a=0;a<t.n;a++) if ((a+b)%2) ctx.fillRect(x+a*q,y+b*q,q+o,q+o); }
+    else if (t.kind==='stripe'){ const q=s/8; ctx.fillStyle=t.c2;
+      for (let a=1;a<8;a+=2) t.dir ? ctx.fillRect(x,y+a*q,s+o,q) : ctx.fillRect(x+a*q,y,q,s+o); } }
+}
+SCENES.mosaic = {
+  title:'Mosaic',
+  about:() => 'The same diagram, with the workspace pasted up from checker and stripe tiles.',
+  phase:0, graph:true,
+  render(ctx,env,rng,t){
+    const pool=env.colours.filter(c=>c!==env.ink), T=[];
+    while (T.length<3 && pool.length) T.push(pool.splice(Math.floor(rng()*pool.length),1)[0]);
+    while (T.length<3) T.push(T[0]||env.ink);
+    // people sit on the tiles, so give them the colours that stand out most against every tile and the ground
+    const under=[...T,env.ground], score=c=>Math.min(...under.map(b=>contrast(c,b)));
+    const cands=['ink','paper','blue','red','violet','green'].map(colour).filter(c=>!under.includes(c)).sort((a,b)=>score(b)-score(a));
+    const lead=cands[0]||env.ink, second=cands[1]||lead;
+    const g=buildHero(env,makeRng(env.state.seed,'hero'),{a:lead,b:second,people:lead,bond:lead,ws:lead});
+    const tiles=mosaicTiles(env,g.grid,T);
+    onPlane(ctx,env,c=>paintHero(c,env,g,rng,cx=>{ blobGrid(cx,env,g.grid); paintTiles(cx,tiles); }));
+  }
+};
+
+/* ---- 5.3 Rewrite
+   An animated chat beside a large brand line. People type; when the agent is tasked it rewrites the line in a glyph
+   scramble. The whole thing is a pure function of the clock: parseScript() turns the script into a timeline, and
+   render() draws whatever that timeline says is true at time t.
+   Script format, one message per line:
+     name: what they say              a person (use @name to mention someone)
+     name (owner's agent): reply      the agent, with its label
+     > New brand line                 the agent rewrites the big line to this */
+const GLYPHS = '#<>/+=_:.*%&@$!?01';
+let rwMemo = {key:null, val:null};
+function rewriteTimeline(st){
+  if (rwMemo.key===st.rscript) return rwMemo.val;
+  const msgs=[]; let t=.6;
+  for (const raw of st.rscript.split('\n')){ const line=raw.trim(); if (!line) continue;
+    if (line[0]==='>'){ const text=line.slice(1).trim(); if (text){ msgs.push({kind:'rewrite',text,t0:t,t1:t+1.25}); t+=1.25+.9; } continue; }
+    const i=line.indexOf(':'); if (i<1) continue;
+    const who=line.slice(0,i).trim(), text=line.slice(i+1).trim(), m=who.match(/^(.+?)\s*\((.+)\)$/), agent=!!m; if (!text) continue;
+    const dur=Math.max(.35,text.length/(agent?52:24)); msgs.push({kind:'say',name:m?m[1]:who,label:m?m[2]:'',agent,text,t0:t,t1:t+dur}); t+=dur+.55; }
+  rwMemo={key:st.rscript, val:{msgs,total:t+1.8}}; return rwMemo.val;
+}
+const fitMemo = new Map();
+function fitCached(ctx,a,b,w,h,cap){ const k=[a,b,w,h,cap,kit.display].join('\u0001'); let f=fitMemo.get(k);
+  if (!f){ if (fitMemo.size>200) fitMemo.clear(); f=fitText(ctx,a,b,w,h,cap); fitMemo.set(k,f); } return f; }
+// one row of the brand line, set character by character so a scrambling row keeps its footing
+function glyphRow(ctx,cells,cx,y,size,ink,hot){
+  ctx.save(); ctx.font=`700 ${size}px ${kit.display}`; if ('letterSpacing' in ctx) ctx.letterSpacing='0px'; ctx.textAlign='left'; ctx.textBaseline='middle';
+  const ws=cells.map(c=>ctx.measureText(c.ch).width+size*TRACK); let x=cx-ws.reduce((a,b)=>a+b,0)/2;
+  cells.forEach((c,i)=>{ if (c.hot && c.ch!==' '){ ctx.fillStyle=hot[c.hot%hot.length]; ctx.fillRect(x-size*.02,y-size*.44,ws[i]+size*.04,size*.86); }
+    ctx.fillStyle=ink; ctx.fillText(c.ch,x,y+size*.04); x+=ws[i]; });
+  ctx.restore();
+}
+// the scramble: a wave moves left to right; ahead of it the old text, on it random glyphs, behind it the new text
+function scramble(a,b,p,row,tick,seed){
+  const n=Math.max(a.length,b.length), out=[];
+  for (let i=0;i<n;i++){ const at=i/Math.max(n,1)*.68;
+    if (p>=at+.32){ if (b[i]) out.push({ch:b[i]}); }
+    else if (p>at){ const k=hash(seed+':'+row+':'+i+':'+tick); out.push({ch:(b[i]===' '&&a[i]===' ')?' ':GLYPHS[k%GLYPHS.length], hot:1+(k>>>8)%7}); }
+    else if (a[i]) out.push({ch:a[i]}); }
+  return out;
+}
+SCENES.rewrite = {
+  title:'Rewrite',
+  about:() => 'Friends and their agents share a running conversation and a line of brand copy. Task an agent in the chat and it rewrites the line in a glitch. People type.',
+  phase:0,
+  animated:() => true,
+  duration:st => rewriteTimeline(st).total,
+  thumbT:st => { const tl=rewriteTimeline(st), last=tl.msgs.filter(m=>m.kind==='say').pop(); return last ? last.t1+.2 : 0; },
+  render(ctx,env,rng,t){
+    const {W,H,u,ink,ground,colours}=env, st=env.state, tl=rewriteTimeline(st), tau=tl.total ? ((t%tl.total)+tl.total)%tl.total : 0;
+    const bright=colours.filter(c=>c!==ink && c!==colour('paper') && c!==colour('ink')), accent=bright.length ? rng.pick(bright) : ink, hot=bright.length ? bright : [ink];
+
+    // ---- the brand line: every version is fitted first, and the smallest fit is used for all so the size never jumps
+    const rew=tl.msgs.filter(m=>m.kind==='rewrite'), texts=[st.rline||' ', ...rew.map(m=>m.text)], tall=H>W*1.1;
+    const bw=W*.86, bh=H*(tall?.3:.4), hasDim=!!st.rsub.trim(), fits=texts.map(x=>fitCached(ctx,x,'',bw,bh,Math.min(W,H)*.15));
+    const most=Math.max(...fits.map(f=>f.lines.length)), size=Math.min(...fits.map(f=>f.size), bh/(most+(hasDim?1:0)));
+    // the dimmed line always takes one row, shrunk only if it is too wide, so it never reflows as the line above changes
+    ctx.save(); setType(ctx,100); const dimW=hasDim?ctx.measureText(st.rsub.trim()).width/100:0; ctx.restore();
+    const dimSize=hasDim?Math.min(size,bw/Math.max(dimW,.01)):0;
+    let cur=0, to=0, p=1;
+    rew.forEach((m,i)=>{ if (tau>=m.t1) cur=to=i+1; else if (tau>=m.t0){ to=i+1; p=(tau-m.t0)/(m.t1-m.t0); } });
+    const rows=i=>fits[i].lines.map(l=>l.s), A=rows(cur), B=rows(to), n=Math.max(A.length,B.length);
+    const step=size*1.0, cy=H*(tall?.6:.56), y0=cy-(n+(hasDim?1:0)-1)*step/2, tick=Math.floor(tau*26);
+    for (let r=0;r<n;r++){ const a=A[r]||'', b=B[r]||'';
+      glyphRow(ctx, cur===to ? [...b].map(ch=>({ch})) : scramble(a,b,p,r,tick,st.seed), W/2, y0+r*step, size, ink, hot); }
+    if (hasDim){ ctx.save(); ctx.globalAlpha=.45; glyphRow(ctx,[...st.rsub.trim()].map(ch=>({ch})),W/2,y0+(n-.5)*step+dimSize*.52,dimSize,ink,hot); ctx.restore(); }
+
+    // ---- the chat: the last four messages, each typing in at its own pace
+    const said=tl.msgs.filter(m=>m.kind==='say' && tau>=m.t0), shown=said.slice(-5), x=u*5, r=u*1.9, tx=x+r*2+u*1.5, maxW=Math.min(W*.46,W-tx-u*5), ts=u*2.25, lh=u*2.9;
+    const wrap=text=>{ ctx.font=`600 ${ts}px ${kit.display}`; if ('letterSpacing' in ctx) ctx.letterSpacing='0px'; const lines=[]; let c='';
+      for (const w of text.split(/\s+/)){ const tr=c?c+' '+w:w; if (ctx.measureText(tr).width<=maxW || !c) c=tr; else { lines.push(c); c=w; } } if (c) lines.push(c); return lines; };
+    const laid=shown.map(m=>{ const lines=wrap(m.text); return {m,lines,h:u*2.5+lines.length*lh+u*1.7}; });
+    let y=u*5.5, drop=null;
+    if (laid.length===5){ const k=Math.min(1,(tau-shown[4].t0)/.28), e=k*k*(3-2*k); y-=e*laid[0].h; drop=1-e; }
+    laid.forEach((row,ri)=>{ const {m,lines}=row, alpha=ri===0 && drop!==null ? drop : 1;
+      if (alpha>0.01){ ctx.save(); ctx.globalAlpha=alpha;
+        ctx.fillStyle=m.agent?accent:ink; ctx.beginPath(); ctx.arc(x+r,y+r,r,0,TAU); ctx.fill();
+        const on=m.agent?inkOn(accent):ground;
+        if (m.agent){ ctx.fillStyle=on; for (const s of [-1,1]){ ctx.beginPath(); ctx.arc(x+r+s*r*.36,y+r,r*.2,0,TAU); ctx.fill(); } }
+        else { ctx.font=`700 ${r*1.05}px ${kit.display}`; ctx.fillStyle=on; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(m.name.charAt(0).toLowerCase(),x+r,y+r+r*.06); }
+        ctx.font=`500 ${u*1.25}px ${kit.mono}`; ctx.textAlign='left'; ctx.textBaseline='middle'; ctx.fillStyle=ink; ctx.globalAlpha=alpha*.7; ctx.fillText(m.name,tx,y+u*.8);
+        if (m.label){ const nw=ctx.measureText(m.name+'  ').width; ctx.globalAlpha=alpha*.42; ctx.fillText(m.label,tx+nw,y+u*.8); }
+        ctx.globalAlpha=alpha; ctx.font=`600 ${ts}px ${kit.display}`; if ('letterSpacing' in ctx) ctx.letterSpacing='0px';
+        let left=Math.floor(Math.min(1,(tau-m.t0)/(m.t1-m.t0))*m.text.length+.001), cx2=tx, cy2=y+u*3.5;
+        const typing=tau<m.t1;
+        lines.forEach((line,li)=>{ cx2=tx; cy2=y+u*3.5+li*lh;
+          for (const word of line.split(' ')){ if (left<=0) break; const part=word.slice(0,left);
+            ctx.fillStyle = word[0]==='@' ? accent : ink; ctx.fillText(part,cx2,cy2); cx2+=ctx.measureText(part).width;
+            left-=word.length; if (left>0){ cx2+=ctx.measureText(' ').width; left-=1; } } });
+        if (typing){ ctx.fillStyle=ink; ctx.fillRect(cx2+u*.15,cy2-ts*.5,u*.22,ts); }
+        ctx.restore(); }
+      y+=row.h; });
+  }
+};
+
+/* ---- 5.4 Avatar
+   A face for each agent: a dot-matrix head (an H, varied by the seed and always mirrored) and two solid eyes.
+   Exactly three colours: ground, head, eyes. The seed is the identity. */
+SCENES.avatar = {
+  title:'Avatar',
+  about:() => 'A minimal face for each agent: a head and two eyes, always in three colours. The seed is the identity.',
+  phase:0, still:0,
+  animated:st => !!st.blink,
+  render(ctx,env,rng,t){
+    const {W,H,ground}=env, st=env.state, N=8, INK=colour('ink'), PAPER=colour('paper');
+    const heads=env.colours.filter(c=>c!==INK && c!==PAPER && contrast(c,ground)>=1.6);
+    const head=heads.length ? rng.pick(heads) : env.ink;
+    const eye=[INK,PAPER].filter(c=>c!==ground && c!==head).sort((a,b)=>Math.min(contrast(b,head),contrast(b,ground))-Math.min(contrast(a,head),contrast(a,ground)))[0] || env.ink;
+    // the shape: two legs joined by a bar. Everything below is drawn from the seed in a fixed order
+    const legW=rng.chance(.8)?2:1, legTop=rng.int(0,1), legBot=N-1-rng.int(0,1), b0=rng.int(legTop+1,3), b1=Math.max(b0+2,rng.int(4,5));   // the bar always sits inside the legs, so it stays an H
+    const mouth=rng.chance(.35), eyeX=rng.range(1.5,2.15), eyeY=b0+(b1-b0)*rng.range(.25,.45)+.5, eyeR=rng.range(.6,.8), period=rng.range(3,5.5);
+    const c=Math.min(W,H)*.74*Math.max(.3,Math.min(1,st.head/100))/N, x0=W/2-N*c/2, y0=H/2-(legTop+legBot+1)/2*c;
+    ctx.fillStyle=head;
+    for (let j=0;j<N;j++) for (let i=0;i<N;i++){
+      const mi=Math.min(i,N-1-i), leg=mi<legW && j>=legTop && j<=legBot, bar=mi>=legW && j>=b0 && j<=b1;
+      if (!(leg||bar) || (mouth && bar && mi===3 && j===b1)) continue;
+      const small=mulberry32(hash(st.seed+'a'+mi+','+j))()<.16;
+      ctx.beginPath(); ctx.arc(x0+(i+.5)*c,y0+(j+.5)*c,c*(small?.28:.45),0,TAU); ctx.fill(); }
+    // eyes close now and then: open for most of the period, shut and open again in the last sixth of a second
+    const ph=t%period, shut=.17, open = st.blink && ph>period-shut ? Math.abs(1-2*(ph-(period-shut))/shut) : 1;
+    ctx.fillStyle=eye;
+    for (const sgn of [-1,1]){ ctx.beginPath(); ctx.ellipse(W/2+sgn*eyeX*c,y0+eyeY*c,eyeR*c,Math.max(eyeR*c*.07,eyeR*c*open),0,0,TAU); ctx.fill(); }
+  }
+};
+const SCENE_KEYS = Object.keys(SCENES);
+const cap = s => s.charAt(0).toUpperCase()+s.slice(1);
+
+/* ==================================================================== 6. MODES
+   What the canvas shows for each top-nav mode. Scene is live; the rest are placards until their phase. */
+const MODE_INFO = {
+  sheet: ['Sheet','A contact sheet: the current scene across consecutive seeds. Click one to adopt it.',0],
+  layout:['Layout','Brand copy and a scene on one page.',0],
+  logo:  ['Logo','Sub-brands. The mark, the wordmark and a coloured shape holding the sub-brand name.',0],
+  kit:   ['Kit','The brand inputs every visual is made from. Saved in this browser.',0],
+};
+function placard(ctx,env,title,line){
+  const {W,H,u,ink}=env; crossGrid(ctx,env,u*3.2,.08);
+  ctx.save(); ctx.fillStyle=ink; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.font=`700 ${Math.min(W,H)*.13}px ${kit.display}`; ctx.fillText(title,W/2,H/2-u*2);
+  ctx.restore(); mono(ctx,line.toUpperCase(),W/2,H/2+u*8,u*1.3,ink,'center');
+}
+function renderKitCard(ctx,env){
+  const {W,H,u,ink}=env, n=kit.palette.length, cols=W>=H?6:4, rows=Math.ceil(n/cols), gap=u*1.2;
+  const bw=(W-u*12-gap*(cols-1))/cols, bh=Math.min(bw,(H*.5-gap*(rows-1))/rows), y0=H-u*6-rows*bh-(rows-1)*gap;
+  ctx.save(); ctx.fillStyle=ink; ctx.textBaseline='alphabetic'; ctx.font=`700 ${Math.min(W,H)*.15}px ${kit.display}`;
+  ctx.fillText(kit.name,u*6,Math.max(u*22,y0-u*8)); ctx.restore();
+  mono(ctx,kit.concepts.join(' · ').toUpperCase(),u*6,Math.max(u*22,y0-u*8)+u*3.4,u*1.15,ink);
+  kit.palette.forEach(([k,hex],i)=>{ const x=u*6+(i%cols)*(bw+gap), y=y0+Math.floor(i/cols)*(bh+gap);
+    ctx.fillStyle=hex; ctx.fillRect(x,y,bw,bh); ctx.strokeStyle=ink; ctx.globalAlpha=.18; ctx.strokeRect(x+.5,y+.5,bw-1,bh-1); ctx.globalAlpha=1;
+    mono(ctx,k.toUpperCase(),x+u,y+u*1.6,u*1.05,inkOn(hex)); mono(ctx,hex.toUpperCase(),x+u,y+bh-u*1.6,u*1.05,inkOn(hex)); });
+}
+
+/* ==================================================================== 6b. LAYOUT MODE
+   Compositions that put brand copy and a scene on one page. Each preset is a function draw(ctx, page, st, t).
+   page = { W, H, u, bg (page colour), fg (type colour on it), ground (the scene's ground), onGround (type colour on that) }. */
+const LAYOUT_PRESETS = {
+  split:    ['Split',    'Headline beside the media. Stacks in tall formats.', {media:1,page:1}],
+  blob:     ['Blob',     'Two joined circles of scene, headline in the first.', {media:1,page:1}],
+  bleed:    ['Bleed',    'The scene fills the frame, headline on top.',          {media:1}],
+  poster:   ['Poster',   'Type only, as big as the frame allows.',               {page:1}],
+  manifesto:['Manifesto','A long paragraph, set large and tight.',               {page:1}],
+};
+
+/* ---- type: measuring, breaking and fitting */
+const TRACK = -.032;                                             // tight display tracking, in em
+function setType(ctx,size,weight){ ctx.font=`${weight||700} ${size}px ${kit.display}`; if ('letterSpacing' in ctx) ctx.letterSpacing=(size*TRACK)+'px'; }
+// words become tokens; a "-" typed between two letters is a place the word may break (shown as a hyphen only if it does)
+function tokenise(text){ const out=[];
+  for (const w of text.trim().split(/\s+/).filter(Boolean)) w.split(/(?<=\p{L})-(?=\p{L})/u).forEach((p,i)=>out.push({t:p,soft:i>0}));
+  return out; }
+function lineOf(tok,i,j){ let s=''; for (let k=i;k<j;k++) s+=(k>i && !tok[k].soft ? ' ' : '')+tok[k].t; return j<tok.length && tok[j].soft ? s+'-' : s; }
+// split tokens into exactly L lines so the widest line is as narrow as possible (measured at 100px)
+function breakInto(ctx,tok,L){
+  const n=tok.length, w=(i,j)=>ctx.measureText(lineOf(tok,i,j)).width, best=[], cut=[];
+  for (let l=1;l<=L;l++){ best[l]=[]; cut[l]=[];
+    for (let j=l;j<=n;j++){
+      if (l===1){ best[l][j]=w(0,j); cut[l][j]=0; continue; }
+      let b=Infinity, c=l-1;
+      for (let i=l-1;i<j;i++){ const v=Math.max(best[l-1][i],w(i,j)); if (v<b){ b=v; c=i; } }
+      best[l][j]=b; cut[l][j]=c; } }
+  const lines=[]; let j=n; for (let l=L;l>=1;l--){ const i=cut[l][j]; lines.unshift(lineOf(tok,i,j)); j=i; }
+  return {lines, maxW:best[L][n]};
+}
+// the largest size at which text (plus an optional dimmed second line) fits a box. Typed line breaks are kept as they are.
+function fitText(ctx,text,text2,boxW,boxH,cap,lh){
+  lh=lh||1; ctx.save(); setType(ctx,100);
+  const wide=arr=>Math.max(1,...arr.map(s=>ctx.measureText(s).width));
+  const opts=t=>{ if (!t.trim()) return [{lines:[],maxW:0}];
+    if (/\n/.test(t.trim())){ const lines=t.trim().split(/\n+/).map(s=>s.trim().replace(/(?<=\p{L})-(?=\p{L})/gu,'')); return [{lines,maxW:wide(lines)}]; }
+    const tok=tokenise(t), out=[]; for (let L=1;L<=Math.min(tok.length,7);L++) out.push(breakInto(ctx,tok,L)); return out; };
+  const A=opts(text||' '), B=opts(text2||'');
+  let best=null;
+  for (const a of A){
+    let b=B[0]; if (B.length>1){ b=B[B.length-1]; for (const o of B) if (o.maxW<=Math.max(a.maxW,1)*1.06){ b=o; break; } }
+    const rows=a.lines.length+b.lines.length, size=Math.min(boxW/Math.max(a.maxW,b.maxW,1)*100, boxH/(Math.max(rows,1)*lh));
+    if (!best || size>best.size) best={size, lines:[...a.lines.map(s=>({s,dim:false})), ...b.lines.map(s=>({s,dim:true}))]};
+  }
+  ctx.restore(); best.size=Math.min(best.size,cap||Infinity); best.lh=lh; return best;
+}
+// draw a fitted block centred on (cx, cy). align: 'centre' | 'left' | 'stagger' (lines pushed alternately left and right of boxW)
+function drawBlock(ctx,fit,cx,cy,col,align,boxW,halo){
+  const {size,lines,lh}=fit, step=size*lh, y0=cy-(lines.length-1)*step/2;
+  ctx.save(); setType(ctx,size); ctx.textBaseline='middle'; ctx.lineJoin='round';
+  lines.forEach((l,i)=>{ let x=cx; ctx.textAlign='center';
+    if (align==='left'){ ctx.textAlign='left'; x=cx-boxW/2; }
+    else if (align==='stagger' && lines.length>1){ ctx.textAlign=i%2?'right':'left'; x=cx+(i%2?1:-1)*boxW/2; }
+    const y=y0+i*step+size*.04;
+    if (halo){ ctx.globalAlpha=1; ctx.strokeStyle=halo; ctx.lineWidth=size*.16; ctx.strokeText(l.s,x,y); }
+    ctx.globalAlpha=l.dim?.45:1; ctx.fillStyle=col; ctx.fillText(l.s,x,y); });
+  ctx.restore();
+}
+// the lockup: the workspace mark and the brand name in capitals
+function lockup(ctx,cx,cy,size,col,align){
+  ctx.save(); ctx.font=`800 ${size}px ${kit.display}`; if ('letterSpacing' in ctx) ctx.letterSpacing=(size*.01)+'px';
+  const name=kit.name.toUpperCase(), mk=size*.36, gap=size*.34, tw=ctx.measureText(name).width, total=mk*2+gap+tw, x0=align==='left'?cx:cx-total/2;
+  Mark.cross(ctx,x0+mk,cy,mk*.8,col); ctx.fillStyle=col; ctx.textAlign='left'; ctx.textBaseline='middle'; ctx.fillText(name,x0+mk*2+gap,cy+size*.05);
+  ctx.restore();
+}
+// the chosen scene, drawn into a w x h window at (x, y)
+function media(ctx,x,y,w,h,st,t,fill){ ctx.save(); ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip(); ctx.translate(x,y);
+  if (fill){ ctx.fillStyle=fill; ctx.fillRect(0,0,w,h); } paintScene(ctx,w,h,st,st.lscene,t); ctx.restore(); }
+
+const LAY = {
+  split(ctx,p,st,t){
+    const {W,H,u,fg}=p, tall=H>W*1.1, k=st.type/100;
+    if (!tall){ const s=Math.min(H*.81,W*.46), mx=W-s-(H-s)/2*.9, colW=mx*.74, cx=mx/2;
+      media(ctx,mx,(H-s)/2,s,s,st,t,p.ground);
+      const fit=fitText(ctx,st.copy,st.copy2,colW,H*.36,Math.min(W,H)*.082*k);
+      if (st.lockup){ lockup(ctx,cx,H*.41,u*5.6,fg); drawBlock(ctx,fit,cx,H*.59,fg); } else drawBlock(ctx,fit,cx,H/2,fg);
+    } else { const s=Math.min(W*.86,H*.52), my=(W-s)/2, ty=my+s, th=H-ty;
+      media(ctx,(W-s)/2,my,s,s,st,t,p.ground);
+      const fit=fitText(ctx,st.copy,st.copy2,W*.8,th*.46,Math.min(W,H)*.11*k);
+      if (st.lockup){ lockup(ctx,W/2,ty+th*.24,u*6.4,fg); drawBlock(ctx,fit,W/2,ty+th*.6,fg); } else drawBlock(ctx,fit,W/2,ty+th/2,fg); }
+  },
+  blob(ctx,p,st,t){
+    const {W,H,u}=p, tall=H>W*1.1, L=Math.max(W,H), S=Math.min(W,H), R=Math.min(S*.455,L*.252), d=R*1.74, f=R*.5, k=st.type/100;
+    // two circles and the fillets that join them, built lying down around the origin, then turned for tall formats
+    const hgt=Math.sqrt((R+f)*(R+f)-d*d/4), a=Math.atan2(hgt,d/2), base=new Path2D();
+    base.arc(-d/2,0,R,-a,a,true); base.arc(0,hgt,f,Math.PI+a,-a,false); base.arc(d/2,0,R,Math.PI-a,Math.PI+a,true); base.arc(0,-hgt,f,a,Math.PI-a,false); base.closePath();
+    const shape=new Path2D(); shape.addPath(base,new DOMMatrix().translate(W/2,H/2).rotate(tall?90:0));
+    const c1=tall?[W/2,H/2-d/2]:[W/2-d/2,H/2], c2=tall?[W/2,H/2+d/2]:[W/2+d/2,H/2];
+    ctx.save(); ctx.clip(shape); ctx.fillStyle=p.ground; ctx.fillRect(0,0,W,H);
+    const s=R*1.86; ctx.translate(c2[0]-s/2,c2[1]-s/2); paintScene(ctx,s,s,st,st.lscene,t); ctx.restore();
+    const fit=fitText(ctx,st.copy,st.copy2,R*1.34,R*.82,R*.3*k);
+    if (st.lockup){ lockup(ctx,c1[0],c1[1]-R*.45,R*.15,p.onGround); drawBlock(ctx,fit,c1[0],c1[1]+R*.12,p.onGround); } else drawBlock(ctx,fit,c1[0],c1[1],p.onGround);
+  },
+  bleed(ctx,p,st,t){
+    const {W,H,u}=p, k=st.type/100;
+    media(ctx,0,0,W,H,st,t,p.ground);
+    drawBlock(ctx,fitText(ctx,st.copy,st.copy2,W*.82,H*.6,Math.min(W,H)*.13*k),W/2,H/2,p.onGround,'centre',0,p.ground);
+    if (st.lockup) lockup(ctx,u*5,u*6.5,u*3.4,p.onGround,'left');
+  },
+  poster(ctx,p,st,t){
+    const {W,H,u,fg}=p, k=st.type/100, bw=W*.9, bh=H*(st.lockup?.8:.9), fit=fitText(ctx,st.copy,st.copy2,bw,bh,0,.98);
+    fit.size*=k; drawBlock(ctx,fit,W/2,st.lockup?H*.46:H/2,fg,st.align==='stagger'?'stagger':'centre',bw);
+    if (st.lockup) lockup(ctx,W/2,H-u*6,u*3.4,fg);
+  },
+  manifesto(ctx,p,st,t){
+    const {W,H,u,fg}=p, k=st.type/100, m=u*7, bw=W-2*m, bh=H-2*m-(st.lockup?u*9:0), words=st.mani.trim().split(/\s+/).filter(Boolean), lh=1.03;
+    const wrap=size=>{ setType(ctx,size); const lines=[]; let cur='';
+      for (const w of words){ const tryLine=cur?cur+' '+w:w; if (ctx.measureText(tryLine).width<=bw || !cur) cur=tryLine; else { lines.push(cur); cur=w; } }
+      if (cur) lines.push(cur); return lines; };
+    ctx.save(); let lo=8, hi=Math.min(W,H)*.4;
+    for (let i=0;i<22;i++){ const mid=(lo+hi)/2, ls=wrap(mid); ls.length*mid*lh<=bh && ls.every(l=>ctx.measureText(l).width<=bw) ? lo=mid : hi=mid; }
+    const size=lo*Math.min(k,1), lines=wrap(size); setType(ctx,size); ctx.fillStyle=fg; ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+    lines.forEach((l,i)=>ctx.fillText(l,m,m+size*.82+i*size*lh)); ctx.restore();
+    if (st.lockup) lockup(ctx,m,H-m-u*1.2,u*3.4,fg,'left');
+  },
+};
+function drawLayout(ctx,W,H,st,t){
+  const ground=groundOf(st), spec=LAYOUT_PRESETS[st.lay]||LAYOUT_PRESETS.split, bg = spec[2].page ? colour(st.page) : ground;
+  const page={W,H,u:Math.min(W,H)/100,bg,fg:inkOn(bg),ground,onGround:inkOn(ground)};
+  ctx.fillStyle=bg; ctx.fillRect(0,0,W,H); (LAY[st.lay]||LAY.split)(ctx,page,st,t);
+}
+
+/* ==================================================================== 6c. LOGO MODE
+   Sub-brand logos: the mark, the brand wordmark and a coloured shape holding the sub-brand name.
+   logoModel() returns a display list in its own units (the sub-brand type is always 100 high); the list is drawn
+   twice, by listToCanvas() and by listToSvg(), so the PNG and the SVG cannot drift apart. */
+const SHAPES = [['auto','Auto'],['circle','Circle'],['pill','Pill'],['two','Two'],['many','Many']];
+const MEAS = document.createElement('canvas').getContext('2d');
+function measure(text,weight,size,track){ MEAS.font=`${weight} ${size}px ${kit.display}`; if ('letterSpacing' in MEAS) MEAS.letterSpacing=(track||0)+'px'; return MEAS.measureText(text).width; }
+
+function logoModel(st){
+  const T=100, page=colour(st.lpage), ink=inkOn(page), fill=colour(st.scol);
+  const type = st.stype==='paper' ? colour('paper') : st.stype==='ink' ? colour('ink') : inkOn(fill);
+  const name=(st.sub||'').trim() || 'Sub-brand', tw=measure(name,600,T,0);
+  // type stays one size: the shape grows to hold the name
+  let kind=st.shape; if (kind==='auto') kind = tw<=2.6*T ? 'circle' : tw<=8.5*T ? 'pill' : 'many';
+  const shape=[]; let sw, sh;
+  if (kind==='circle'){ const r=Math.max(1.55*T,tw/2+.8*T); sw=sh=2*r; shape.push({t:'circle',cx:r,cy:r,r,fill}); }
+  else if (kind==='pill'){ sh=3.1*T; sw=tw+2.6*T; shape.push({t:'rrect',x:0,y:0,w:sw,h:sh,r:sh/2,fill}); }
+  else if (kind==='two'){ const r=Math.max(1.55*T,(tw+1.7*T)/3.24), d=1.24*r; sw=2*r+d; sh=2*r; shape.push({t:'circle',cx:r,cy:r,r,fill},{t:'circle',cx:r+d,cy:r,r,fill}); }
+  else { const r=1.55*T, step=1.3*r, n=Math.max(3,Math.ceil((tw+1.5*T-2*r)/step)+1); sw=2*r+(n-1)*step; sh=2*r;
+    for (let i=0;i<n;i++) shape.push({t:'circle',cx:r+i*step,cy:r,r,fill}); }
+  // the lockup: mark + wordmark
+  const WS=1.75*T, wm=kit.name.toUpperCase(), track=WS*.01, ww=measure(wm,800,WS,track), s=WS*.29, th=s*.42, len=2*Math.SQRT2*s+th, mk=len/2/Math.SQRT2+th/2;
+  const gap1=WS*.3, lockW=2*mk+gap1+ww, lockH=WS*.92, items=[];
+  const put=(lx,ly,sx,sy)=>{                                     // lockup centre-line at ly, shape box at (sx, sy)
+    for (const deg of [45,-45]) items.push({t:'bar',cx:lx+mk,cy:ly,len,th,deg,fill:ink});
+    items.push({t:'text',x:lx+2*mk+gap1,y:ly+WS*.36,s:wm,size:WS,weight:800,fill:ink,anchor:'start',track});
+    for (const p of shape) items.push({...p, cx:p.cx!=null?p.cx+sx:undefined, cy:p.cy!=null?p.cy+sy:undefined, x:p.x!=null?p.x+sx:undefined, y:p.y!=null?p.y+sy:undefined});
+    items.push({t:'text',x:sx+sw/2,y:sy+sh/2+T*.35,s:name,size:T,weight:600,fill:type,anchor:'middle',track:0}); };
+  let W,H;
+  if (st.larr==='stack'){ const gap=T*.85; W=Math.max(lockW,sw); H=lockH+gap+sh; put((W-lockW)/2,lockH/2,(W-sw)/2,lockH+gap); }
+  else { const gap=T*.95; W=lockW+gap+sw; H=Math.max(sh,lockH); put(0,H/2,lockW+gap,(H-sh)/2); }
+  return {W,H,items,kind,page};
+}
+function listToCanvas(ctx,list){
+  for (const it of list){ ctx.fillStyle=it.fill;
+    if (it.t==='circle'){ ctx.beginPath(); ctx.arc(it.cx,it.cy,it.r,0,TAU); ctx.fill(); }
+    else if (it.t==='rrect'){ ctx.beginPath(); ctx.roundRect ? ctx.roundRect(it.x,it.y,it.w,it.h,it.r) : ctx.rect(it.x,it.y,it.w,it.h); ctx.fill(); }
+    else if (it.t==='bar'){ ctx.save(); ctx.translate(it.cx,it.cy); ctx.rotate(it.deg*Math.PI/180); ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(-it.len/2,-it.th/2,it.len,it.th,it.th/2) : ctx.rect(-it.len/2,-it.th/2,it.len,it.th); ctx.fill(); ctx.restore(); }
+    else { ctx.save(); ctx.font=`${it.weight} ${it.size}px ${kit.display}`; if ('letterSpacing' in ctx) ctx.letterSpacing=it.track+'px';
+      ctx.textAlign=it.anchor==='middle'?'center':'left'; ctx.textBaseline='alphabetic'; ctx.fillText(it.s,it.x,it.y); ctx.restore(); } }
+}
+function listToSvg(m){
+  const n=v=>(Math.round(v*100)/100), esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'), fam=kit.display.replace(/"/g,"'");
+  let out=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n(m.W)} ${n(m.H)}" width="${n(m.W)}" height="${n(m.H)}">`;
+  for (const it of m.items){
+    if (it.t==='circle') out+=`<circle cx="${n(it.cx)}" cy="${n(it.cy)}" r="${n(it.r)}" fill="${it.fill}"/>`;
+    else if (it.t==='rrect') out+=`<rect x="${n(it.x)}" y="${n(it.y)}" width="${n(it.w)}" height="${n(it.h)}" rx="${n(it.r)}" fill="${it.fill}"/>`;
+    else if (it.t==='bar') out+=`<rect x="${n(it.cx-it.len/2)}" y="${n(it.cy-it.th/2)}" width="${n(it.len)}" height="${n(it.th)}" rx="${n(it.th/2)}" fill="${it.fill}" transform="rotate(${it.deg} ${n(it.cx)} ${n(it.cy)})"/>`;
+    else out+=`<text x="${n(it.x)}" y="${n(it.y)}" font-family="${fam}" font-size="${n(it.size)}" font-weight="${it.weight}" letter-spacing="${n(it.track)}" text-anchor="${it.anchor}" fill="${it.fill}">${esc(it.s)}</text>`; }
+  return out+'</svg>';
+}
+function drawLogo(ctx,W,H,st){
+  const m=logoModel(st), k=Math.min(W*.78/m.W, H*.56/m.H);
+  ctx.fillStyle=m.page; ctx.fillRect(0,0,W,H);
+  ctx.save(); ctx.translate((W-m.W*k)/2,(H-m.H*k)/2); ctx.scale(k,k); listToCanvas(ctx,m.items); ctx.restore();
+}
+
+/* ==================================================================== 6d. SHEET MODE
+   A contact sheet: the current scene across consecutive seeds. Its frame size comes from the count and the format. */
+const SHEET_COUNTS = [12,16,20,24];
+function sheetGeo(st){ const [fw,fh]=FORMATS[st.format], n=st.sheetN, cols=n<=16?4:n===20?5:6, rows=Math.ceil(n/cols), cw=560, ch=Math.round(cw*fh/fw), gap=28, lab=46, pad=56;
+  return {n,cols,rows,cw,ch,gap,lab,pad,fw,fh,W:pad*2+cols*cw+(cols-1)*gap,H:pad*2+rows*(ch+lab)+(rows-1)*gap}; }
+const frameSize = st => { if (st.mode!=='sheet') return FORMATS[st.format]; const g=sheetGeo(st); return [g.W,g.H]; };
+function drawSheet(ctx,st){
+  const g=sheetGeo(st), sc=SCENES[st.scene]||SCENES.hero, when=sc.thumbT ? sc.thumbT(st) : 0, bg=colour('ink'), fg=colour('paper');
+  ctx.fillStyle=bg; ctx.fillRect(0,0,g.W,g.H);
+  for (let i=0;i<g.n;i++){
+    const x=g.pad+(i%g.cols)*(g.cw+g.gap), y=g.pad+Math.floor(i/g.cols)*(g.ch+g.lab+g.gap), cell={...st,mode:'thumb',seed:(st.seed+i)%1e9};
+    ctx.save(); ctx.beginPath(); ctx.rect(x,y,g.cw,g.ch); ctx.clip(); ctx.translate(x,y); ctx.scale(g.cw/g.fw,g.cw/g.fw);
+    ctx.fillStyle=groundOf(cell); ctx.fillRect(0,0,g.fw,g.fh); paintScene(ctx,g.fw,g.fh,cell,st.scene,when); ctx.restore();
+    ctx.save(); ctx.globalAlpha=i?.62:1; mono(ctx,(i?'':'● ')+String(cell.seed),x,y+g.ch+g.lab*.52,17,fg); ctx.restore(); }
+}
+// which cell of the sheet a point (in sheet pixels) falls in, or -1
+function sheetHit(st,px,py){ const g=sheetGeo(st);
+  for (let i=0;i<g.n;i++){ const x=g.pad+(i%g.cols)*(g.cw+g.gap), y=g.pad+Math.floor(i/g.cols)*(g.ch+g.lab+g.gap); if (px>=x && px<=x+g.cw && py>=y && py<=y+g.ch+g.lab) return i; }
+  return -1; }
+
+/* ==================================================================== 6e. PRINT MODES
+   Riso wet / Riso dry are a pass over the finished pixels, so they work for every mode, for PNG and for video.
+   Each pixel is assigned to one palette ink; every ink becomes a flat layer, printed slightly out of register with
+   grain. Wet spreads the ink a little past its edge; dry leaves speckled, broken fills. SVG is never touched. */
+const PRINTS = [['screen','Screen'],['wet','Riso wet'],['dry','Riso dry']];
+const NOISE = (() => { const a=new Uint8Array(65536), r=mulberry32(90210); for (let i=0;i<65536;i++) a[i]=r()*256|0; return a; })();
+let inkKey='', inkLUT=null, inkRGB=null;
+function inkTable(){ const key=kit.palette.map(p=>p[1]).join(); if (key===inkKey) return; inkKey=key;
+  inkRGB=kit.palette.map(p=>{ const n=parseInt(p[1].slice(1),16); return [n>>16&255,n>>8&255,n&255]; }); inkLUT=new Uint8Array(32768);
+  for (let r=0;r<32;r++) for (let g=0;g<32;g++) for (let b=0;b<32;b++){ let best=0, bd=1e9;
+    inkRGB.forEach((c,i)=>{ const dr=r*8+4-c[0], dg=g*8+4-c[1], db=b*8+4-c[2], d=dr*dr*3+dg*dg*4+db*db*2; if (d<bd){ bd=d; best=i; } }); inkLUT[r<<10|g<<5|b]=best; } }
+function risoPass(canvas,st,maxPx){
+  const W=canvas.width, H=canvas.height; let w=W, h=H, work=canvas;
+  if (maxPx && W*H>maxPx){ const f=Math.sqrt(maxPx/(W*H)); w=Math.max(1,Math.round(W*f)); h=Math.max(1,Math.round(H*f)); work=el('canvas',{width:w,height:h}); work.getContext('2d').drawImage(canvas,0,0,w,h); }
+  inkTable();
+  const wx=work.getContext('2d'), img=wx.getImageData(0,0,w,h), d=img.data, n=w*h, idx=new Uint8Array(n), K=inkRGB.length, count=new Uint32Array(K);
+  const dist=(i,k)=>{ const c=inkRGB[k]; return Math.abs(d[i]-c[0])+Math.abs(d[i+1]-c[1])+Math.abs(d[i+2]-c[2]); };
+  // 1. separate: exact colours go straight to their ink; blended edge pixels join whichever flat neighbour they are closest to
+  const soft=[];
+  for (let p=0,i=0;p<n;p++,i+=4){ const k=inkLUT[(d[i]>>3)<<10|(d[i+1]>>3)<<5|d[i+2]>>3]; if (dist(i,k)<=9) idx[p]=k; else { idx[p]=255; soft.push(p); } }
+  const fixed=new Uint8Array(soft.length);
+  soft.forEach((p,s)=>{ const x=p%w, i=p*4, lut=inkLUT[(d[i]>>3)<<10|(d[i+1]>>3)<<5|d[i+2]>>3]; let a=-1, b=-1;
+    for (const o of [-1,1,-w,w,-2,2,-2*w,2*w]){ const q=p+o; if (q<0 || q>=n || (Math.abs(o)<3 && Math.abs((q%w)-x)>2)) continue; const k=idx[q]; if (k===255) continue; if (a<0) a=k; else if (k!==a && b<0) b=k; }
+    fixed[s] = a<0 ? lut : b<0 ? (dist(i,a)<=dist(i,lut) ? a : lut) : (dist(i,a)<=dist(i,b) ? a : b); });
+  soft.forEach((p,s)=>{ idx[p]=fixed[s]; });
+  const x0=new Int32Array(K).fill(w), x1=new Int32Array(K).fill(-1), y0=new Int32Array(K).fill(h), y1=new Int32Array(K).fill(-1);
+  for (let y=0,p=0;y<h;y++) for (let x=0;x<w;x++,p++){ const k=idx[p]; count[k]++; if (x<x0[k]) x0[k]=x; if (x>x1[k]) x1[k]=x; if (y<y0[k]) y0[k]=y; if (y>y1[k]) y1[k]=y; }
+  // 2. the stock is the most common ink; the others print over it, lightest first
+  let stock=0; for (let k=1;k<K;k++) if (count[k]>count[stock]) stock=k;
+  const light=k=>inkRGB[k][0]*.3+inkRGB[k][1]*.59+inkRGB[k][2]*.11, order=[...Array(K).keys()].filter(k=>k!==stock && count[k]).sort((a,b)=>light(b)-light(a));
+  const px=Math.max(1,w/1200), gs=Math.max(1,Math.round(px)), sp=Math.max(1,Math.round(px*1.3)), wet=st.print==='wet', rng=makeRng(st.seed,'riso'), off=[];
+  for (let k=0;k<K;k++) off.push([Math.round(rng.range(1,3)*px)*(rng.chance(.5)?1:-1), Math.round(rng.range(1,3)*px)*(rng.chance(.5)?1:-1)]);
+  const S=inkRGB[stock]; for (let i=0;i<n*4;i+=4){ d[i]=S[0]; d[i+1]=S[1]; d[i+2]=S[2]; d[i+3]=255; }
+  // 3. print each ink layer, shifted by its own registration error
+  for (const k of order){ const c=inkRGB[k], ox=off[k][0], oy=off[k][1], m=sp+1;
+    const ya=Math.max(0,y0[k]+oy-m), yb=Math.min(h-1,y1[k]+oy+m), xa=Math.max(0,x0[k]+ox-m), xb=Math.min(w-1,x1[k]+ox+m);
+    for (let y=ya;y<=yb;y++){ const sy=y-oy; if (sy<0 || sy>=h) continue;
+      for (let x=xa;x<=xb;x++){ const sx=x-ox; if (sx<0 || sx>=w) continue; const j=sy*w+sx; let a=0;
+        if (idx[j]===k) a=1;
+        else if (wet && ((sx>=sp && idx[j-sp]===k) || (sx<w-sp && idx[j+sp]===k) || (sy>=sp && idx[j-sp*w]===k) || (sy<h-sp && idx[j+sp*w]===k))) a=.5;
+        if (!a) continue;
+        const fine=NOISE[(((y/gs|0)+k*31)&255)<<8|((x/gs|0)&255)], coarse=NOISE[(((y/(gs*6)|0)+k*17)&255)<<8|((x/(gs*6)|0)&255)];
+        if (wet) a*=.84+coarse/255*.16; else { if (fine<36 || coarse<22) continue; a*=.8+fine/255*.2; }
+        const o=(y*w+x)*4; d[o]+=(c[0]-d[o])*a; d[o+1]+=(c[1]-d[o+1])*a; d[o+2]+=(c[2]-d[o+2])*a; } } }
+  // 4. paper grain over everything
+  for (let y=0,o=0;y<h;y++) for (let x=0;x<w;x++,o+=4){ const g=1-NOISE[((y/gs|0)&255)<<8|(((x/gs|0)+91)&255)]/255*.055; d[o]*=g; d[o+1]*=g; d[o+2]*=g; }
+  wx.putImageData(img,0,0);
+  if (work!==canvas){ const cx=canvas.getContext('2d'); cx.save(); cx.setTransform(1,0,0,1,0,0); cx.drawImage(work,0,0,W,H); cx.restore(); }
+}
+const printOn = (canvas,st,maxPx) => { if (st.print==='wet' || st.print==='dry') risoPass(canvas,st,maxPx); };
+
+/* The one entry point: draws the whole frame at W x H format pixels. Used by the stage, the thumbnails and export. */
+const groundOf = st => st.ground==='auto' ? colour('paper') : colour(st.ground);
+function makeEnv(W,H,st){ const ground=groundOf(st);
+  return { W, H, u:Math.min(W,H)/100, ground, ink:inkOn(ground), kit, state:st, colours: kit.palette.map(p=>p[1]).filter(h => h!==ground && contrast(h,ground) > 1.25) }; }
+function paintScene(ctx,W,H,st,key,t){ (SCENES[key]||SCENES.hero).render(ctx,makeEnv(W,H,st),makeRng(st.seed,key),t); }
+function drawFrame(ctx,W,H,st,t){
+  ctx.save();
+  if (st.mode==='layout') drawLayout(ctx,W,H,st,t);
+  else if (st.mode==='logo') drawLogo(ctx,W,H,st);
+  else if (st.mode==='sheet') drawSheet(ctx,st);
+  else { const env=makeEnv(W,H,st); ctx.fillStyle=env.ground; ctx.fillRect(0,0,W,H);
+    if (st.mode==='scene' || st.mode==='thumb') paintScene(ctx,W,H,st,st.scene,t);
+    else if (st.mode==='kit') renderKitCard(ctx,env);
+    else { const [title,,phase]=MODE_INFO[st.mode]; placard(ctx,env,title,'Arrives in phase '+phase); } }
+  ctx.restore();
+}
+// the scene that is on screen right now, if any (drives animation and still-frame export)
+const liveScene = st => st.mode==='scene' ? SCENES[st.scene] : st.mode==='layout' && LAYOUT_PRESETS[st.lay][2].media ? SCENES[st.lscene] : null;
+
+/* ==================================================================== 7. STAGE + CLOCK
+   One requestAnimationFrame clock t drives everything, so video export can simply record the canvas. */
+const cv=$('c'), ctx=cv.getContext('2d');
+let dirty=true, t=0, last=performance.now(), scrubbing=false, recording=false;
+const touch = () => { dirty=true; thumbsDirty=true; writeHash(); };
+
+function fitStage(){
+  void $('stage').offsetWidth;                                   // settle the inset before measuring
+  const box=$('stage').getBoundingClientRect(), [W,H]=frameSize(state), k=Math.min(box.width/W, box.height/H), dpr=Math.min(devicePixelRatio||1,2);
+  cv.style.width=Math.max(1,Math.floor(W*k))+'px'; cv.style.height=Math.max(1,Math.floor(H*k))+'px';
+  cv.width=Math.max(1,Math.round(W*k*dpr)); cv.height=Math.max(1,Math.round(H*k*dpr)); dirty=true;
+}
+function renderStage(){ const [W,H]=frameSize(state), sc=liveScene(state), moving=state.playing && sc && sc.animated && sc.animated(state);
+  ctx.setTransform(cv.width/W,0,0,cv.height/H,0,0); drawFrame(ctx,W,H,state,t); printOn(cv,state,moving?8e5:2.4e6); }   // lighter pass while animating
+
+let thumbsDirty=true; const thumbEls={};
+function buildThumbs(){
+  const box=$('thumbs'); box.textContent='';
+  for (const key of SCENE_KEYS){
+    const c=el('canvas'), b=el('button',{className:'thumb',title:SCENES[key].title}, c, el('span',{textContent:SCENES[key].title}));
+    b.onclick=()=>{ state.scene=key; state.mode='scene'; refresh(); };
+    box.append(b); thumbEls[key]={b,c};
+  }
+}
+function renderThumbs(){
+  const n=Math.round(206*Math.min(devicePixelRatio||1,2));
+  for (const key of SCENE_KEYS){ const {b,c}=thumbEls[key]; if (c.width!==n) c.width=c.height=n;
+    const x=c.getContext('2d'); x.setTransform(n/1200,0,0,n/1200,0,0); drawFrame(x,1200,1200,{...state,mode:'thumb',scene:key}, SCENES[key].thumbT ? SCENES[key].thumbT(state) : 0); printOn(c,state);
+    b.classList.toggle('on', state.mode==='scene' && state.scene===key); }
+}
+function frame(now){
+  const dt=Math.min(.1,(now-last)/1000); last=now; if (state.playing && !scrubbing) t+=dt;
+  const sc=liveScene(state);
+  if (state.playing && sc && sc.animated && sc.animated(state)) dirty=true;
+  if (sc && sc.duration && !scrubbing){ const d=sc.duration(state); $('tScrub').value = d ? ((t%d)+d)%d/d*1000 : 0; }
+  if (dirty){ renderStage(); dirty=false; }
+  if (thumbsDirty){ renderThumbs(); thumbsDirty=false; }
+  requestAnimationFrame(frame);
+}
+
+/* ==================================================================== 8. INTERFACE */
+function seg(options,current,onPick){ const box=el('div',{className:'seg'});
+  for (const [v,label] of options){ const b=el('button',{textContent:label,className:v===current?'on':''}); b.setAttribute('aria-pressed',v===current);
+    b.onclick=()=>onPick(v); box.append(b); } return box; }
+const section = (title,...kids) => { const s=el('div',{className:'sec'}); if (title) s.append(el('h2',{textContent:title})); s.append(...kids); return s; };
+const label = (a,b) => el('div',{className:'lab'}, el('span',{textContent:a}), el('b',{textContent:b||''}));
+
+function buildNav(){
+  const nav=$('nav'); nav.textContent='';
+  for (const [k,name] of MODES){ const b=el('button',{textContent:name,className:state.mode===k?'on':''}); b.setAttribute('aria-pressed',state.mode===k);
+    b.onclick=()=>{ state.mode=k; refresh(); }; nav.append(b); }
+  const dark=document.documentElement.dataset.theme==='dark';
+  const th=el('button',{id:'theme',textContent:dark?'☾':'☀',title:dark?'Switch to light mode':'Switch to dark mode'}); th.setAttribute('aria-label',th.title);
+  th.onclick=()=>{ const to=dark?'light':'dark'; try{ localStorage.setItem('moxx-theme',to); }catch(e){}
+    const go=()=>{ document.documentElement.dataset.theme=to; buildNav(); };
+    if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches){ const vt=document.startViewTransition(go); vt.ready.catch(()=>{}); vt.finished.catch(()=>{}); } else go(); };
+  nav.append(el('i'), th);
+}
+
+function composition(){
+  const g = state.ground, name = g==='auto' ? 'Auto, paper' : g;
+  const sw=el('div',{className:'sw'});
+  const auto=el('button',{textContent:'✦',title:'Auto (paper)',className:g==='auto'?'on':''}); auto.style.background='var(--tile)';
+  auto.onclick=()=>{ state.ground='auto'; refresh(); }; sw.append(auto);
+  for (const [k,hex] of kit.palette.slice(0,8)){ const b=el('button',{title:k,className:g===k?'on':''}); b.style.background=hex; b.setAttribute('aria-label','Ground '+k);
+    b.onclick=()=>{ state.ground=k; refresh(); }; sw.append(b); }
+  const [W,H]=FORMATS[state.format];
+  const lead=[];
+  if ((state.mode==='scene' || state.mode==='sheet') && SCENES[state.scene].graph){
+    lead.push(label('Complexity',LEVELS[state.complexity-1]), seg([1,2,3,4,5].map(n=>[n,String(n)]), state.complexity, n=>{ state.complexity=n; refresh(); }),
+      label('Layout'), seg(Object.keys(LAYOUTS).map(k=>[k,LAYOUTS[k][0]]), state.layout, k=>{ state.layout=k; refresh(); }),
+      el('p',{className:'note',textContent:LAYOUTS[state.layout][1]}));
+  }
+  return section('Composition', ...lead, label('Ground',name), sw, label('Format',`${W} × ${H}`),
+    seg(Object.keys(FORMATS).map(f=>[f,f]), state.format, f=>{ state.format=f; refresh(); }));
+}
+const KEYS = '<b>Keys</b> R reroll · 1–5 complexity · L layout · D 2.5D · P print · ←/→ scene · Space play / pause · S sheet · K kit · B layout mode · E export PNG · H panels';
+
+function buildSide(){
+  const side=$('side'); side.textContent='';
+  const scene=SCENES[state.scene], isScene=state.mode==='scene';
+  const [title,about,phase] = isScene ? [scene.title, scene.about(), scene.phase] : MODE_INFO[state.mode];
+  side.append(el('h1',{textContent:title}), el('p',{textContent:about}));
+  if (phase && state.mode!=='kit') side.append(el('span',{className:'soon',textContent:`STAND-IN · FULL VERSION IN PHASE ${phase}`}));
+
+  const seedIn=el('input',{type:'number',value:state.seed,min:0,inputMode:'numeric'}); seedIn.setAttribute('aria-label','Seed');
+  seedIn.oninput=()=>{ const v=Math.abs(Math.floor(+seedIn.value)); if (Number.isFinite(v)){ state.seed=v%1e9; touch(); } };
+  const re=el('button',{className:'btn',textContent:'⟳ Reroll'}); re.onclick=reroll;
+  if (state.mode!=='logo') side.append(label('Seed'), el('div',{className:'seed'}, seedIn, re));
+  if (state.mode==='sheet'){
+    const pick=el('select'); for (const k of SCENE_KEYS) pick.append(el('option',{value:k,textContent:SCENES[k].title,selected:k===state.scene})); pick.setAttribute('aria-label','Scene');
+    pick.onchange=()=>{ state.scene=pick.value; refresh(); };
+    const first=section('Sheet', label('Scene'), pick, label('Seeds',`${state.seed} to ${state.seed+state.sheetN-1}`), seg(SHEET_COUNTS.map(n=>[n,String(n)]), state.sheetN, n=>{ state.sheetN=n; refresh(); }),
+      el('p',{className:'note',textContent:'Click a frame to take its seed back to Scene. Export PNG saves the whole sheet.'})); side.append(first);
+  }
+  if (state.mode==='layout') layoutSide(side); else if (state.mode==='logo') logoSide(side); else side.append(composition());
+  if (isScene && scene.graph){
+    const kids=[seg([[0,'▢ Flat'],[1,'⬡ 2.5D']], state.d25, v=>{ state.d25=v; refresh(); })];
+    if (state.d25){ const lab=label('Tilt',state.tilt+'°'), r=el('input',{type:'range',min:0,max:80,step:1,value:state.tilt}); r.setAttribute('aria-label','Tilt');
+      r.oninput=()=>{ state.tilt=+r.value; lab.lastChild.textContent=state.tilt+'°'; touch(); }; kids.push(lab,r); }
+    side.append(section('2.5D', ...kids));
+  }
+  if (isScene && state.scene==='rewrite'){
+    const line=el('input',{type:'text',value:state.rline,placeholder:'The brand line the agent starts from'}); line.setAttribute('aria-label','Brand line'); line.oninput=()=>{ state.rline=line.value; touch(); };
+    const sub=el('input',{type:'text',value:state.rsub,placeholder:'Second line, dimmed'}); sub.oninput=()=>{ state.rsub=sub.value; touch(); };
+    const sc=el('textarea',{value:state.rscript,rows:11,spellcheck:false}); sc.setAttribute('aria-label','Script'); sc.style.fontSize='11.5px'; sc.oninput=()=>{ state.rscript=sc.value; touch(); };
+    const reset=el('button',{className:'btn',textContent:'Reset script'}); reset.style.marginTop='10px'; reset.onclick=()=>{ state.rscript=REWRITE_SCRIPT; t=0; refresh(); };
+    side.append(section('Rewrite', label('Brand line'), line, sub, label('Script'), sc,
+      el('p',{className:'note',innerHTML:'One message per line. <b>name: text</b> is a person; <b>name (mo\'s agent): text</b> is the agent; <b>&gt; New line</b> makes the agent rewrite the brand line. @name is a mention.'}), reset));
+  }
+  if (isScene && state.scene==='avatar'){
+    const lab=label('Head size',state.head+'%'), r=el('input',{type:'range',min:40,max:100,step:1,value:state.head}); r.setAttribute('aria-label','Head size');
+    r.oninput=()=>{ state.head=+r.value; lab.lastChild.textContent=state.head+'%'; touch(); };
+    const cb=el('input',{type:'checkbox',checked:!!state.blink}); cb.onchange=()=>{ state.blink=cb.checked?1:0; touch(); };
+    side.append(section('Avatar', lab, r, el('label',{className:'switch'}, el('span',{textContent:'Eyes close now and then'}), cb)));
+  }
+
+  if (state.mode==='kit'){
+    const nameIn=el('input',{type:'text',value:kit.name}); nameIn.oninput=()=>{ kit.name=nameIn.value||'Brand'; saveKit(); touch(); };
+    const conIn=el('input',{type:'text',value:kit.concepts.join(', ')});
+    conIn.oninput=()=>{ const c=conIn.value.split(',').map(s=>s.trim()).filter(Boolean); if (c.length){ kit.concepts=c; saveKit(); touch(); } };
+    const rows=kit.palette.map((p,i)=>{ const c=el('input',{type:'color',value:p[1]}), tx=el('input',{type:'text',value:p[1]});
+      c.oninput=()=>{ p[1]=c.value; tx.value=c.value; saveKit(); touch(); buildSwatchesOnly(); };
+      tx.onchange=()=>{ if (/^#[0-9a-f]{6}$/i.test(tx.value.trim())){ p[1]=tx.value.trim().toLowerCase(); c.value=p[1]; saveKit(); touch(); } else tx.value=p[1]; };
+      return el('div',{className:'kitrow'}, c, el('span',{textContent:p[0]}), tx); });
+    const reset=el('button',{className:'btn',textContent:'Reset kit to defaults'}); reset.style.marginTop='10px';
+    reset.onclick=()=>{ kit=structuredClone(DEFAULT_KIT); saveKit(); refresh(); };
+    const linesIn=el('textarea',{value:kit.lines.join('\n'),rows:6}); linesIn.setAttribute('aria-label','Brand lines');
+    linesIn.oninput=()=>{ const l=linesIn.value.split('\n').map(x=>x.trim()).filter(Boolean); if (l.length){ kit.lines=l; saveKit(); } };
+    const famIn=el('textarea',{value:kit.family.join('\n'),rows:5}); famIn.setAttribute('aria-label','Sub-brands');
+    famIn.oninput=()=>{ const l=famIn.value.split('\n').map(x=>x.trim()).filter(Boolean); if (l.length){ kit.family=l; saveKit(); } };
+    side.append(section('Brand', label('Name'), nameIn, label('Concepts the diagram stands for'), conIn, label('Brand lines, one per line'), linesIn, label('Sub-brands, one per line'), famIn),
+      section('Fonts', fontDrop('display','Display font'), fontDrop('mono','Label font'), el('p',{className:'note',textContent:'A dropped font is used until you close or reload the page; it is not saved with the kit.'})),
+      section('Palette', ...rows, reset));
+    const dl=el('button',{className:'btn wide',textContent:'↓ Download kit'}); dl.onclick=()=>downloadKit(dl);
+    side.append(section('Export', dl, el('p',{className:'note',textContent:'One zip: every scene and every layout at all five formats, the current logo at all five, the sheet and this kit card as numbered PNGs at 1x, plus an SVG logo for each sub-brand.'})));
+  }
+  side.append(section('Print', seg(PRINTS, state.print, v=>{ state.print=v; refresh(); }),
+    el('p',{className:'note',textContent:'PNG and video print too. SVG stays vector.'})));
+  side.append(section('', el('p',{className:'keys',innerHTML:KEYS})));
+}
+// a row of palette swatches; `auto` adds the paper-by-default tile in front
+function swatchRow(current,list,onPick,auto){
+  const sw=el('div',{className:'sw'});
+  if (auto){ const b=el('button',{textContent:'✦',title:'Auto (paper)',className:current==='auto'?'on':''}); b.style.background='var(--tile)'; b.onclick=()=>onPick('auto'); sw.append(b); }
+  for (const [k,hex] of list){ const b=el('button',{title:k,className:current===k?'on':''}); b.style.background=hex; b.setAttribute('aria-label',k); b.onclick=()=>onPick(k); sw.append(b); }
+  return sw; }
+function layoutSide(side){
+  const spec=LAYOUT_PRESETS[state.lay], [W,H]=FORMATS[state.format], uses=spec[2];
+  const grid=el('div',{className:'presets'});
+  for (const k in LAYOUT_PRESETS){ const b=el('button',{className:'btn'+(k===state.lay?' on':''),textContent:LAYOUT_PRESETS[k][0]}); b.setAttribute('aria-pressed',k===state.lay);
+    b.onclick=()=>{ state.lay=k; refresh(); }; grid.append(b); }
+  side.append(section('Layout', grid, el('p',{className:'note',textContent:spec[1]}), label('Format',`${W} × ${H}`),
+    seg(Object.keys(FORMATS).map(f=>[f,f]), state.format, f=>{ state.format=f; refresh(); })));
+
+  // copy
+  const mani=state.lay==='manifesto', key=mani?'mani':'copy';
+  const ta=el('textarea',{value:state[key],rows:mani?8:2}); ta.setAttribute('aria-label',mani?'Manifesto':'Headline'); ta.oninput=()=>{ state[key]=ta.value; touch(); };
+  const copy=el('div',{className:'sec'}), head=el('h2',{className:'split',textContent:'Copy'});
+  if (!mani){ const sh=el('button',{textContent:'⤨ Shuffle',title:'Another line from the kit'});
+    sh.onclick=()=>{ const pool=kit.lines.filter(l=>l!==state.copy); if (pool.length){ state.copy=pool[freshSeed()%pool.length]; refresh(); } }; head.append(sh); }
+  copy.append(head, ta);
+  if (!mani){ const second=el('input',{type:'text',value:state.copy2,placeholder:'Second line, dimmed'}); second.oninput=()=>{ state.copy2=second.value; touch(); }; copy.append(second);
+    copy.append(el('p',{className:'note',textContent:'Type - inside a word where it may break with a hyphen. A new line is kept as a break.'})); }
+  const tl=label('Type size',state.type+'%'), tr=el('input',{type:'range',min:40,max:130,step:1,value:state.type}); tr.setAttribute('aria-label','Type size');
+  tr.oninput=()=>{ state.type=+tr.value; tl.lastChild.textContent=state.type+'%'; touch(); }; copy.append(tl,tr);
+  if (state.lay==='poster') copy.append(label('Alignment'), seg([['centre','Centre'],['stagger','Stagger']], state.align, v=>{ state.align=v; refresh(); }));
+  const lk=el('input',{type:'checkbox',checked:!!state.lockup}); lk.onchange=()=>{ state.lockup=lk.checked?1:0; touch(); };
+  copy.append(el('label',{className:'switch'}, el('span',{textContent:'Lockup'}), lk)); side.append(copy);
+
+  if (uses.media){
+    const pick=el('select'); for (const k of SCENE_KEYS) pick.append(el('option',{value:k,textContent:SCENES[k].title,selected:k===state.lscene})); pick.setAttribute('aria-label','Scene');
+    pick.onchange=()=>{ state.lscene=pick.value; refresh(); };
+    const kids=[label('Scene'), pick];
+    if (SCENES[state.lscene].graph){ kids.push(label('Layout of the diagram'), seg(Object.keys(LAYOUTS).map(k=>[k,LAYOUTS[k][0]]), state.layout, k=>{ state.layout=k; refresh(); }));
+      kids.push(el('div',{style:'height:8px'}), seg([[0,'▢ Flat'],[1,'⬡ 2.5D']], state.d25, v=>{ state.d25=v; refresh(); }));
+      if (state.d25){ const lab=label('Tilt',state.tilt+'°'), r=el('input',{type:'range',min:0,max:80,step:1,value:state.tilt}); r.oninput=()=>{ state.tilt=+r.value; lab.lastChild.textContent=state.tilt+'°'; touch(); }; kids.push(lab,r); } }
+    kids.push(label('Ground',state.ground==='auto'?'Auto, paper':state.ground), swatchRow(state.ground,kit.palette.slice(0,8),k=>{ state.ground=k; refresh(); },true));
+    side.append(section('Media', ...kids));
+  }
+  if (uses.page) side.append(section('Colour', label('Page',state.page), swatchRow(state.page,kit.palette,k=>{ state.page=k; refresh(); })));
+}
+function logoSide(side){
+  const [W,H]=FORMATS[state.format], kindOf=()=>logoModel(state).kind;
+  const shapeLab=label('Shape',''), setLab=()=>{ shapeLab.lastChild.textContent = state.shape==='auto' ? 'Auto, '+kindOf() : ''; }; setLab();
+  const nameIn=el('input',{type:'text',value:state.sub,placeholder:'Sub-brand name'}); nameIn.setAttribute('aria-label','Sub-brand name');
+  nameIn.oninput=()=>{ state.sub=nameIn.value; setLab(); for (const b of fam.children) b.classList.toggle('on',b.textContent===state.sub); touch(); };
+  const fam=el('div',{className:'presets two'});
+  for (const f of kit.family){ const b=el('button',{className:'btn'+(f===state.sub?' on':''),textContent:f}); b.onclick=()=>{ state.sub=f; refresh(); }; fam.append(b); }
+  const first=section('Sub-brand', nameIn, label('From the family'), fam); first.style.marginTop='16px'; side.append(first);
+  side.append(section('Shape', shapeLab, seg(SHAPES, state.shape, v=>{ state.shape=v; refresh(); }),
+    el('p',{className:'note',textContent:'Type stays one size. A long name makes the shape bigger, not the type smaller.'})));
+  side.append(section('Colour', label('Shape',state.scol), swatchRow(state.scol,kit.palette,k=>{ state.scol=k; refresh(); }),
+    label('Type'), seg([['auto','Auto'],['paper','Paper'],['ink','Ink']], state.stype, v=>{ state.stype=v; refresh(); })));
+  side.append(section('Layout', seg([['row','Row'],['stack','Stack']], state.larr, v=>{ state.larr=v; refresh(); }),
+    label('Format',`${W} × ${H}`), seg(Object.keys(FORMATS).map(f=>[f,f]), state.format, f=>{ state.format=f; refresh(); }),
+    label('Page',state.lpage), swatchRow(state.lpage,kit.palette,k=>{ state.lpage=k; refresh(); }),
+    el('p',{className:'note',textContent:'PNG exports this page. SVG exports the logo alone, cropped tight, with no page behind it.'})));
+}
+function buildSwatchesOnly(){ /* palette edits repaint the canvas live; the ground row refreshes on the next full rebuild */ }
+function buildScale(){ const box=$('scale'); box.replaceWith(Object.assign(seg([[1,'1x'],[2,'2x'],[4,'4x']],state.scale,v=>{ state.scale=v; buildScale(); writeHash(); }),{id:'scale'})); }
+
+function syncTransport(){ const sc=liveScene(state), on=!!(sc && sc.duration);
+  $('transport').hidden=!on; document.body.classList.toggle('has-transport',on); $('tPlay').textContent=state.playing?'❚❚':'▶'; }
+function refresh(){ document.body.classList.toggle('norail',state.mode!=='scene'); syncTransport(); cv.classList.toggle('pick',state.mode==='sheet'); $('intro').checked=!!state.intro;
+  $('bVideo').disabled = recording || !(state.mode==='scene' || state.mode==='layout'); $('bVideo').title = $('bVideo').disabled ? 'Video records Scene and Layout modes' : 'Record a WebM of this frame';
+  $('bSvg').disabled = state.mode!=='logo'; $('bSvg').title = state.mode==='logo' ? 'The logo alone, as vectors' : 'SVG is available in Logo mode';
+  buildNav(); buildSide(); buildScale(); fitStage(); touch(); }
+function reroll(){ state.seed=freshSeed(); buildSide(); touch(); }
+
+/* ==================================================================== 9. EXPORT */
+// render any state to a fresh canvas at k times its frame size, printed if a print mode is on
+function renderTo(st,k,when){ const [W,H]=frameSize(st); k=Math.min(k,Math.sqrt(6e7/(W*H)));          // stay inside canvas size limits
+  const c=el('canvas',{width:Math.round(W*k),height:Math.round(H*k)}), x=c.getContext('2d');
+  x.setTransform(c.width/W,0,0,c.height/H,0,0); drawFrame(x,W,H,st,when); printOn(c,st); return c; }
+function exportCanvas(){ const sc=liveScene(state); return renderTo(state,state.scale, sc && sc.still!=null ? sc.still : t); }   // stills are taken with the eyes open
+const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') || 'brand';
+function fileName(ext,k){ k=k||state.scale; const [W,H]=frameSize(state), what=state.mode==='scene'?state.scene:state.mode==='layout'?'layout-'+state.lay:state.mode==='logo'?'logo-'+slug(state.sub):state.mode==='sheet'?'sheet-'+state.scene:state.mode;
+  return `${slug(kit.name)}-${what}-${state.seed}-${W*k}x${H*k}.${ext}`; }
+const flash = (b,msg) => { const o=b.textContent; b.textContent=msg; setTimeout(()=>b.textContent=o,1300); };
+$('bPng').onclick=()=>exportCanvas().toBlob(blob=>{ const a=el('a',{href:URL.createObjectURL(blob),download:fileName('png')}); a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000); flash($('bPng'),'Saved'); },'image/png');
+$('bSvg').onclick=()=>{ if (state.mode!=='logo') return;
+  const a=el('a',{href:URL.createObjectURL(new Blob([listToSvg(logoModel(state))],{type:'image/svg+xml'})),download:`${slug(kit.name)}-logo-${slug(state.sub)}.svg`}); a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000); flash($('bSvg'),'Saved'); };
+$('bCopy').onclick=()=>exportCanvas().toBlob(async blob=>{
+  try { await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]); flash($('bCopy'),'Copied'); }
+  catch(e){ flash($('bCopy'),'Not allowed'); } },'image/png');
+
+/* ---- the kit download: every mode at every format as numbered PNGs, plus the logos as SVG, in one zip */
+const CRC = (() => { const t=new Uint32Array(256); for (let n=0;n<256;n++){ let c=n; for (let k=0;k<8;k++) c = c&1 ? 0xEDB88320^(c>>>1) : c>>>1; t[n]=c>>>0; } return t; })();
+function crc32(u8){ let c=~0; for (let i=0;i<u8.length;i++) c=CRC[(c^u8[i])&255]^(c>>>8); return (~c)>>>0; }
+// a minimal zip writer: files are stored, not compressed (PNGs are compressed already)
+function zip(files){
+  const enc=new TextEncoder(), parts=[], central=[]; let off=0, cdSize=0;
+  for (const f of files){ const name=enc.encode(f.name), crc=crc32(f.data), size=f.data.length;
+    const L=new DataView(new ArrayBuffer(30)); L.setUint32(0,0x04034b50,true); L.setUint16(4,20,true); L.setUint16(6,0x0800,true); L.setUint16(12,0x21,true);
+    L.setUint32(14,crc,true); L.setUint32(18,size,true); L.setUint32(22,size,true); L.setUint16(26,name.length,true);
+    const C=new DataView(new ArrayBuffer(46)); C.setUint32(0,0x02014b50,true); C.setUint16(4,20,true); C.setUint16(6,20,true); C.setUint16(8,0x0800,true); C.setUint16(14,0x21,true);
+    C.setUint32(16,crc,true); C.setUint32(20,size,true); C.setUint32(24,size,true); C.setUint16(28,name.length,true); C.setUint32(42,off,true);
+    parts.push(L.buffer,name,f.data); central.push(C.buffer,name); off+=30+name.length+size; cdSize+=46+name.length; }
+  const E=new DataView(new ArrayBuffer(22)); E.setUint32(0,0x06054b50,true); E.setUint16(8,files.length,true); E.setUint16(10,files.length,true); E.setUint32(12,cdSize,true); E.setUint32(16,off,true);
+  return new Blob([...parts,...central,E.buffer],{type:'application/zip'});
+}
+let kitBusy=false;
+async function downloadKit(btn){
+  if (kitBusy) return; kitBusy=true; const label=btn.textContent, base={...state}, fmts=Object.keys(FORMATS), jobs=[], files=[], tag=f=>f.replace(':','x');
+  for (const sc of SCENE_KEYS) for (const f of fmts) jobs.push([`scene-${sc}-${tag(f)}`,{...base,mode:'scene',scene:sc,format:f}]);
+  for (const l in LAYOUT_PRESETS) for (const f of fmts) jobs.push([`layout-${l}-${tag(f)}`,{...base,mode:'layout',lay:l,format:f}]);
+  for (const f of fmts) jobs.push([`logo-${slug(base.sub)}-${tag(f)}`,{...base,mode:'logo',format:f}]);
+  jobs.push([`sheet-${base.scene}`,{...base,mode:'sheet'}], ['kit',{...base,mode:'kit'}]);
+  let i=0;
+  for (const [name,st] of jobs){ const sc=liveScene(st), when = sc ? (sc.still!=null ? sc.still : sc.thumbT ? sc.thumbT(st) : 0) : 0;
+    const blob=await new Promise(r=>renderTo(st,1,when).toBlob(r,'image/png'));
+    files.push({name:`${String(++i).padStart(2,'0')}-${name}.png`, data:new Uint8Array(await blob.arrayBuffer())});
+    btn.textContent=`Rendering ${i} / ${jobs.length}`; await new Promise(r=>setTimeout(r,0)); }
+  for (const f of kit.family) files.push({name:`${String(++i).padStart(2,'0')}-logo-${slug(f)}.svg`, data:new TextEncoder().encode(listToSvg(logoModel({...base,sub:f})))});
+  const a=el('a',{href:URL.createObjectURL(zip(files)),download:`${slug(kit.name)}-kit-${base.seed}.zip`}); a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  btn.textContent=label; kitBusy=false; flash(btn,`Saved ${files.length} files`);
+}
+// fonts dropped into the kit last for this session; they are too large to keep in localStorage
+let fontN=0; const fontFile={display:'',mono:''};
+async function loadFont(file,slot){
+  try { const fam=`BE ${slot} ${++fontN}`, face=new FontFace(fam, await file.arrayBuffer()); await face.load(); document.fonts.add(face);
+    kit[slot]=`"${fam}",`+DEFAULT_KIT[slot]; fontFile[slot]=file.name; fitMemo.clear(); refresh(); }
+  catch(e){ fontFile[slot]='Could not read that file'; refresh(); }
+}
+function fontDrop(slot,title){
+  const inp=el('input',{type:'file',accept:'.ttf,.otf,.woff,.woff2',hidden:true}), box=el('button',{className:'drop'});
+  box.append(el('b',{textContent:title}), el('span',{textContent:fontFile[slot] || 'Drop a .ttf, .otf or .woff here, or click'}), inp);
+  box.onclick=()=>inp.click(); inp.onchange=()=>{ if (inp.files[0]) loadFont(inp.files[0],slot); };
+  box.ondragover=e=>{ e.preventDefault(); box.classList.add('hot'); }; box.ondragleave=()=>box.classList.remove('hot');
+  box.ondrop=e=>{ e.preventDefault(); box.classList.remove('hot'); if (e.dataTransfer.files[0]) loadFont(e.dataTransfer.files[0],slot); };
+  return box;
+}
+
+/* ---- video: the same drawFrame, driven by a clock that starts at zero, recorded from an off-screen canvas */
+function drawIntro(ctx,W,H,st,p){
+  const page = st.mode==='layout' && LAYOUT_PRESETS[st.lay][2].page ? colour(st.page) : groundOf(st), u=Math.min(W,H)/100, e=Math.min(1,p/.45), k=e*e*(3-2*e);
+  ctx.fillStyle=page; ctx.fillRect(0,0,W,H);
+  ctx.save(); ctx.globalAlpha=k*(p>.86 ? 1-(p-.86)/.14 : 1); ctx.translate(W/2,H/2); ctx.scale(.92+.08*k,.92+.08*k); lockup(ctx,0,0,u*11,inkOn(page)); ctx.restore();
+}
+async function recordVideo(){
+  const btn=$('bVideo'), [W,H]=FORMATS[state.format], rc=el('canvas',{width:W,height:H}), rx=rc.getContext('2d');
+  const mime = window.MediaRecorder && ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4'].find(m=>MediaRecorder.isTypeSupported(m));
+  if (!mime || !rc.captureStream){ flash(btn,'Not supported'); return; }
+  const sc=liveScene(state), intro=state.intro?1.5:0, dur=sc && sc.duration ? sc.duration(state) : 6, total=intro+dur, label=btn.textContent;
+  const rec=new MediaRecorder(rc.captureStream(60),{mimeType:mime,videoBitsPerSecond:16e6}), chunks=[];
+  rec.ondataavailable=e=>{ if (e.data.size) chunks.push(e.data); };
+  const stopped=new Promise(r=>rec.onstop=r);
+  recording=true; btn.disabled=true; drawIntro(rx,W,H,state,0); rec.start();
+  const t0=performance.now();
+  await new Promise(done=>{ const step=()=>{ const e=(performance.now()-t0)/1000;
+    if (e<intro) drawIntro(rx,W,H,state,e/intro); else drawFrame(rx,W,H,state,Math.min(e-intro,dur-.001));
+    printOn(rc,state,1e6);
+    btn.textContent='Rec '+Math.min(99,Math.round(e/total*100))+'%';
+    e<total ? requestAnimationFrame(step) : done(); }; step(); });
+  rec.stop(); await stopped; recording=false; btn.textContent=label; btn.disabled=false;
+  const a=el('a',{href:URL.createObjectURL(new Blob(chunks,{type:mime.split(';')[0]})),download:fileName(mime.includes('mp4')?'mp4':'webm',1)}); a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000); flash(btn,'Saved');
+}
+$('bVideo').onclick=()=>{ if (!recording) recordVideo(); };
+$('intro').onchange=e=>{ state.intro=e.target.checked?1:0; writeHash(); };
+$('tPlay').onclick=()=>{ state.playing=state.playing?0:1; syncTransport(); };
+$('tBack').onclick=()=>{ t=0; dirty=true; };
+$('tScrub').addEventListener('input',e=>{ const sc=liveScene(state); if (!sc || !sc.duration) return; scrubbing=true; t=e.target.value/1000*sc.duration(state)*.9999; dirty=true; });
+for (const ev of ['change','pointerup','blur']) $('tScrub').addEventListener(ev,()=>{ scrubbing=false; });
+
+/* ==================================================================== 10. KEYS */
+addEventListener('keydown',e=>{
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.metaKey || e.ctrlKey || e.altKey) return;
+  const k=e.key.toLowerCase(), go=m=>{ state.mode=m; refresh(); };
+  if (k==='r') reroll();
+  else if (k==='arrowright' || k==='arrowleft'){ const i=SCENE_KEYS.indexOf(state.scene), n=SCENE_KEYS.length;
+    state.scene=SCENE_KEYS[(i+(k==='arrowright'?1:n-1))%n]; state.mode='scene'; refresh(); }
+  else if (k==='s') go('sheet'); else if (k==='k') go('kit'); else if (k==='b') go('layout');
+  else if (k==='e') $('bPng').click();
+  else if (k==='h'){ document.body.classList.toggle('ui-hidden'); setTimeout(fitStage,240); }
+  else if (k===' '){ e.preventDefault(); state.playing=state.playing?0:1; syncTransport(); }
+  else if (k>='1' && k<='5'){ state.complexity=+k; refresh(); }
+  else if (k==='l'){ const ks=Object.keys(LAYOUTS); state.layout=ks[(ks.indexOf(state.layout)+1)%ks.length]; refresh(); }
+  else if (k==='d'){ state.d25=state.d25?0:1; refresh(); }
+  else if (k==='p'){ const i=PRINTS.findIndex(x=>x[0]===state.print); state.print=PRINTS[(i+1)%PRINTS.length][0]; refresh(); }
+  else return;
+});
+cv.addEventListener('click',e=>{ if (state.mode!=='sheet') return;
+  const r=cv.getBoundingClientRect(), [W,H]=frameSize(state), i=sheetHit(state,(e.clientX-r.left)/r.width*W,(e.clientY-r.top)/r.height*H);
+  if (i>=0){ state.seed=(state.seed+i)%1e9; state.mode='scene'; refresh(); } });
+addEventListener('resize',fitStage);
+addEventListener('hashchange',()=>{ readHash(); refresh(); });
+
+/* ==================================================================== boot */
+readHash(); buildThumbs(); refresh();
+document.fonts && document.fonts.ready.then(touch);
+window.BE = { state, get kit(){ return kit; }, drawFrame, SCENES, makeRng, refresh, renderTo, zip, svg:()=>listToSvg(logoModel(state)) };
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
