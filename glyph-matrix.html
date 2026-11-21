@@ -85,13 +85,25 @@
   body.ui-hidden #fps{display:none}
   .mark{width:15px;height:15px;vertical-align:-2px;margin-right:8px;opacity:.95}
   #hud .mark,#hint .mark{width:12px;height:12px;vertical-align:-1px;margin-right:6px}
+  #back{position:fixed;left:14px;top:14px;z-index:11;display:inline-flex;align-items:center;gap:8px;
+    padding:8px 13px 8px 11px;font:500 12px/1 'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+    letter-spacing:.06em;color:#e8eaed;text-decoration:none;white-space:nowrap;
+    background:rgba(10,12,15,.72);border:1px solid rgba(255,255,255,.16);border-radius:6px;
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+    transition:opacity .18s ease,background .15s ease,border-color .15s ease}
+  #back img{width:13px;height:13px;display:block}
+  #back:hover,#back:focus-visible{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.5);color:#fff;outline:none}
+  body.ui-hidden #back,body:has(#ui[hidden]) #back{opacity:0}
+  body.ui-hidden #back:hover,body.ui-hidden #back:focus-visible,
+  body:has(#ui[hidden]) #back:hover,body:has(#ui[hidden]) #back:focus-visible{opacity:1}
 </style>
 </head>
 <body>
 
 <div id="viewport"><div id="stage"><canvas id="c"></canvas></div></div>
 <div id="drop">Drop an image or video</div>
-<div id="hud"><a href="index.html"><img class="mark" src="logo.svg" alt="">← Moxx Lab</a><span> · drop an image or video · <kbd>H</kbd> panel · <kbd>R</kbd> replay · <kbd>S</kbd> save png · <kbd>space</kbd> pause</span></div>
+<a id="back" href="index.html" aria-label="Back to Moxx Lab index"><img src="logo.svg" alt="">← Moxx Lab</a>
+<div id="hud"><span>drop an image or video · <kbd>H</kbd> panel · <kbd>R</kbd> replay · <kbd>S</kbd> save png · <kbd>space</kbd> pause</span></div>
 <div id="fps"></div>
 
 <div id="panel">
