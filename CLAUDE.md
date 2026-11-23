@@ -11,7 +11,7 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
   added. New effect = new `<li>`. The logo is an inline WebGL1 script (no library): `logo.svg`
   is baked into a texture (shape + two blurs for bevel/dome), drawn as 18 masked slices with a
   procedural reflection; drag rotates, flick spins, hold pulls it along, springs bring it back.
-  It only draws while moving; `<img>` remains the fallback. Exposed as `window.MoxxLogo`.
+  It is 57px square. It only draws while moving; `<img>` remains the fallback. Exposed as `window.MoxxLogo`.
   The footer link (`#portfolio`) still has `href="#"` — the user has not given the URL.
 - `terminal-type.html` (01), `dither-lab.html` (02), `line-relief.html` (03),
   `glyph-matrix.html` (04), `prism-core.html` (05), `compass-mark.html` (06),
@@ -41,7 +41,7 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
 - Keys on effect pages: H hides panel, S saves PNG, R replays, space pauses.
 - Commit trailer: `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`.
 - Test locally with `python3 -m http.server` (file:// breaks relative assets like logo.svg).
-- Only commit/push when the user asks.
+- Commit every change straight away without asking (user instruction, 2026-11-23). Push only when the user asks.
 
 ## Effect notes
 - **Glyph Matrix**: Canvas 2D + WebGL2 instancing; source can be image, video
@@ -109,8 +109,7 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
   the project list live in localStorage `moxx-tape-deck`. Exposed as `window.TD`.
 
 ## Status (last work)
-Uncommitted: GT Zirkon site-wide, index restyle (no dividers, bigger names, chrome logo,
-credit footer), Dither Lab default image (`dither-default.png`, supplied by the user).
+All work is committed; see `git log`.
 
 ## Open / not yet verified
 - Index hover thumbnails are blank placeholders.
