@@ -11,7 +11,7 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
   added. New effect = new `<li>`. The logo is an inline WebGL1 script (no library): `logo.svg`
   is baked into a texture (shape + two blurs for bevel/dome), drawn as 18 masked slices with a
   procedural reflection; drag rotates, flick spins, hold pulls it along, springs bring it back.
-  It is 114px square. It only draws while moving; `<img>` remains the fallback. Exposed as `window.MoxxLogo`.
+  It is 250px square (170px on phones). It only draws while moving; `<img>` remains the fallback. Exposed as `window.MoxxLogo`.
   The footer link (`#portfolio`) still has `href="#"` — the user has not given the URL.
 - `terminal-type.html` (01), `dither-lab.html` (02), `line-relief.html` (03),
   `glyph-matrix.html` (04), `prism-core.html` (05), `compass-mark.html` (06),

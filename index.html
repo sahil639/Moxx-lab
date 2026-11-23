@@ -27,7 +27,7 @@
   .wrap{width:min(600px,100% - 56px);margin-left:max(28px,calc(50% - 420px));padding:56px 0 96px}
 
   /* the mark: an <img> until WebGL takes over, then a chrome object you can grab */
-  .logo{position:relative;width:114px;height:114px;margin-bottom:76px;cursor:grab;touch-action:none;
+  .logo{position:relative;width:250px;height:250px;margin:-34px 0 40px -38px;cursor:grab;touch-action:none;
     user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
   .logo.held{cursor:grabbing}
   .logo img{display:block;width:100%;height:100%;pointer-events:none;-webkit-user-drag:none}
@@ -81,7 +81,7 @@
 
   @media (max-width:520px){
     .wrap{padding:40px 0 80px}
-    .logo{margin-bottom:52px}
+    .logo{width:170px;height:170px;margin:-22px 0 28px -26px}
     .no{flex-basis:34px}
     .name{font-size:22px}
     .desc{margin-left:34px}
@@ -289,18 +289,18 @@ document.getElementById('yr').textContent = new Date().getFullYear();
 
   /* the mark as a texture: A = shape, R = edge bevel, G = broad dome (both are blurs of the shape) */
   function bake(){
-    const N = 256, c = document.createElement('canvas'); c.width = c.height = N;
+    const N = 512, c = document.createElement('canvas'); c.width = c.height = N;
     const x = c.getContext('2d'); x.drawImage(img, 0, 0, N, N);
     const d = x.getImageData(0, 0, N, N).data, a = new Float32Array(N*N);
     for (let i = 0; i < N*N; i++) a[i] = d[i*4+3]/255;
-    const blur = (src, r, n) => { let s = src, t = new Float32Array(N*N);
-      for (let k = 0; k < n*2; k++){ const hz = k % 2 === 0, o = new Float32Array(N*N);
-        for (let y = 0; y < N; y++) for (let x = 0; x < N; x++){ let sum = 0;
-          for (let j = -r; j <= r; j++){ const xx = hz ? Math.min(N-1, Math.max(0, x+j)) : x, yy = hz ? y : Math.min(N-1, Math.max(0, y+j)); sum += s[yy*N+xx]; }
-          o[y*N+x] = sum/(2*r+1); }
+    const blur = (src, r, n) => { let s = src;                          // box blur, running sum, n passes each way
+      for (let k = 0; k < n*2; k++){ const o = new Float32Array(N*N), st = k % 2 ? N : 1, at = (l, i) => s[l + Math.min(N-1, Math.max(0, i))*st];
+        for (let l = 0; l < N; l++){ const base = k % 2 ? l : l*N; let sum = 0;
+          for (let j = -r; j <= r; j++) sum += at(base, j);
+          for (let i = 0; i < N; i++){ o[base + i*st] = sum/(2*r+1); sum += at(base, i+r+1) - at(base, i-r); } }
         s = o; }
       return s; };
-    const b1 = blur(a, 3, 2), b2 = blur(a, 12, 2), px = new Uint8Array(N*N*4);
+    const b1 = blur(a, 6, 2), b2 = blur(a, 24, 2), px = new Uint8Array(N*N*4);
     for (let i = 0; i < N*N; i++){ px[i*4] = b1[i]*255; px[i*4+1] = b2[i]*255; px[i*4+3] = a[i]*255; }
     gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, N, N, 0, gl.RGBA, gl.UNSIGNED_BYTE, px);
@@ -317,7 +317,7 @@ document.getElementById('yr').textContent = new Date().getFullYear();
   const norm = p => { const l = Math.hypot(p[0], p[1], p[2], p[3]) || 1; return [p[0]/l, p[1]/l, p[2]/l, p[3]/l]; };
   const mat = ([x, y, z, s]) => [1-2*(y*y+z*z), 2*(x*y+z*s), 2*(x*z-y*s),  2*(x*y-z*s), 1-2*(x*x+z*z), 2*(y*z+x*s),  2*(x*z+y*s), 2*(y*z-x*s), 1-2*(x*x+y*y)];
 
-  function size(){ const r = host.getBoundingClientRect(), k = Math.min(devicePixelRatio || 1, 2)*2, n = Math.round(r.width*SPREAD*k);
+  function size(){ const r = host.getBoundingClientRect(), k = Math.min(devicePixelRatio || 1, 2)*2, n = Math.min(1500, Math.round(r.width*SPREAD*k));
     if (cv.width !== n){ cv.width = cv.height = n; gl.viewport(0, 0, n, n); } }
   function draw(){
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -355,7 +355,7 @@ document.getElementById('yr').textContent = new Date().getFullYear();
     const now = performance.now(), dx = e.clientX-last[0], dy = e.clientY-last[1], dt = Math.max(.004, (now-last[2])/1000), g = 1/(host.offsetWidth*.8);
     q = norm(mul(fromVec([dy*g, dx*g, 0]), q));                       // the front face follows the pointer
     const m = Math.min(1, dt*18); w[0] += (dy*g/dt - w[0])*m; w[1] += (dx*g/dt - w[1])*m; w[2] *= 1-m;
-    const ox = e.clientX-host._o[0], oy = e.clientY-host._o[1], l = Math.hypot(ox, oy) || 1, pull = 46*Math.tanh(l/150);   // held: it comes along, on a leash
+    const ox = e.clientX-host._o[0], oy = e.clientY-host._o[1], l = Math.hypot(ox, oy) || 1, pull = 70*Math.tanh(l/180);   // held: it comes along, on a leash
     grab = [ox/l*pull, oy/l*pull]; last = [e.clientX, e.clientY, now]; });
   const drop = e => { if (!held) return; held = false; host.classList.remove('held');
     if (performance.now()-last[2] > 90 || calm) w = [0,0,0];           // paused before letting go: no flick
