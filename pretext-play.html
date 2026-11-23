@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Moxx Lab — Pretext Play</title>
+<style>
+  :root{ --panel-w:340px; }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;overflow:hidden;font:12px/1.4 'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;-webkit-text-size-adjust:100%}
+  #c{position:fixed;left:0;top:0;display:block;touch-action:none}
+  #c.ew{cursor:ew-resize}
+  #panel{position:fixed;top:0;right:0;bottom:0;width:var(--panel-w);overflow-y:auto;z-index:10;transition:transform .18s ease}
+  body.ui-hidden #panel{transform:translateX(100%)}
+  h1 small{display:block}
+  .grid{display:grid;grid-template-columns:1fr 1fr;margin:2px 0 4px}
+  .grid.three{grid-template-columns:1fr 1fr 1fr}
+  textarea{width:100%;height:118px;resize:vertical;line-height:1.5}
+  #nums{margin:2px 0 0;display:grid;grid-template-columns:auto 1fr;gap:5px 12px;font-size:11px}
+  #nums dt{color:var(--u-dim)} #nums dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+  #nums .ok{color:var(--u-fg)} #nums .bad{color:#d2552f}
+  #hud{position:fixed;left:12px;bottom:10px;font-size:10px;letter-spacing:.08em;z-index:9;pointer-events:none}
+  body.ui-hidden #hud{display:none}
+  .mark{width:15px;height:15px;vertical-align:-2px;margin-right:8px}
+  #back{position:fixed;left:14px;top:14px;z-index:11;display:inline-flex;align-items:center;gap:8px;padding:8px 13px 8px 11px;
+    font:500 12px/1 'IBM Plex Mono',ui-monospace,monospace;letter-spacing:.06em;text-decoration:none;white-space:nowrap;
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);transition:opacity .18s ease,background .15s ease,border-color .15s ease}
+  #back img{width:13px;height:13px;display:block}
+  body.ui-hidden #back{opacity:0} body.ui-hidden #back:hover,body.ui-hidden #back:focus-visible{opacity:1}
+  #probe{position:absolute;left:-99999px;top:0;visibility:hidden;overflow-wrap:break-word;margin:0;padding:0;border:0}
+  #err{position:fixed;inset:0;display:none;place-items:center;text-align:center;padding:40px;z-index:20;background:var(--u-bg);color:var(--u-fg);line-height:1.7}
+</style>
+<link rel="stylesheet" href="ui.css">
+<script src="ui.js"></script>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+<a id="back" href="index.html" aria-label="Back to Moxx Lab index"><img src="logo.svg" alt="">← Moxx Lab</a>
+<div id="hud">drag the column edge · scroll to move · <kbd>H</kbd> panel · <kbd>R</kbd> reset · <kbd>S</kbd> save png · <kbd>space</kbd> pause</div>
+<div id="probe" aria-hidden="true"></div>
+<div id="err"><div><b>Pretext could not be loaded.</b><br>This page imports <code>@chenglou/pretext</code> from a CDN and needs a network connection.<br><a href="index.html">← Back to Moxx Lab</a></div></div>
+
+<div id="panel">
+  <h1><img class="mark" src="logo.svg" alt="">Pretext Play<small>text measured and wrapped without the DOM</small></h1>
+
+  <details open>
+    <summary>Mode</summary>
+    <div class="grid" id="modes"></div>
+    <p class="hint" id="modeHint"></p>
+  </details>
+
+  <details open>
+    <summary>Text</summary>
+    <div class="grid" id="samples"></div>
+    <textarea id="text" spellcheck="false" aria-label="Text"></textarea>
+  </details>
+
+  <details open>
+    <summary>Type</summary>
+    <div class="row"><label>Font</label><select id="font"></select></div>
+    <div id="sl-type"></div>
+  </details>
+
+  <details open>
+    <summary>Layout</summary>
+    <div id="sl-layout"></div>
+    <div class="row"><label>White space</label><select id="ws"><option value="normal">normal</option><option value="pre-wrap">pre-wrap</option></select></div>
+    <div class="row"><label>Word break</label><select id="wb"><option value="normal">normal</option><option value="keep-all">keep-all</option></select></div>
+    <label class="toggle"><input type="checkbox" id="boxes" checked> Show line boxes and widths</label>
+    <label class="toggle" id="balanceRow"><input type="checkbox" id="balance"> Balance bubble lines</label>
+  </details>
+
+  <details open>
+    <summary>Numbers</summary>
+    <dl id="nums"></dl>
+    <p class="hint"><code>prepare()</code> runs once per text and font. Everything that happens when you drag the width is <code>layout()</code>: arithmetic over cached widths.</p>
+  </details>
+
+  <details open>
+    <summary>Export</summary>
+    <div class="btns"><button id="bSave">Save PNG</button><button id="bHide">Hide panel</button></div>
+    <p class="hint">Built on <a href="https://github.com/chenglou/pretext" style="color:inherit">chenglou/pretext</a> 1.0.0 (MIT), loaded from a CDN.</p>
+  </details>
+</div>
+
+<script type="module">
+/* Pretext Play — a playground for @chenglou/pretext: multiline text measurement and layout in plain JavaScript.
+   Four views of the same prepared text: Wrap (layoutWithLines), Bubbles (measureLineStats shrink-wrap),
+   Flow (layoutNextLineRange around a moving obstacle) and Segments (what prepareWithSegments sees). */
+const $ = id => document.getElementById(id);
+const clamp = (v,a,b) => v<a?a:v>b?b:v;
+let PT = null;
+for (const url of ['https://esm.sh/@chenglou/pretext@1.0.0','https://cdn.jsdelivr.net/npm/@chenglou/pretext@1.0.0/+esm']){ try { PT = await import(url); break; } catch(e){} }
+if (!PT){ $('err').style.display='grid'; throw new Error('pretext failed to load'); }
+
+/* ------------------------------------------------------------ state */
+const SAMPLES = {
+  Prose: 'A paragraph is easy to draw and oddly hard to measure. The browser knows how tall it is, but asking costs a reflow, and asking a thousand times costs a thousand reflows. Measure every word once, keep the widths, and the rest is arithmetic: where each line ends, how many there are, how wide the widest one is.',
+  Mixed: 'One paragraph, many scripts: 春天到了，花都开了。 بدأت الرحلة اليوم 🚀 Ελληνικά, עברית, हिन्दी, ไทยก็ได้เหมือนกัน, and one extraordinarilylongunbrokenwordthatsimplyhastobreaksomewhere. Soft hy­phen­a­tion works when you ask for it.',
+  Chat: 'hey, are we still on for friday?\nyes! 7pm works for me\ncan you bring the projector, the long hdmi cable and that adapter for my laptop\nsure\n👍👍\nalso 春天到了 so bring a light jacket, it gets cold on the roof after sunset',
+  Long: 'Text wants to go around things. A picture in a magazine, a pull quote, a hole where the binding is: the lines beside it are shorter, and the words have to be dealt out again, row by row, into whatever room each row has left. On the web that has always meant floats, shapes and hoping. Here it is a loop. Ask for the next line at this width; draw it; move the cursor on; ask again at the next width. The obstacle can move every frame, because nothing in the loop touches the page. Move the circle through the paragraph and watch the words pour around it. Every frame lays the whole thing out again, from the first word, and still has most of its sixteen milliseconds to spare. The same loop clamps a paragraph to three lines with an ellipsis, splits an article across columns, or fits a caption into the odd-shaped space beside a chart. Once the widths are known, text stops being something the browser does to you and becomes something you can simply do.',
+};
+const MODES = {
+  wrap:     ['Wrap',     'layoutWithLines(): every line at one width. Drag the column edge. The DOM check lays the same text out in a hidden element and compares heights.', 'Prose'],
+  bubbles:  ['Bubbles',  'measureLineStats(): each message shrinks to its widest line, something CSS cannot do for wrapped text. One message per line of text.', 'Chat'],
+  flow:     ['Flow',     'layoutNextLineRange(): a new width for every row, so text pours around a moving obstacle. Move the pointer over the paragraph.', 'Long'],
+  segments: ['Segments', 'prepareWithSegments(): the pieces the text is cut into, each with its measured width and the kind of break it allows.', 'Mixed'],
+};
+const FONTS = ['Georgia','Helvetica Neue','Times New Roman','IBM Plex Mono','Verdana','Courier New'];
+const S = { mode:'wrap', sample:'Prose', text:SAMPLES.Prose, font:'Georgia', weight:400, size:20, lh:1.45, ls:0, width:440, ws:'normal', wb:'normal', boxes:true, balance:false, orb:90, playing:true, scroll:0 };
+const fontStr = () => `${S.weight} ${S.size}px "${S.font}", "PingFang SC", "Geeza Pro", serif`;
+const lhPx = () => Math.round(S.size*S.lh);
+
+/* ------------------------------------------------------------ prepare (once per text / font / options) */
+let prep=null, msgs=[], prepMs=0, layoutUs=0, prepError='', prepToken=0;
+async function reprepare(){
+  const token=++prepToken, font=fontStr();
+  try { await document.fonts.load(font, S.text.slice(0,400)); } catch(e){}
+  if (token!==prepToken) return;
+  const opt={whiteSpace:S.ws, wordBreak:S.wb, letterSpacing:S.ls};
+  try { const t0=performance.now(); prep=PT.prepareWithSegments(S.text,font,opt); prepMs=performance.now()-t0; prepError='';
+    msgs=S.text.split('\n').filter(t=>t.trim()).map(t=>PT.prepareWithSegments(t,font,opt)); }
+  catch(e){ prep=null; msgs=[]; prepError=String(e.message||e); }
+  bench(); dirty=true;
+}
+// time layout() by repeating it until the clock has clearly moved (browser timers are coarse)
+function bench(){ if (!prep){ layoutUs=0; return; } const w=S.width, l=lhPx(), t0=performance.now(); let n=0, dt=0;
+  do { for (let i=0;i<500;i++) PT.layout(prep,w,l); n+=500; dt=performance.now()-t0; } while (dt<5 && n<40000); layoutUs=dt/n*1000; }
+
+/* ------------------------------------------------------------ stage */
+const cv=$('c'), ctx=cv.getContext('2d'); let W=1, H=1, dpr=1, dirty=true, C={};
+function theme(){ const cs=getComputedStyle(document.documentElement), v=n=>cs.getPropertyValue(n).trim();
+  C={bg:v('--u-bg'),fg:v('--u-fg'),dim:v('--u-dim'),line:v('--u-line'),bar:v('--u-bar'),fill:v('--u-fill'),panel:v('--u-panel'),accent:v('--u-accent'),ink:v('--u-ink')}; dirty=true; }
+function resize(){ const hidden=document.body.classList.contains('ui-hidden'); W=Math.max(1,innerWidth-(hidden?0:340)); H=Math.max(1,innerHeight); dpr=Math.min(devicePixelRatio||1,2);
+  cv.style.width=W+'px'; cv.style.height=H+'px'; cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); dirty=true; }
+const colW = () => Math.min(S.width, W-96);
+const colX = () => Math.max(48, Math.round((W-colW())/2));
+const TOP = 92;
+function setType(){ ctx.font=fontStr(); if ('letterSpacing' in ctx) ctx.letterSpacing=S.ls+'px'; ctx.textBaseline='alphabetic'; ctx.textAlign='left';
+  const m=ctx.measureText('Hg'), a=m.fontBoundingBoxAscent||S.size*.8, d=m.fontBoundingBoxDescent||S.size*.2; return (lhPx()+a-d)/2; }   // baseline inside a line box, as CSS half-leading puts it
+function label(t,x,y,col,align){ ctx.save(); ctx.font="10px 'IBM Plex Mono',ui-monospace,monospace"; if ('letterSpacing' in ctx) ctx.letterSpacing='0px'; ctx.fillStyle=col||C.dim; ctx.textAlign=align||'left'; ctx.textBaseline='middle'; ctx.fillText(t,x,y); ctx.restore(); }
+function column(x,w,top,bottom){ ctx.strokeStyle=C.line; ctx.lineWidth=1; ctx.setLineDash([3,4]); ctx.beginPath(); ctx.moveTo(x+.5,top-18); ctx.lineTo(x+.5,bottom); ctx.moveTo(x+w+.5,top-18); ctx.lineTo(x+w+.5,bottom); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle=C.accent; ctx.fillRect(x+w-1,top-18,3,26); label(Math.round(w)+' px',x+w+8,top-6,C.fg); }
+
+let nums=[];
+function render(now){
+  ctx.setTransform(dpr,0,0,dpr,0,0); ctx.fillStyle=C.bg; ctx.fillRect(0,0,W,H); nums=[];
+  if (!prep){ label(prepError||'Type something to lay out.',48,TOP,C.fg); return; }
+  const x0=colX(), w=colW(), l=lhPx(), base=setType();
+  ({wrap:drawWrap, bubbles:drawBubbles, flow:drawFlow, segments:drawSegments})[S.mode](x0,w,l,base,now);
+  nums.push(['prepare()',prepMs.toFixed(2)+' ms'],['layout()',layoutUs<1?layoutUs.toFixed(2)+' µs':layoutUs.toFixed(1)+' µs'],['layouts per frame',layoutUs?Math.floor(16667/layoutUs).toLocaleString():'—']);
+  $('nums').innerHTML=nums.map(([k,v,c])=>`<dt>${k}</dt><dd class="${c||''}">${v}</dd>`).join('');
+}
+
+/* ---- Wrap: all the lines at one width */
+function drawWrap(x0,w,l,base){
+  const r=PT.layoutWithLines(prep,w,l), y0=TOP-S.scroll; column(x0,w,TOP,H-30);
+  r.lines.forEach((ln,i)=>{ const y=y0+i*l; if (y<-l || y>H) return;
+    if (S.boxes){ ctx.fillStyle=i%2?C.fill:C.bar; ctx.fillRect(x0,y+1,ln.width,l-2); label(ln.width.toFixed(1),x0+w+10,y+l/2); }
+    setType(); ctx.fillStyle=C.fg; ctx.fillText(ln.text,x0,y+base); });
+  maxScroll=Math.max(0,r.height-(H-TOP-60));
+  const p=$('probe'); p.style.cssText=`position:absolute;left:-99999px;top:0;visibility:hidden;overflow-wrap:break-word;width:${w}px;font:${fontStr()};line-height:${l}px;letter-spacing:${S.ls}px;white-space:${S.ws};word-break:${S.wb}`; p.textContent=S.text;
+  const dom=p.getBoundingClientRect().height, same=Math.abs(dom-r.height)<.5, st=PT.measureLineStats(prep,w);
+  nums.push(['Lines',r.lineCount],['Height',r.height+' px'],['Widest line',st.maxLineWidth.toFixed(1)+' px'],['Natural width',PT.measureNaturalWidth(prep).toFixed(1)+' px'],
+    ['DOM height',Math.round(dom*10)/10+' px'],['DOM check',same?'✓ same height':`✗ off by ${Math.round((dom-r.height)*10)/10} px`,same?'ok':'bad']);
+}
+
+/* ---- Bubbles: shrink each message to its widest line, optionally to the narrowest width with the same line count */
+function drawBubbles(x0,w,l,base){
+  const padX=14, padY=9, maxW=Math.max(40,w-padX*2); let y=TOP-S.scroll, saved=0, lines=0; column(x0,w,TOP,H-30);
+  msgs.forEach((m,i)=>{ const st=PT.measureLineStats(m,maxW); let bw=Math.min(Math.ceil(st.maxLineWidth),maxW);
+    if (S.balance && st.lineCount>1){ let lo=1, hi=bw; while (lo<hi){ const mid=(lo+hi)>>1; PT.measureLineStats(m,mid).lineCount<=st.lineCount ? hi=mid : lo=mid+1; } bw=Math.min(Math.ceil(PT.measureLineStats(m,lo).maxLineWidth),maxW); }
+    const r=PT.layoutWithLines(m,bw,l), bh=r.height+padY*2, right=i%2===1, bx=right?x0+w-bw-padX*2:x0; lines+=r.lineCount;
+    if (y+bh>0 && y<H){
+      if (S.boxes && st.lineCount>1 && maxW-bw>2){ ctx.strokeStyle=C.dim; ctx.globalAlpha=.55; ctx.setLineDash([3,3]); ctx.beginPath(); ctx.roundRect(right?x0:x0,y,maxW+padX*2,bh,14); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha=1;
+        label('−'+(maxW-bw)+' px',right?bx-8:bx+bw+padX*2+8,y+bh/2,C.dim,right?'right':'left'); }
+      ctx.fillStyle=right?C.accent:C.fill; ctx.beginPath(); ctx.roundRect(bx,y,bw+padX*2,bh,14); ctx.fill();
+      setType(); ctx.fillStyle=right?C.ink:C.fg; r.lines.forEach((ln,k)=>ctx.fillText(ln.text,bx+padX,y+padY+k*l+base)); }
+    if (st.lineCount>1) saved+=maxW-bw; y+=bh+8; });
+  maxScroll=Math.max(0,y+S.scroll-(H-60));
+  nums.push(['Messages',msgs.length],['Lines',lines],['Width given back',saved+' px']);
+}
+
+/* ---- Flow: a different width for every row, so the text pours around the obstacle */
+const orb={x:0,y:0,over:false};
+function drawFlow(x0,w,l,base,now){
+  const r=S.orb, pad=10, bottom=H-36;
+  if (!orb.over){ const t=(S.playing?now:orb.t0||0)/1000; orb.t0=now; orb.x=x0+w/2+Math.cos(t*.55)*w*.3; orb.y=TOP+(bottom-TOP)*.42+Math.sin(t*.8)*(bottom-TOP)*.26; }
+  column(x0,w,TOP,bottom);
+  let cur={segmentIndex:0,graphemeIndex:0}, y=TOP, frags=0, done=false; const t0=performance.now(); setType(); ctx.fillStyle=C.fg;
+  for (; y+l<=bottom && !done; y+=l){
+    const dy=Math.max(0, orb.y<y ? y-orb.y : orb.y>y+l ? orb.y-(y+l) : 0), spans=[];
+    if (dy<r+pad){ const half=Math.sqrt((r+pad)*(r+pad)-dy*dy); spans.push([x0,Math.min(x0+w,orb.x-half)],[Math.max(x0,orb.x+half),x0+w]); } else spans.push([x0,x0+w]);
+    for (const [a,b] of spans){ if (b-a<36) continue; const range=PT.layoutNextLineRange(prep,b-a,cur); if (!range){ done=true; break; }
+      const ln=PT.materializeLineRange(prep,range); if (S.boxes){ ctx.fillStyle=C.bar; ctx.fillRect(a,y+1,ln.width,l-2); ctx.fillStyle=C.fg; }
+      ctx.fillText(ln.text,a,y+base); cur=range.end; frags++; } }
+  const us=(performance.now()-t0)*1000;
+  ctx.fillStyle=C.accent; ctx.beginPath(); ctx.arc(orb.x,orb.y,r,0,Math.PI*2); ctx.fill();
+  nums.push(['Line pieces',frags],['Rows',Math.round((y-TOP)/l)],['Text placed',done?'all of it':'runs past the frame'],['This frame',(us/1000).toFixed(2)+' ms']);
+}
+
+/* ---- Segments: what prepare() cut the text into */
+const KIND_NOTE={text:'text','space':'space','preserved-space':'kept space','tab':'tab','zero-width-break':'zero-width break','soft-hyphen':'soft hyphen','zero-width-glue':'glue','hard-break':'hard break','control':'control'};
+function drawSegments(x0,w,l,base){
+  const r=PT.layoutWithLines(prep,w,l), gap=10, rowH=l+gap, y0=TOP-S.scroll, count={}; column(x0,w,TOP,H-30);
+  for (const k of prep.kinds) count[k]=(count[k]||0)+1;
+  r.lines.forEach((ln,i)=>{ const y=y0+i*rowH; if (y<-rowH || y>H) return; let x=x0; const last=ln.end.graphemeIndex>0?ln.end.segmentIndex:ln.end.segmentIndex-1;
+    for (let s=ln.start.segmentIndex;s<=last && s<prep.segments.length;s++){ const sw=prep.widths[s], kind=prep.kinds[s], whole=!(s===ln.start.segmentIndex&&ln.start.graphemeIndex>0)&&!(s===ln.end.segmentIndex);
+      if (kind==='text'){ ctx.strokeStyle=C.dim; ctx.globalAlpha=whole?.9:.35; ctx.lineWidth=1; ctx.strokeRect(x+.5,y+1.5,Math.max(1,sw-1),l-3); ctx.globalAlpha=1;
+      }
+      else { ctx.fillStyle=kind==='space'||kind==='preserved-space'?C.fill:C.accent; ctx.globalAlpha=kind==='space'||kind==='preserved-space'?1:.8; ctx.fillRect(x,y+1,Math.max(2,sw),l-2); ctx.globalAlpha=1; }
+      x+=sw; if (x>x0+w+2) break; }
+    setType(); ctx.fillStyle=C.fg; ctx.fillText(ln.text,x0,y+base);                  // the line's own text, so a word broken across lines still shows
+    if (S.boxes) label(ln.width.toFixed(1),x0+w+10,y+l/2); });
+  maxScroll=Math.max(0,r.lines.length*rowH-(H-TOP-60));
+  nums.push(['Segments',prep.segments.length]); for (const k in count) nums.push([KIND_NOTE[k]||k,count[k]]); nums.push(['Lines',r.lineCount]);
+}
+
+/* ------------------------------------------------------------ controls */
+const syncs=[]; let maxScroll=0;
+function slider(box,key,name,min,max,step,fmt,re){
+  const row=document.createElement('div'); row.className='row'; const lab=document.createElement('label'); lab.textContent=name;
+  const inp=document.createElement('input'); inp.type='range'; inp.min=min; inp.max=max; inp.step=step; const val=document.createElement('span'); val.className='val';
+  const show=()=>{ val.textContent=fmt(S[key]); }; inp.oninput=()=>{ S[key]=+inp.value; show(); re?reprepare():(bench(),dirty=true); };
+  syncs.push(()=>{ inp.value=S[key]; show(); }); row.append(lab,inp,val); $(box).append(row); return row;
+}
+slider('sl-type','size','Size',10,64,1,v=>v+' px',true);
+slider('sl-type','weight','Weight',300,700,100,v=>String(v),true);
+slider('sl-type','lh','Line height',1,2.2,.05,v=>v.toFixed(2),false);
+slider('sl-type','ls','Letter spacing',-2,8,.25,v=>v.toFixed(2)+' px',true);
+slider('sl-layout','width','Width',120,1100,1,v=>Math.round(v)+' px',false);
+const orbRow=slider('sl-layout','orb','Obstacle',30,220,1,v=>Math.round(v)+' px',false);
+for (const f of FONTS){ const o=document.createElement('option'); o.value=o.textContent=f; $('font').append(o); }
+$('font').onchange=()=>{ S.font=$('font').value; PT.clearCache(); reprepare(); };
+$('ws').onchange=()=>{ S.ws=$('ws').value; reprepare(); }; $('wb').onchange=()=>{ S.wb=$('wb').value; reprepare(); };
+$('boxes').onchange=e=>{ S.boxes=e.target.checked; dirty=true; }; $('balance').onchange=e=>{ S.balance=e.target.checked; dirty=true; };
+$('text').oninput=()=>{ S.text=$('text').value; S.sample=null; markSamples(); reprepare(); };
+const modeBtns={}, sampleBtns={};
+for (const k in MODES){ const b=document.createElement('button'); b.textContent=MODES[k][0]; b.onclick=()=>setMode(k); $('modes').append(b); modeBtns[k]=b; }
+for (const k in SAMPLES){ const b=document.createElement('button'); b.textContent=k; b.onclick=()=>setSample(k); $('samples').append(b); sampleBtns[k]=b; }
+const markSamples=()=>{ for (const k in sampleBtns) sampleBtns[k].classList.toggle('on',k===S.sample); };
+function setSample(k){ S.sample=k; S.text=SAMPLES[k]; $('text').value=S.text; S.scroll=0; markSamples(); reprepare(); }
+function setMode(k){ const was=S.mode; S.mode=k; S.scroll=0; for (const m in modeBtns) modeBtns[m].classList.toggle('on',m===k); $('modeHint').textContent=MODES[k][1];
+  orbRow.style.display=k==='flow'?'':'none'; $('balanceRow').style.display=k==='bubbles'?'':'none';
+  if (k==='flow' && S.width<560){ S.width=680; syncAll(); } else if (was==='flow' && k!=='flow' && S.width>560){ S.width=440; syncAll(); }
+  if (S.sample && S.sample!==MODES[k][2]) setSample(MODES[k][2]); else dirty=true; }
+function syncAll(){ syncs.forEach(f=>f()); $('font').value=S.font; $('ws').value=S.ws; $('wb').value=S.wb; $('boxes').checked=S.boxes; $('balance').checked=S.balance; $('text').value=S.text; markSamples(); bench(); dirty=true; }
+
+/* ------------------------------------------------------------ pointer, keys, loop */
+let dragW=false; const nearEdge=x=>Math.abs(x-(colX()+colW()))<9;
+cv.addEventListener('pointermove',e=>{ const r=cv.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top;
+  if (dragW){ S.width=clamp(Math.round((x-W/2)*2),120,1100); syncs.forEach(f=>f()); bench(); dirty=true; return; }
+  cv.classList.toggle('ew',nearEdge(x)); if (S.mode==='flow' && !nearEdge(x)){ orb.over=true; orb.x=x; orb.y=y; dirty=true; } });
+cv.addEventListener('pointerdown',e=>{ const r=cv.getBoundingClientRect(); if (nearEdge(e.clientX-r.left)){ dragW=true; cv.setPointerCapture(e.pointerId); } });
+const endDrag=()=>{ dragW=false; }; cv.addEventListener('pointerup',endDrag); cv.addEventListener('pointercancel',endDrag);
+cv.addEventListener('pointerleave',()=>{ orb.over=false; });
+cv.addEventListener('wheel',e=>{ e.preventDefault(); if (S.mode==='flow'){ S.orb=clamp(S.orb-e.deltaY*.08,30,220); syncs.forEach(f=>f()); } else S.scroll=clamp(S.scroll+e.deltaY,0,maxScroll); dirty=true; },{passive:false});
+function reset(){ S.width=S.mode==='flow'?680:440; S.scroll=0; S.orb=90; orb.over=false; syncAll(); }
+addEventListener('keydown',e=>{ if (/^(TEXTAREA|SELECT)$/.test(e.target.tagName) || (e.target.tagName==='INPUT' && e.target.type==='text') || e.metaKey || e.ctrlKey || e.altKey) return; const k=e.key.toLowerCase();
+  if (k==='h'){ document.body.classList.toggle('ui-hidden'); resize(); } else if (k==='r') reset(); else if (k==='s') $('bSave').click(); else if (e.key===' '){ e.preventDefault(); S.playing=!S.playing; } });
+$('bHide').onclick=()=>{ document.body.classList.add('ui-hidden'); resize(); };
+$('bSave').onclick=()=>{ render(performance.now()); cv.toBlob(b=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='pretext-play-'+S.mode+'.png'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); }); };
+addEventListener('resize',resize); addEventListener('moxx-theme',()=>requestAnimationFrame(theme));
+function frame(now){ if (dirty || (S.mode==='flow' && (S.playing || orb.over))){ dirty=false; render(now); } requestAnimationFrame(frame); }
+
+theme(); resize(); syncAll(); setMode('wrap'); await reprepare();
+window.PP = { S, PT, get prep(){ return prep; } };
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

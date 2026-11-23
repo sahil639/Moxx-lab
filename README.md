@@ -144,6 +144,18 @@ Real sizes and a 1.3 g/cm³ gummy density. It needs WebGPU and shows a message w
 Keys: **H** hand, **K** knife, **R** reset, **space** pause. Written from scratch for this
 site, following the description of a jelly-cutting experiment by another author.
 
+**`pretext-play.html` — Pretext Play.** A playground for
+[chenglou/pretext](https://github.com/chenglou/pretext), a library that measures and wraps
+multiline text in plain JavaScript without touching the DOM. One prepared text, four views:
+**Wrap** (`layoutWithLines`) draws every line at a draggable width and checks its height
+against a hidden DOM element; **Bubbles** (`measureLineStats`) shrink-wraps each message to
+its widest line, optionally balanced to the narrowest width with the same line count;
+**Flow** (`layoutNextLineRange`) gives every row its own width so the paragraph pours around
+a moving circle; **Segments** (`prepareWithSegments`) shows the pieces the text is cut into,
+with their widths and kinds. Font, size, weight, line height, letter spacing, white-space and
+word-break are adjustable, and a readout times `prepare()` and `layout()`. The library
+(1.0.0, MIT) is imported from a CDN at run time, so this page needs a network connection.
+
 ## Interface
 
 Every page loads two shared files, `ui.css` and `ui.js`. Together they give the site a
