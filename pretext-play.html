@@ -2,9 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fonts.css">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Moxx Lab — Pretext Play</title>
@@ -12,7 +10,7 @@
   :root{ --panel-w:340px; }
   *{box-sizing:border-box}
   html,body{height:100%}
-  body{margin:0;overflow:hidden;font:12px/1.4 'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;-webkit-text-size-adjust:100%}
+  body{margin:0;overflow:hidden;font:12px/1.4 'GT Zirkon',system-ui,sans-serif;-webkit-text-size-adjust:100%}
   #c{position:fixed;left:0;top:0;display:block;touch-action:none}
   #c.ew{cursor:ew-resize}
   #panel{position:fixed;top:0;right:0;bottom:0;width:var(--panel-w);overflow-y:auto;z-index:10;transition:transform .18s ease}
@@ -28,7 +26,7 @@
   body.ui-hidden #hud{display:none}
   .mark{width:15px;height:15px;vertical-align:-2px;margin-right:8px}
   #back{position:fixed;left:14px;top:14px;z-index:11;display:inline-flex;align-items:center;gap:8px;padding:8px 13px 8px 11px;
-    font:500 12px/1 'IBM Plex Mono',ui-monospace,monospace;letter-spacing:.06em;text-decoration:none;white-space:nowrap;
+    font:500 12px/1 'GT Zirkon',system-ui,sans-serif;letter-spacing:.06em;text-decoration:none;white-space:nowrap;
     -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);transition:opacity .18s ease,background .15s ease,border-color .15s ease}
   #back img{width:13px;height:13px;display:block}
   body.ui-hidden #back{opacity:0} body.ui-hidden #back:hover,body.ui-hidden #back:focus-visible{opacity:1}
@@ -112,7 +110,7 @@ const MODES = {
   flow:     ['Flow',     'layoutNextLineRange(): a new width for every row, so text pours around a moving obstacle. Move the pointer over the paragraph.', 'Long'],
   segments: ['Segments', 'prepareWithSegments(): the pieces the text is cut into, each with its measured width and the kind of break it allows.', 'Mixed'],
 };
-const FONTS = ['Georgia','Helvetica Neue','Times New Roman','IBM Plex Mono','Verdana','Courier New'];
+const FONTS = ['Georgia','Helvetica Neue','Times New Roman','GT Zirkon','Verdana','Courier New'];
 const S = { mode:'wrap', sample:'Prose', text:SAMPLES.Prose, font:'Georgia', weight:400, size:20, lh:1.45, ls:0, width:440, ws:'normal', wb:'normal', boxes:true, balance:false, orb:90, playing:true, scroll:0 };
 const fontStr = () => `${S.weight} ${S.size}px "${S.font}", "PingFang SC", "Geeza Pro", serif`;
 const lhPx = () => Math.round(S.size*S.lh);
@@ -144,7 +142,7 @@ const colX = () => Math.max(48, Math.round((W-colW())/2));
 const TOP = 92;
 function setType(){ ctx.font=fontStr(); if ('letterSpacing' in ctx) ctx.letterSpacing=S.ls+'px'; ctx.textBaseline='alphabetic'; ctx.textAlign='left';
   const m=ctx.measureText('Hg'), a=m.fontBoundingBoxAscent||S.size*.8, d=m.fontBoundingBoxDescent||S.size*.2; return (lhPx()+a-d)/2; }   // baseline inside a line box, as CSS half-leading puts it
-function label(t,x,y,col,align){ ctx.save(); ctx.font="10px 'IBM Plex Mono',ui-monospace,monospace"; if ('letterSpacing' in ctx) ctx.letterSpacing='0px'; ctx.fillStyle=col||C.dim; ctx.textAlign=align||'left'; ctx.textBaseline='middle'; ctx.fillText(t,x,y); ctx.restore(); }
+function label(t,x,y,col,align){ ctx.save(); ctx.font="10px 'GT Zirkon',system-ui,sans-serif"; if ('letterSpacing' in ctx) ctx.letterSpacing='0px'; ctx.fillStyle=col||C.dim; ctx.textAlign=align||'left'; ctx.textBaseline='middle'; ctx.fillText(t,x,y); ctx.restore(); }
 function column(x,w,top,bottom){ ctx.strokeStyle=C.line; ctx.lineWidth=1; ctx.setLineDash([3,4]); ctx.beginPath(); ctx.moveTo(x+.5,top-18); ctx.lineTo(x+.5,bottom); ctx.moveTo(x+w+.5,top-18); ctx.lineTo(x+w+.5,bottom); ctx.stroke(); ctx.setLineDash([]);
   ctx.fillStyle=C.accent; ctx.fillRect(x+w-1,top-18,3,26); label(Math.round(w)+' px',x+w+8,top-6,C.fg); }
 

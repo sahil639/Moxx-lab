@@ -5,9 +5,14 @@ Static multi-page site of mockup animations. Live at https://sahil639.github.io/
 No build step, no dependencies: each page is one HTML file plus the shared `ui.css` / `ui.js`.
 
 ## Files
-- `index.html` — directory page. Small logo + list of effects only. No hero, nav, buttons or
-  footer. Hovering a row shows a blank 16:10 `.thumb` rectangle beside it (hover-capable
-  screens ≥1100px only); real previews are still to be added. New effect = new `<li>`.
+- `index.html` — directory page: chrome logo, list of effects, credit footer. No dividers
+  (spacing only); rows are number + large name + description. Hovering a row shows a blank
+  16:10 `.thumb` beside it (hover-capable screens ≥1100px only); real previews are still to be
+  added. New effect = new `<li>`. The logo is an inline WebGL1 script (no library): `logo.svg`
+  is baked into a texture (shape + two blurs for bevel/dome), drawn as 18 masked slices with a
+  procedural reflection; drag rotates, flick spins, hold pulls it along, springs bring it back.
+  It only draws while moving; `<img>` remains the fallback. Exposed as `window.MoxxLogo`.
+  The footer link (`#portfolio`) still has `href="#"` — the user has not given the URL.
 - `terminal-type.html` (01), `dither-lab.html` (02), `line-relief.html` (03),
   `glyph-matrix.html` (04), `prism-core.html` (05), `compass-mark.html` (06),
   `brand-engine.html` (07), `jelly-pitch.html` (08),
@@ -25,10 +30,12 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
 - `README.md` — documents each effect; keep it in sync when effects change.
 
 ## Conventions
-- Brand font: IBM Plex Mono (Google Fonts link on every page, system monospace fallback).
-  It is the only network request. Terminal Type's stage/font-tester fonts are intentionally
-  not changed (that page exists to try other typefaces).
-- Look: minimal, modern, monospaced; neutral greys with one near-black / near-white accent
+- Brand font: GT Zirkon, self-hosted (`fonts.css` + `fonts/*.woff2`: Thin 200, Light 300,
+  Book 350, Regular 400, Medium 500–700), linked from every page; system sans fallback. It is a
+  commercial Grilli Type face — the user supplied the files; web licence not confirmed.
+  Pretext Play still imports its library from a CDN. Terminal Type's stage/font-tester fonts
+  are intentionally not changed (that page exists to try other typefaces).
+- Look: minimal, modern; neutral greys with one near-black / near-white accent
   (no per-effect accent colours any more). Light and dark themes; the theme styles the
   interface only, effect canvases keep their own colours.
 - Keys on effect pages: H hides panel, S saves PNG, R replays, space pauses.
@@ -82,7 +89,7 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
   the material uniforms). Seams/panels/ribs/face are procedural in rest space, not separate
   meshes. `window.JP` exposes `stats`, `cut(nx,nz,d)`, `step()`. Not done or approximate:
   cut tets multiply (about 9 ms per step after three cuts), SVG displacement fallback for the
-  glass, face auto-centre only where `FaceDetector` exists, `[YOUR FONT]` left as IBM Plex Mono.
+  glass, face auto-centre only where `FaceDetector` exists.
 
 - **Pretext Play** (09): playground for `@chenglou/pretext` 1.0.0, imported at run time from
   esm.sh (jsDelivr fallback) — the one page with a network dependency besides the font; the
@@ -102,15 +109,17 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
   the project list live in localStorage `moxx-tape-deck`. Exposed as `window.TD`.
 
 ## Status (last work)
-All work is committed and pushed (HEAD `c8d6758`, minimal index + IBM Plex Mono).
+Uncommitted: GT Zirkon site-wide, index restyle (no dividers, bigger names, chrome logo,
+credit footer), Dither Lab default image (`dither-default.png`, supplied by the user).
 
 ## Open / not yet verified
 - Index hover thumbnails are blank placeholders.
 - Not checked by eye: phone-width index, Safari/touch, effect pages after the font change
   (other than Prism Core), Prism Core drag/motion modes, Save PNG, front/side/top views,
   gradient backgrounds, cylinder/sphere/pyramid after later changes.
-- Per-effect accent colours are gone (unified by `ui.css`). Option still open: self-host
-  IBM Plex Mono to restore "no network requests".
+- Per-effect accent colours are gone (unified by `ui.css`).
+- After the GT Zirkon change only the index and Dither Lab were looked at; the chrome logo was
+  driven with synthetic pointer events, not a real mouse or touch.
 - Light/dark redesign not checked by eye: Safari, Firefox, phone width, the theme wipe
   animation at full frame rate, drag-and-drop overlays in light mode.
 - A "How a Launch Works" section with a boxes illustration + on-scroll effect (in shades of

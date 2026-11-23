@@ -65,7 +65,7 @@ html[data-theme]{
   /* ---------------------------------------------------------- rows */
   .row{display:flex;align-items:center;gap:8px;margin:6px 0;position:relative}
   .row label{flex:0 0 96px;color:var(--u-dim);font-size:11px;letter-spacing:.02em}
-  .row .val{color:var(--u-dim);font-size:10.5px}
+  .row .val{color:var(--u-dim);font-size:10.5px;font-variant-numeric:tabular-nums}
 
   /* slider rows: the label and the value sit inside the bar */
   .row:has(> input[type=range]){gap:6px}
