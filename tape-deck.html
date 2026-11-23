@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Moxx Lab — Tape Deck</title>
+<style>
+  :root{ --panel-w:340px; }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;overflow:hidden;background:#000;font:12px/1.4 'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace}
+  #gl,#hud2{position:fixed;left:0;top:0;display:block}
+  #gl{touch-action:none;cursor:grab} #gl.link{cursor:pointer} #gl.drag{cursor:grabbing}
+  #hud2{pointer-events:none}
+  #panel{position:fixed;top:0;right:0;bottom:0;width:var(--panel-w);overflow-y:auto;z-index:10;transition:transform .18s ease}
+  body.ui-hidden #panel{transform:translateX(100%)}
+  h1 small{display:block}
+  textarea{width:100%;height:150px;resize:vertical;line-height:1.5;font-size:10.5px !important;white-space:pre;overflow-x:auto}
+  #hud{position:fixed;left:12px;bottom:10px;font-size:10px;letter-spacing:.08em;z-index:9;pointer-events:none}
+  body.ui-hidden #hud{display:none}
+  .mark{width:15px;height:15px;vertical-align:-2px;margin-right:8px}
+  #back{position:fixed;left:14px;top:14px;z-index:11;display:inline-flex;align-items:center;gap:8px;padding:8px 13px 8px 11px;
+    font:500 12px/1 'IBM Plex Mono',ui-monospace,monospace;letter-spacing:.06em;text-decoration:none;white-space:nowrap;
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);transition:opacity .18s ease,background .15s ease,border-color .15s ease}
+  #back img{width:13px;height:13px;display:block}
+  body.ui-hidden #back{opacity:0} body.ui-hidden #back:hover,body.ui-hidden #back:focus-visible{opacity:1}
+  #nogl{position:fixed;inset:0;display:none;place-items:center;text-align:center;padding:40px;z-index:20;background:#000;color:#eee;line-height:1.7}
+  #nogl a{color:inherit}
+</style>
+<link rel="stylesheet" href="ui.css">
+<script src="ui.js"></script>
+</head>
+<body>
+
+<canvas id="gl"></canvas>
+<canvas id="hud2"></canvas>
+<a id="back" href="index.html" aria-label="Back to Moxx Lab index"><img src="logo.svg" alt="">← Moxx Lab</a>
+<div id="hud">hover a tape · click to open · drag to spin · scroll to dive in · <kbd>H</kbd> panel · <kbd>R</kbd> replay · <kbd>S</kbd> save png · <kbd>space</kbd> pause</div>
+<div id="nogl"><div><b>This one needs WebGL 2.</b><br>Your browser did not provide it.<br><a href="index.html">← Back to Moxx Lab</a></div></div>
+
+<div id="panel">
+  <h1><img class="mark" src="logo.svg" alt="">Tape Deck<small>a drum of cassettes, one per project</small></h1>
+
+  <details open>
+    <summary>Carousel</summary>
+    <div id="sl-ring"></div>
+  </details>
+
+  <details open>
+    <summary>Light</summary>
+    <div id="sl-light"></div>
+    <label class="toggle"><input type="checkbox" id="mono" checked> Black and white</label>
+    <label class="toggle"><input type="checkbox" id="tracker" checked> Tracker overlay on hover</label>
+  </details>
+
+  <details open>
+    <summary>Projects</summary>
+    <textarea id="projects" spellcheck="false" aria-label="Projects"></textarea>
+    <p class="hint">One tape per line: <b>Name | Tag | Year | Link | Description</b>. The list repeats to fill the drum and is kept in this browser.</p>
+    <div class="btns"><button id="bLab">Reset to the lab's tools</button></div>
+  </details>
+
+  <details open>
+    <summary>Export</summary>
+    <div class="btns"><button id="bSave">Save PNG</button><button id="bOffline">Offline copy</button></div>
+    <div class="btns"><button id="bHide">Hide panel</button></div>
+    <p class="hint">Offline copy saves this page, its styles, your projects and your settings as one HTML file that opens without a connection.</p>
+  </details>
+</div>
+
+<script>
+/* Tape Deck — cassettes on a turning drum, drawn with WebGL 2 and nothing else.
+   Everything is made in code at load: the cassette is a handful of boxes, every label is painted on a 2D canvas
+   into one texture array, the reels are drawn in the shader. No models, no images, no libraries.
+   Sections: 1 projects · 2 state · 3 maths · 4 labels · 5 GL (mesh, shaders, targets) · 6 scene · 7 tracker · 8 interface */
+(() => {
+const $ = id => document.getElementById(id);
+const TAU = Math.PI*2, clamp=(v,a,b)=>v<a?a:v>b?b:v, mix=(a,b,t)=>a+(b-a)*t, ease=t=>t*t*(3-2*t);
+function mulberry32(a){ return () => { a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+const hash = s => { let h=2166136261; for (let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; };
+
+/* ==================================================================== 1. PROJECTS */
+const LAB = `Terminal Type | type animation | 2026 | terminal-type.html | Portrait terminal text that types itself in behind a scramble of glyphs.
+Dither Lab | GPU dithering | 2026 | dither-lab.html | Images and video dithered live, down to a few tones and three colours.
+Line Relief | displacement | 2026 | line-relief.html | A field of lines pushed sideways by an image's brightness.
+Glyph Matrix | pattern | 2026 | glyph-matrix.html | A grid of small marks that redraws a picture in its own alphabet.
+Prism Core | raymarch | 2026 | prism-core.html | A soft glowing block with weather moving inside it.
+Compass Mark | logo builder | 2026 | compass-mark.html | A logo drawn with nothing but circles, construction lines left showing.
+Brand Engine | generative brand | 2026 | brand-engine.html | One seed and one palette make every visual for a brand.
+Jelly Pitch | soft body | 2026 | jelly-pitch.html | Jelly balls you can pull apart and cut, on turf that bends.
+Pretext Play | text layout | 2026 | pretext-play.html | Paragraphs measured and wrapped without the DOM.`;
+const PRESET = window.__TAPE_PRESET || null;                      // baked in by "Offline copy"
+const KEY='moxx-tape-deck'; let saved=null; try{ saved=JSON.parse(localStorage.getItem(KEY)||'null'); }catch(e){}
+let projectText = (PRESET && PRESET.projects) || (saved && saved.projects) || LAB, projects=[];
+function parseProjects(){ projects=projectText.split('\n').map(l=>l.split('|').map(s=>s.trim())).filter(p=>p[0]).map(p=>({name:p[0],tag:p[1]||'',year:p[2]||'',url:p[3]||'',desc:p[4]||''})).slice(0,48);
+  if (!projects.length) projects=[{name:'Untitled',tag:'',year:'',url:'',desc:''}]; }
+
+/* ==================================================================== 2. STATE */
+const S = Object.assign({ count:18, rows:2, radius:2.5, speed:.16, tilt:.32, tumble:.25, dive:.1, key:1, glint:1, bloom:.75, grain:.5, mono:true, tracker:true, playing:true },
+  saved && saved.S, PRESET && PRESET.S);
+const store = () => { try{ localStorage.setItem(KEY,JSON.stringify({S,projects:projectText})); }catch(e){} };
+
+/* ==================================================================== 3. MATHS (column-major) */
+const m4mul=(a,b)=>{ const o=new Float32Array(16); for (let c=0;c<4;c++) for (let r=0;r<4;r++){ let s=0; for (let k=0;k<4;k++) s+=a[k*4+r]*b[c*4+k]; o[c*4+r]=s; } return o; };
+const persp=(fov,asp,n,f)=>{ const t=1/Math.tan(fov/2); return new Float32Array([t/asp,0,0,0, 0,t,0,0, 0,0,(f+n)/(n-f),-1, 0,0,2*f*n/(n-f),0]); };
+function lookAt(e,c){ let fx=c[0]-e[0],fy=c[1]-e[1],fz=c[2]-e[2]; let l=Math.hypot(fx,fy,fz); fx/=l; fy/=l; fz/=l; let rx=fy*0-fz*1, ry=fz*0-fx*0, rz=fx*1-fy*0; l=Math.hypot(rx,ry,rz); rx/=l; ry/=l; rz/=l;
+  const ux=ry*fz-rz*fy, uy=rz*fx-rx*fz, uz=rx*fy-ry*fx; return {m:new Float32Array([rx,ux,-fx,0, ry,uy,-fy,0, rz,uz,-fz,0, -(rx*e[0]+ry*e[1]+rz*e[2]),-(ux*e[0]+uy*e[1]+uz*e[2]),fx*e[0]+fy*e[1]+fz*e[2],1]),f:[fx,fy,fz],r:[rx,ry,rz],u:[ux,uy,uz]}; }
+const m3mul=(a,b)=>{ const o=new Array(9); for (let c=0;c<3;c++) for (let r=0;r<3;r++) o[c*3+r]=a[r]*b[c*3]+a[3+r]*b[c*3+1]+a[6+r]*b[c*3+2]; return o; };
+const rotX=a=>{ const c=Math.cos(a),s=Math.sin(a); return [1,0,0, 0,c,s, 0,-s,c]; }, rotY=a=>{ const c=Math.cos(a),s=Math.sin(a); return [c,0,-s, 0,1,0, s,0,c]; }, rotZ=a=>{ const c=Math.cos(a),s=Math.sin(a); return [c,s,0, -s,c,0, 0,0,1]; };
+
+/* ==================================================================== 4. LABELS
+   One 512 x 320 painting per project, plus one shared back. They go into a texture array, one layer each. */
+const LW=512, LH=320, SHELLS=[[.045,.045,.05],[.86,.84,.79],[.2,.21,.23],[.07,.075,.085],[.78,.75,.68],[.12,.12,.13]];
+function paintLabel(g,p,i){
+  const r=mulberry32(hash(p.name+i)), shell=SHELLS[Math.floor(r()*SHELLS.length)], dark=shell[0]<.4, hue=Math.floor(r()*360), style=Math.floor(r()*4);
+  const css=c=>`rgb(${c.map(v=>Math.round(v*255)).join(',')})`, ink=dark?'#f2f0ea':'#141414', paper=dark?'#ebe7dc':'#f4f1e8';
+  g.fillStyle=css(shell); g.fillRect(0,0,LW,LH);
+  // the sticker
+  const sx=26, sy=22, sw=LW-52, sh=196; g.fillStyle=style===3?'#17181a':paper; g.beginPath(); g.roundRect(sx,sy,sw,sh,10); g.fill();
+  const on=style===3?'#f2f0ea':'#141414';
+  g.save(); g.beginPath(); g.roundRect(sx,sy,sw,sh,10); g.clip();
+  if (style===0){ g.fillStyle=`hsl(${hue} 55% 46%)`; g.fillRect(sx,sy+sh-58,sw,22); g.fillStyle=`hsl(${(hue+40)%360} 55% 62%)`; g.fillRect(sx,sy+sh-34,sw,10); }
+  else if (style===1){ g.strokeStyle=`hsl(${hue} 30% 55%)`; g.lineWidth=5; for (let x=-200;x<LW;x+=18){ g.beginPath(); g.moveTo(x,sy+sh); g.lineTo(x+200,sy); g.stroke(); } g.fillStyle=paper; g.fillRect(sx,sy+12,sw,52); }
+  else if (style===2){ g.fillStyle=`hsl(${hue} 60% 50%)`; g.fillRect(sx,sy,sw*.3,sh); g.fillStyle=on; for (let k=0;k<5;k++) g.fillRect(sx+sw*.34,sy+92+k*9,sw*.6,1.5); }
+  else { g.fillStyle=`hsl(${hue} 70% 58%)`; g.fillRect(sx,sy+sh-16,sw,16); }
+  g.restore();
+  g.fillStyle=on; g.textBaseline='alphabetic';
+  g.font='900 30px "Helvetica Neue",Helvetica,Arial,sans-serif'; g.fillText('MOXX',sx+16,sy+42);
+  g.font='500 11px "IBM Plex Mono",ui-monospace,monospace'; g.fillText(['C-60','C-90','MX-46','TYPE II','UX 54'][Math.floor(r()*5)],sx+sw-70,sy+26); g.fillText('SIDE A',sx+sw-70,sy+42);
+  let fs=30; g.font=`italic ${fs}px Georgia,"Times New Roman",serif`; while (g.measureText(p.name).width>sw-36 && fs>14){ fs-=2; g.font=`italic ${fs}px Georgia,"Times New Roman",serif`; }
+  g.fillText(p.name,sx+18,sy+78); g.fillRect(sx+16,sy+86,sw-32,1.2);
+  g.font='500 10px "IBM Plex Mono",ui-monospace,monospace'; g.fillText((p.tag||'').toUpperCase().slice(0,26),sx+18,sy+sh-66+(style===0?-8:0)); g.fillText(p.year,sx+sw-52,sy+sh-66+(style===0?-8:0));
+  // the lower block: head openings and screws
+  g.fillStyle=dark?'rgba(255,255,255,.06)':'rgba(0,0,0,.08)'; g.beginPath(); g.moveTo(96,LH); g.lineTo(118,240); g.lineTo(LW-118,240); g.lineTo(LW-96,LH); g.fill();
+  g.fillStyle=dark?'#000':'#1a1a1a'; for (const x of [150,206,256,306,362]){ g.beginPath(); g.roundRect(x-11,270,22,x===256?26:18,3); g.fill(); }
+  g.fillStyle=dark?'rgba(255,255,255,.28)':'rgba(0,0,0,.35)'; for (const [x,y] of [[14,14],[LW-14,14],[14,LH-14],[LW-14,LH-14],[256,232]]){ g.beginPath(); g.arc(x,y,5,0,TAU); g.fill(); }
+  return shell;
+}
+function paintBack(g){ g.fillStyle='#808080'; g.fillRect(0,0,LW,LH); g.fillStyle='rgba(0,0,0,.16)'; for (let y=30;y<230;y+=14) g.fillRect(40,y,LW-80,2);
+  g.fillStyle='rgba(0,0,0,.25)'; g.beginPath(); g.moveTo(96,LH); g.lineTo(118,240); g.lineTo(LW-118,240); g.lineTo(LW-96,LH); g.fill();
+  g.fillStyle='rgba(0,0,0,.6)'; for (const [x,y] of [[14,14],[LW-14,14],[14,LH-14],[LW-14,LH-14],[256,232]]){ g.beginPath(); g.arc(x,y,5,0,TAU); g.fill(); }
+  g.font='700 13px "IBM Plex Mono",ui-monospace,monospace'; g.fillStyle='rgba(255,255,255,.5)'; g.fillText('SIDE B',LW-110,LH-90); }
+
+/* ==================================================================== 5. GL */
+const cv=$('gl'), gl=cv.getContext('webgl2',{antialias:false,alpha:false,powerPreference:'high-performance'});
+if (!gl){ $('nogl').style.display='grid'; return; }
+const HDR = !!gl.getExtension('EXT_color_buffer_float') || !!gl.getExtension('EXT_color_buffer_half_float'), IFMT = HDR ? gl.RGBA16F : gl.RGBA8, TYPE = HDR ? gl.HALF_FLOAT : gl.UNSIGNED_BYTE;
+function program(vs,fs){ const p=gl.createProgram(); for (const [t,src] of [[gl.VERTEX_SHADER,vs],[gl.FRAGMENT_SHADER,fs]]){ const s=gl.createShader(t); gl.shaderSource(s,src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s,gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(s)); gl.attachShader(p,s); }
+  gl.linkProgram(p); if (!gl.getProgramParameter(p,gl.LINK_STATUS)) console.error(gl.getProgramInfoLog(p));
+  const u={}; for (let i=0;i<gl.getProgramParameter(p,gl.ACTIVE_UNIFORMS);i++){ const n=gl.getActiveUniform(p,i).name.replace('[0]',''); u[n]=gl.getUniformLocation(p,n); } return {p,u}; }
+
+// the cassette: a shell and a thicker block along the bottom edge. kind 0 = front face, 1 = back face, 2 = edge
+const CW=1, CH=.635, CT=.11;
+const mesh=(()=>{ const v=[];
+  const box=(x0,x1,y0,y1,z0,z1)=>{ const uv=(x,y)=>[x/CW+.5,.5-y/CH];
+    const quad=(a,b,c,d,n,k,flip)=>{ for (const p of [a,b,c,a,c,d]){ const t=uv(p[0],p[1]); v.push(...p,...n,flip?1-t[0]:t[0],t[1],k); } };
+    quad([x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1],[0,0,1],0,false); quad([x1,y0,z0],[x0,y0,z0],[x0,y1,z0],[x1,y1,z0],[0,0,-1],1,true);
+    quad([x1,y0,z1],[x1,y0,z0],[x1,y1,z0],[x1,y1,z1],[1,0,0],2); quad([x0,y0,z0],[x0,y0,z1],[x0,y1,z1],[x0,y1,z0],[-1,0,0],2);
+    quad([x0,y1,z1],[x1,y1,z1],[x1,y1,z0],[x0,y1,z0],[0,1,0],2); quad([x0,y0,z0],[x1,y0,z0],[x1,y0,z1],[x0,y0,z1],[0,-1,0],2); };
+  box(-CW/2,CW/2,-CH/2,CH/2,-CT/2,CT/2); box(-CW*.3,CW*.3,-CH/2,-CH/2+CH*.25,-CT/2-.022,CT/2+.022);
+  return new Float32Array(v); })();
+const VS=`#version 300 es
+layout(location=0) in vec3 aP; layout(location=1) in vec3 aN; layout(location=2) in vec2 aUV; layout(location=3) in float aK;
+layout(location=4) in mat4 iM; layout(location=8) in vec4 iA; layout(location=9) in vec4 iC;
+uniform mat4 uVP; out vec3 vW,vN; out vec2 vUV; out float vK; out vec4 vA,vC;
+void main(){ vec4 w=iM*vec4(aP,1.); vW=w.xyz; vN=mat3(iM)*aN; vUV=aUV; vK=aK; vA=iA; vC=iC; gl_Position=uVP*w; }`;
+const FS=`#version 300 es
+precision highp float; precision highp sampler2DArray;
+in vec3 vW,vN; in vec2 vUV; in float vK; in vec4 vA,vC; out vec4 o;
+uniform sampler2DArray uTex; uniform vec3 uEye,uKey,uPt; uniform float uKeyI,uGlint,uBack,uFog;
+// a reel hub: a pale ring with six teeth, turning
+vec3 hub(vec2 p,float ang,vec3 base,out float gloss){ float d=length(p), a=atan(p.y,p.x)+ang; gloss=.9;
+  if (d>.086) return base; if (d>.074) return vec3(.02);
+  float teeth=step(.5,fract(a*6./6.28318)); if (d<.03) return vec3(.015);
+  return d<.052 ? mix(vec3(.02),vec3(.82),teeth) : vec3(.8,.79,.76); }
+void main(){
+  vec3 N=normalize(vN), V=normalize(uEye-vW); float gloss=.55; vec3 alb;
+  if (vK<.5){ alb=texture(uTex,vec3(vUV,vA.x)).rgb; vec2 p=vec2(vUV.x*1.575,vUV.y), c1=vec2(.295*1.575,.515), c2=vec2(.705*1.575,.515);
+    if (abs(p.x-.5*1.575)<.2 && abs(p.y-.515)<.068){                                  // the window: tape packs behind smoked plastic
+      float r1=.19+.05*sin(vC.a*6.3), r2=.33-r1; float t=min(length(p-c1)-r1,length(p-c2)-r2);
+      alb=t<0. ? vec3(.05,.035,.03)+.03*sin(length(p-(length(p-c1)-r1<0.?c1:c2))*400.) : vec3(.012); gloss=.95; }
+    float g1; alb=hub(p-c1,vA.z,alb,g1); alb=hub(p-c2,vA.z*1.3+1.,alb,g1); if (length(p-c1)<.086||length(p-c2)<.086) gloss=.8; }
+  else if (vK<1.5){ alb=texture(uTex,vec3(vUV,uBack)).rgb*vC.rgb*2.; }
+  else { alb=vC.rgb*.9; gloss=.7; }
+  vec3 L=normalize(uKey), H=normalize(L+V); float nl=max(dot(N,L),0.);
+  vec3 col=alb*(.03+nl*.78*uKeyI);
+  col+=vec3(1.,.98,.95)*pow(max(dot(N,H),0.),mix(30.,240.,gloss))*gloss*1.6*uKeyI;
+  vec3 dp=uPt-vW; float pd=length(dp); vec3 Lp=dp/pd, Hp=normalize(Lp+V); float att=uGlint/(1.+pd*pd*.55);   // a small hot light inside the drum
+  col+=alb*max(dot(N,Lp),0.)*att*.55+vec3(1.)*pow(max(dot(N,Hp),0.),mix(60.,420.,gloss))*gloss*att*11.;
+  col+=alb*pow(1.-max(dot(N,V),0.),3.)*.22;
+  vec3 Rf=reflect(-V,N); col+=vec3(1.)*smoothstep(.045,0.,abs(Rf.y-.42))*smoothstep(-.3,.5,Rf.z+Rf.x*.4)*gloss*1.1*uKeyI;   // a strip light sweeping across glossy faces
+  col*=1.12;
+  col*=exp(-max(length(uEye-vW)-uFog,0.)*.34);                                       // far tapes fall into the dark
+  col+=alb*.16*vA.y+vec3(.03)*vA.y;
+  o=vec4(col,1.); }`;
+const QUAD=`#version 300 es
+out vec2 uv; void main(){ vec2 p=vec2(gl_VertexID==1?3.:-1.,gl_VertexID==2?3.:-1.); uv=p*.5+.5; gl_Position=vec4(p,0.,1.); }`;
+const FS_BRIGHT=`#version 300 es
+precision highp float; in vec2 uv; out vec4 o; uniform sampler2D uT; void main(){ vec3 c=texture(uT,uv).rgb; float l=max(max(c.r,c.g),c.b); o=vec4(c*smoothstep(.75,1.6,l),1.); }`;
+const FS_BLUR=`#version 300 es
+precision highp float; in vec2 uv; out vec4 o; uniform sampler2D uT; uniform vec2 uD;
+void main(){ vec3 c=texture(uT,uv).rgb*.227; c+=(texture(uT,uv+uD*1.38).rgb+texture(uT,uv-uD*1.38).rgb)*.316; c+=(texture(uT,uv+uD*3.23).rgb+texture(uT,uv-uD*3.23).rgb)*.07; o=vec4(c,1.); }`;
+const FS_OUT=`#version 300 es
+precision highp float; in vec2 uv; out vec4 o; uniform sampler2D uT,uB; uniform float uBloom,uGrain,uMono,uTime;
+float h(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+void main(){ vec3 c=texture(uT,uv).rgb+texture(uB,uv).rgb*uBloom*1.6;
+  c=c*(2.51*c+.03)/(c*(2.43*c+.59)+.14);                                             // filmic curve
+  float l=dot(c,vec3(.299,.587,.114)); c=mix(c,vec3(l)*vec3(1.,.985,.96),uMono);
+  vec2 q=uv-.5; c*=1.-dot(q,q)*.75; c+=(h(gl_FragCoord.xy+fract(uTime)*91.)-.5)*.055*uGrain;
+  o=vec4(pow(clamp(c,0.,1.),vec3(1./2.2)),1.); }`;
+const P={scene:program(VS,FS),bright:program(QUAD,FS_BRIGHT),blur:program(QUAD,FS_BLUR),out:program(QUAD,FS_OUT)};
+
+const MAXN=64, vao=gl.createVertexArray(); gl.bindVertexArray(vao);
+gl.bindBuffer(gl.ARRAY_BUFFER,gl.createBuffer()); gl.bufferData(gl.ARRAY_BUFFER,mesh,gl.STATIC_DRAW);
+[[0,3,0],[1,3,12],[2,2,24],[3,1,32]].forEach(([l,n,off])=>{ gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l,n,gl.FLOAT,false,36,off); });
+const inst=new Float32Array(MAXN*24), ibuf=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,ibuf); gl.bufferData(gl.ARRAY_BUFFER,inst.byteLength,gl.DYNAMIC_DRAW);
+for (let k=0;k<6;k++){ gl.enableVertexAttribArray(4+k); gl.vertexAttribPointer(4+k,4,gl.FLOAT,false,96,k*16); gl.vertexAttribDivisor(4+k,1); }
+gl.bindVertexArray(null);
+
+// labels into a texture array
+const tex=gl.createTexture(); let shells=[], backLayer=0;
+function buildLabels(){ parseProjects(); const n=projects.length+1, c=document.createElement('canvas'); c.width=LW; c.height=LH; const g=c.getContext('2d'); shells=[];
+  gl.bindTexture(gl.TEXTURE_2D_ARRAY,tex); gl.texImage3D(gl.TEXTURE_2D_ARRAY,0,gl.RGBA8,LW,LH,n,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+  projects.forEach((p,i)=>{ g.clearRect(0,0,LW,LH); shells.push(paintLabel(g,p,i)); gl.texSubImage3D(gl.TEXTURE_2D_ARRAY,0,0,0,i,LW,LH,1,gl.RGBA,gl.UNSIGNED_BYTE,c); });
+  g.clearRect(0,0,LW,LH); paintBack(g); backLayer=n-1; gl.texSubImage3D(gl.TEXTURE_2D_ARRAY,0,0,0,backLayer,LW,LH,1,gl.RGBA,gl.UNSIGNED_BYTE,c);
+  gl.generateMipmap(gl.TEXTURE_2D_ARRAY); gl.texParameteri(gl.TEXTURE_2D_ARRAY,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR); gl.texParameteri(gl.TEXTURE_2D_ARRAY,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+  const an=gl.getExtension('EXT_texture_filter_anisotropic'); if (an) gl.texParameterf(gl.TEXTURE_2D_ARRAY,an.TEXTURE_MAX_ANISOTROPY_EXT,8); }
+
+// render targets: multisampled scene, resolved copy, two quarter-size buffers for the glow
+let W=1,H=1,dpr=1,T={};
+function target(w,h){ const t=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,t); gl.texImage2D(gl.TEXTURE_2D,0,IFMT,w,h,0,gl.RGBA,TYPE,null);
+  for (const [k,v] of [[gl.TEXTURE_MIN_FILTER,gl.LINEAR],[gl.TEXTURE_MAG_FILTER,gl.LINEAR],[gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D,k,v);
+  const f=gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER,f); gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t,0); return {t,f,w,h}; }
+function resize(){ const hidden=document.body.classList.contains('ui-hidden'); W=Math.max(1,innerWidth-(hidden?0:340)); H=Math.max(1,innerHeight); dpr=Math.min(devicePixelRatio||1,2);
+  for (const c of [cv,$('hud2')]){ c.style.width=W+'px'; c.style.height=H+'px'; c.width=Math.round(W*dpr); c.height=Math.round(H*dpr); }
+  for (const k in T){ if (T[k].t) gl.deleteTexture(T[k].t); if (T[k].f) gl.deleteFramebuffer(T[k].f); if (T[k].rb) T[k].rb.forEach(r=>gl.deleteRenderbuffer(r)); }
+  const w=cv.width, h=cv.height, ms=gl.createFramebuffer(), rc=gl.createRenderbuffer(), rd=gl.createRenderbuffer(), smp=Math.min(4,gl.getParameter(gl.MAX_SAMPLES));
+  gl.bindFramebuffer(gl.FRAMEBUFFER,ms); gl.bindRenderbuffer(gl.RENDERBUFFER,rc); gl.renderbufferStorageMultisample(gl.RENDERBUFFER,smp,IFMT,w,h); gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.RENDERBUFFER,rc);
+  gl.bindRenderbuffer(gl.RENDERBUFFER,rd); gl.renderbufferStorageMultisample(gl.RENDERBUFFER,smp,gl.DEPTH_COMPONENT24,w,h); gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.RENDERBUFFER,rd);
+  T={ms:{f:ms,rb:[rc,rd]},scene:target(w,h),a:target(Math.max(1,w>>2),Math.max(1,h>>2)),b:target(Math.max(1,w>>2),Math.max(1,h>>2))};
+}
+
+/* ==================================================================== 6. SCENE */
+let t=0, spin=0, spinVel=0, slow=1, intro=0, hover=-1, hoverAmt=0, cam=null, VP=null; const tapes=[]; const mouse={x:-1,y:-1,nx:0,ny:0,inside:false};
+function layout(){
+  const n=Math.min(S.count,MAXN), rows=Math.min(S.rows,n), per=Math.ceil(n/rows), rad=S.radius; tapes.length=0;
+  for (let i=0;i<n;i++){ const r=mulberry32(i*7919+11), row=Math.floor(i/per), k=i%per, cnt=row===rows-1?n-per*(rows-1):per;
+    const a=spin+(k/cnt)*TAU+row*.6, y=(row-(rows-1)/2)*.86+(r()-.5)*.12, ox=Math.cos(a), oz=Math.sin(a);
+    const B=[oz,0,-ox, 0,1,0, ox,0,oz];                                                 // tape faces outward
+    const tum=S.tumble, R=m3mul(B,m3mul(rotY((r()-.5)*.5+Math.sin(t*.31+i)*.35*tum),m3mul(rotX(-S.tilt+(r()-.5)*.3+Math.sin(t*.47+i*1.7)*.5*tum),rotZ((r()-.5)*.35+Math.cos(t*.39+i*2.3)*.6*tum))));
+    const s=ease(clamp(intro*1.6-i*.045,0,1)), rr=rad*(1+(r()-.5)*.08)+(1-s)*1.2;
+    tapes.push({R,p:[ox*rr,y-(1-s)*.6,oz*rr],s,proj:i%projects.length,seed:r(),i}); }
+}
+function camera(){
+  // diving in brings the camera up to the outside of the near wall, so the fronts of the tapes sweep past in close-up
+  const d=S.dive, rad=S.radius, e=[mouse.nx*.35*(1-d*.5), mix(rad*.42,.12,d)+mouse.ny*-.25, mix(rad*2.75,rad*1.3,d)], c=[0, mix(-.05,.02,d), mix(0,rad*.92,d)];
+  cam=lookAt(e,c); cam.e=e; cam.fov=mix(34,58,d)*Math.PI/180; VP=m4mul(persp(cam.fov,W/H,.05,60),cam.m);
+}
+function rayFromMouse(){ const nx=mouse.x/W*2-1, ny=1-mouse.y/H*2, th=Math.tan(cam.fov/2), d=[0,0,0];
+  for (let k=0;k<3;k++) d[k]=cam.f[k]+cam.r[k]*nx*th*W/H+cam.u[k]*ny*th; const l=Math.hypot(...d); return d.map(v=>v/l); }
+function pick(){ if (!mouse.inside) return -1; const d=rayFromMouse(), o=cam.e, hx=CW/2, hy=CH/2, hz=CT/2+.02; let best=1e9, id=-1;
+  for (const tp of tapes){ if (tp.s<.9) continue; const R=tp.R, q=[o[0]-tp.p[0],o[1]-tp.p[1],o[2]-tp.p[2]];
+    const lo=[R[0]*q[0]+R[1]*q[1]+R[2]*q[2], R[3]*q[0]+R[4]*q[1]+R[5]*q[2], R[6]*q[0]+R[7]*q[1]+R[8]*q[2]], ld=[R[0]*d[0]+R[1]*d[1]+R[2]*d[2], R[3]*d[0]+R[4]*d[1]+R[5]*d[2], R[6]*d[0]+R[7]*d[1]+R[8]*d[2]];
+    let t0=-1e9, t1=1e9, ok=true; const hs=[hx,hy,hz];
+    for (let k=0;k<3;k++){ if (Math.abs(ld[k])<1e-7){ if (Math.abs(lo[k])>hs[k]){ ok=false; break; } continue; } let a=(-hs[k]-lo[k])/ld[k], b=(hs[k]-lo[k])/ld[k]; if (a>b){ const x=a; a=b; b=x; } if (a>t0) t0=a; if (b<t1) t1=b; if (t0>t1){ ok=false; break; } }
+    if (ok && t0>0 && t0<best){ best=t0; id=tp.i; } }
+  return id; }
+function draw(){
+  layout(); camera();
+  tapes.forEach((tp,i)=>{ const o=i*24, R=tp.R, s=tp.s;
+    inst.set([R[0]*s,R[1]*s,R[2]*s,0, R[3]*s,R[4]*s,R[5]*s,0, R[6]*s,R[7]*s,R[8]*s,0, tp.p[0],tp.p[1],tp.p[2],1, tp.proj,tp.i===hover?hoverAmt:0,t*(1.2+tp.seed)*(tp.i===hover?3:1),0, ...shells[tp.proj],tp.seed],o); });
+  gl.bindFramebuffer(gl.FRAMEBUFFER,T.ms.f); gl.viewport(0,0,cv.width,cv.height); gl.clearColor(0,0,0,1); gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT); gl.enable(gl.DEPTH_TEST); gl.disable(gl.CULL_FACE);
+  const u=P.scene.u; gl.useProgram(P.scene.p); gl.uniformMatrix4fv(u.uVP,false,VP); gl.uniform3fv(u.uEye,cam.e); gl.uniform3f(u.uKey,-.45,.8,.55);
+  gl.uniform3f(u.uPt,Math.sin(t*.23)*S.radius*.7,.3+Math.sin(t*.4)*.45,S.radius*mix(1.6,1.22,S.dive)); gl.uniform1f(u.uKeyI,S.key); gl.uniform1f(u.uGlint,S.glint); gl.uniform1f(u.uBack,backLayer); gl.uniform1f(u.uFog,S.radius*mix(1.9,.75,S.dive));
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D_ARRAY,tex); gl.uniform1i(u.uTex,0);
+  gl.bindVertexArray(vao); gl.bindBuffer(gl.ARRAY_BUFFER,ibuf); gl.bufferSubData(gl.ARRAY_BUFFER,0,inst,0,tapes.length*24); gl.drawArraysInstanced(gl.TRIANGLES,0,mesh.length/9,tapes.length); gl.bindVertexArray(null);
+  gl.bindFramebuffer(gl.READ_FRAMEBUFFER,T.ms.f); gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,T.scene.f); gl.blitFramebuffer(0,0,cv.width,cv.height,0,0,cv.width,cv.height,gl.COLOR_BUFFER_BIT,gl.NEAREST);
+  gl.disable(gl.DEPTH_TEST);
+  const pass=(prog,dst,src,set)=>{ gl.bindFramebuffer(gl.FRAMEBUFFER,dst?dst.f:null); gl.viewport(0,0,dst?dst.w:cv.width,dst?dst.h:cv.height); gl.useProgram(prog.p); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,src.t); gl.uniform1i(prog.u.uT,0); set&&set(prog.u); gl.drawArrays(gl.TRIANGLES,0,3); };
+  pass(P.bright,T.a,T.scene);
+  for (const r of [1,2.2]){ pass(P.blur,T.b,T.a,u=>gl.uniform2f(u.uD,r/T.a.w,0)); pass(P.blur,T.a,T.b,u=>gl.uniform2f(u.uD,0,r/T.a.h)); }
+  pass(P.out,null,T.scene,u=>{ gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D,T.a.t); gl.uniform1i(u.uB,1); gl.uniform1f(u.uBloom,S.bloom); gl.uniform1f(u.uGrain,S.grain); gl.uniform1f(u.uMono,S.mono?1:0); gl.uniform1f(u.uTime,t); });
+}
+
+/* ==================================================================== 7. TRACKER
+   The overlay that reads a hovered tape: its box on screen, its name, and a handful of seeded panels. */
+const hud=$('hud2'), hx=hud.getContext('2d');
+function screenBox(tp){ let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9; for (let k=0;k<8;k++){ const l=[(k&1?1:-1)*CW/2,(k&2?1:-1)*CH/2,(k&4?1:-1)*CT/2], R=tp.R;
+    const w=[R[0]*l[0]+R[3]*l[1]+R[6]*l[2]+tp.p[0], R[1]*l[0]+R[4]*l[1]+R[7]*l[2]+tp.p[1], R[2]*l[0]+R[5]*l[1]+R[8]*l[2]+tp.p[2]];
+    const cw=VP[3]*w[0]+VP[7]*w[1]+VP[11]*w[2]+VP[15]; if (cw<=0) return null; const sx=((VP[0]*w[0]+VP[4]*w[1]+VP[8]*w[2]+VP[12])/cw*.5+.5)*W, sy=(1-((VP[1]*w[0]+VP[5]*w[1]+VP[9]*w[2]+VP[13])/cw*.5+.5))*H;
+    x0=Math.min(x0,sx); y0=Math.min(y0,sy); x1=Math.max(x1,sx); y1=Math.max(y1,sy); } return {x:x0,y:y0,w:x1-x0,h:y1-y0}; }
+function wrapText(g,text,w){ const out=[]; let cur=''; for (const word of text.split(/\s+/)){ const tr=cur?cur+' '+word:word; if (g.measureText(tr).width<=w || !cur) cur=tr; else { out.push(cur); cur=word; } } if (cur) out.push(cur); return out; }
+function drawTracker(){
+  hx.setTransform(dpr,0,0,dpr,0,0); hx.clearRect(0,0,W,H); if (!S.tracker || hover<0 || hoverAmt<.02) return;
+  const tp=tapes.find(x=>x.i===hover); if (!tp) return; const b=screenBox(tp); if (!b) return; const p=projects[tp.proj], a=hoverAmt, r=mulberry32(hash(p.name)+3), mono="'IBM Plex Mono',ui-monospace,monospace";
+  const show=k=>clamp(a*7-k,0,1), line='rgba(255,255,255,', txt=(s,x,y,al,size,weight)=>{ hx.font=`${weight||400} ${size||10}px ${mono}`; hx.fillStyle=line+(al==null?.9:al)+')'; hx.fillText(s,x,y); };
+  hx.lineWidth=1; hx.textBaseline='alphabetic';
+  // the tape's own box, with its numbers
+  hx.globalAlpha=show(0); hx.strokeStyle=line+'.8)'; hx.setLineDash([4,4]); hx.strokeRect(Math.round(b.x)+.5,Math.round(b.y)+.5,Math.round(b.w),Math.round(b.h)); hx.setLineDash([]);
+  hx.fillStyle='#fff'; for (const [x,y] of [[b.x,b.y],[b.x+b.w,b.y],[b.x,b.y+b.h],[b.x+b.w,b.y+b.h]]) hx.fillRect(x-2.5,y-2.5,5,5);
+  txt(`x: ${Math.round(b.x)}  y: ${Math.round(b.y)}`,b.x,b.y-8); txt(`w: ${Math.round(b.w)}  h: ${Math.round(b.h)}`,b.x+b.w-96,b.y+b.h+16);
+  // a wide orbit through it, and a small target
+  hx.globalAlpha=show(1)*.7; hx.setLineDash([2,5]); hx.strokeStyle=line+'.7)'; hx.beginPath(); hx.ellipse(b.x+b.w/2,b.y+b.h/2,b.w*.95,b.h*.8,-.25,0,TAU*show(1)); hx.stroke(); hx.setLineDash([]);
+  const cx=b.x+b.w*(.78+r()*.2), cy=b.y+b.h*(.2+r()*.5); hx.globalAlpha=show(2); hx.beginPath(); hx.arc(cx,cy,11,0,TAU); hx.stroke(); hx.beginPath(); hx.moveTo(cx-4,cy); hx.lineTo(cx+4,cy); hx.moveTo(cx,cy-4); hx.lineTo(cx,cy+4); hx.stroke(); txt('d: '+Math.round(Math.hypot(tp.p[0]-cam.e[0],tp.p[1]-cam.e[1],tp.p[2]-cam.e[2])*38),cx+16,cy+4);
+  // title
+  const left=b.x+b.w/2<W/2, tx=clamp(left?b.x+b.w+26:b.x-286,16,W-290), ty=clamp(b.y+8,70,H-250);
+  hx.globalAlpha=show(1); txt(p.name.toUpperCase(),tx,ty,1,15,600); txt([p.tag,p.year,p.url.replace(/^https?:\/\//,'')].filter(Boolean).join('  ·  ')+(p.url?'  ↗':''),tx,ty+18,.85,10.5);
+  hx.strokeStyle=line+'.5)'; hx.setLineDash([3,4]); hx.beginPath(); hx.moveTo(left?b.x+b.w:b.x,b.y+b.h*.3); hx.lineTo(left?tx-8:tx+268,ty+4); hx.stroke(); hx.setLineDash([]);
+  // panels: a description, a pixel mosaic, dots, crosses, hatching
+  const hue=hash(p.name)%360; let px=tx, py=ty+34;
+  const frame=(x,y,w,h,k,label)=>{ hx.globalAlpha=show(k); hx.strokeStyle=line+'.75)'; hx.strokeRect(Math.round(x)+.5,Math.round(y)+.5,w,h); if (label) txt(label,x,y-5,.8,9); };
+  if (p.desc){ hx.font=`400 10.5px ${mono}`; const lines=wrapText(hx,p.desc,244), h=lines.length*15+16; frame(px,py,262,h,2,'note'); hx.fillStyle='rgba(0,0,0,.55)'; hx.fillRect(px+1,py+1,260,h-2);
+    lines.forEach((l,i)=>txt(l,px+9,py+19+i*15,.92,10.5)); py+=h+22; }
+  const mw=120, mh=72, cell=8; frame(px,py,mw,mh,3,`x: ${Math.round(px)}  y: ${Math.round(py)}`);
+  for (let j=0;j<mh/cell;j++) for (let i=0;i<mw/cell;i++){ const v=mulberry32(hash(p.name+':'+i+':'+j)+Math.floor(t*3+i*.3))(); hx.fillStyle=S.mono?`hsl(0 0% ${12+v*62}%)`:`hsl(${hue+v*40} ${35+v*30}% ${14+v*52}%)`; hx.fillRect(px+i*cell,py+j*cell,cell,cell); }
+  const dx=px+mw+14; frame(dx,py,70,mh,4,'w: 70  h: '+mh); hx.fillStyle='#fff'; for (let j=0;j<6;j++) for (let i=0;i<6;i++) if (r()>.25){ hx.beginPath(); hx.arc(dx+10+i*10,py+11+j*10,1.4,0,TAU); hx.fill(); }
+  const ex=dx+84; frame(ex,py,44,mh,5); hx.strokeStyle=line+'.85)'; for (let j=0;j<4;j++) for (let i=0;i<2;i++){ const qx=ex+13+i*18, qy=py+13+j*15; hx.beginPath(); hx.moveTo(qx-3,qy-3); hx.lineTo(qx+3,qy+3); hx.moveTo(qx+3,qy-3); hx.lineTo(qx-3,qy+3); hx.stroke(); }
+  py+=mh+20; frame(px,py,180,22,6); hx.save(); hx.beginPath(); hx.rect(px,py,180*show(6),22); hx.clip(); hx.strokeStyle=line+'.7)'; for (let x=-20;x<200;x+=7){ hx.beginPath(); hx.moveTo(px+x,py+22); hx.lineTo(px+x+14,py); hx.stroke(); } hx.restore();
+  txt(p.url?'click to open':'no link',px+190,py+15,.75,9.5); hx.globalAlpha=1;
+}
+
+/* ==================================================================== 8. INTERFACE */
+const syncs=[];
+function slider(box,key,name,min,max,step,fmt){ const row=document.createElement('div'); row.className='row'; const lab=document.createElement('label'); lab.textContent=name;
+  const inp=document.createElement('input'); inp.type='range'; inp.min=min; inp.max=max; inp.step=step; const val=document.createElement('span'); val.className='val';
+  const show=()=>{ val.textContent=fmt?fmt(S[key]):String(Math.round(S[key]*100)/100); }; inp.oninput=()=>{ S[key]=+inp.value; show(); store(); }; syncs.push(()=>{ inp.value=S[key]; show(); }); row.append(lab,inp,val); $(box).append(row); }
+slider('sl-ring','count','Tapes',4,48,1); slider('sl-ring','rows','Rows',1,4,1); slider('sl-ring','radius','Radius',1.4,4.5,.05,v=>v.toFixed(2));
+slider('sl-ring','speed','Speed',-.6,.6,.01,v=>v.toFixed(2)); slider('sl-ring','tilt','Lean',-.6,1,.01,v=>v.toFixed(2)); slider('sl-ring','tumble','Tumble',0,1,.01,v=>v.toFixed(2)); slider('sl-ring','dive','Dive in',0,1,.01,v=>v.toFixed(2));
+slider('sl-light','key','Key light',0,2,.01,v=>v.toFixed(2)); slider('sl-light','glint','Hot light',0,3,.01,v=>v.toFixed(2)); slider('sl-light','bloom','Glow',0,2,.01,v=>v.toFixed(2)); slider('sl-light','grain','Grain',0,1.5,.01,v=>v.toFixed(2));
+const syncAll=()=>{ syncs.forEach(f=>f()); $('mono').checked=S.mono; $('tracker').checked=S.tracker; $('projects').value=projectText; };
+$('mono').onchange=e=>{ S.mono=e.target.checked; store(); }; $('tracker').onchange=e=>{ S.tracker=e.target.checked; store(); };
+$('projects').oninput=()=>{ projectText=$('projects').value; buildLabels(); store(); };
+$('bLab').onclick=()=>{ projectText=LAB; $('projects').value=LAB; buildLabels(); store(); };
+
+let drag=null, moved=0;
+cv.addEventListener('pointerdown',e=>{ drag=e.clientX; moved=0; cv.setPointerCapture(e.pointerId); cv.classList.add('drag'); });
+cv.addEventListener('pointermove',e=>{ const r=cv.getBoundingClientRect(); mouse.x=e.clientX-r.left; mouse.y=e.clientY-r.top; mouse.inside=true; mouse.nx=mouse.x/W*2-1; mouse.ny=mouse.y/H*2-1;
+  if (drag!==null){ const d=e.clientX-drag; drag=e.clientX; moved+=Math.abs(d); spinVel=d*-.0035/Math.max(.3,1-S.dive*.6); spin+=spinVel; } });
+cv.addEventListener('pointerup',e=>{ cv.classList.remove('drag'); if (drag!==null && moved<5 && hover>=0){ const tp=tapes.find(x=>x.i===hover), p=tp&&projects[tp.proj]; if (p && p.url) location.href=p.url; } drag=null; });
+cv.addEventListener('pointercancel',()=>{ drag=null; cv.classList.remove('drag'); }); cv.addEventListener('pointerleave',()=>{ mouse.inside=false; });
+cv.addEventListener('wheel',e=>{ e.preventDefault(); S.dive=clamp(S.dive+e.deltaY*.0009,0,1); syncAll(); store(); },{passive:false});
+addEventListener('keydown',e=>{ if (/^(TEXTAREA|SELECT)$/.test(e.target.tagName) || e.metaKey || e.ctrlKey || e.altKey) return; const k=e.key.toLowerCase();
+  if (k==='h'){ document.body.classList.toggle('ui-hidden'); resize(); } else if (k==='r') intro=0; else if (k==='s') $('bSave').click(); else if (e.key===' '){ e.preventDefault(); S.playing=!S.playing; } });
+$('bHide').onclick=()=>{ document.body.classList.add('ui-hidden'); resize(); };
+$('bSave').onclick=()=>{ draw(); const c=document.createElement('canvas'); c.width=cv.width; c.height=cv.height; const g=c.getContext('2d'); g.drawImage(cv,0,0); g.drawImage(hud,0,0);
+  c.toBlob(b=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='tape-deck.png'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); }); };
+// one file that works without a connection: this page with its stylesheet, script, logo, projects and settings folded in
+$('bOffline').onclick=async()=>{ const b=$('bOffline'), label=b.textContent;
+  try { const get=u=>fetch(u).then(r=>{ if (!r.ok) throw 0; return r.text(); }), [html,css,js,logo]=await Promise.all([get(location.pathname),get('ui.css'),get('ui.js'),get('logo.svg')]);
+    const here=location.href.replace(/[^/]*$/,''), abs=projectText.split('\n').map(l=>{ const p=l.split('|'); if (p[3] && !/^[a-z]+:/i.test(p[3].trim())) p[3]=' '+here+p[3].trim()+' '; return p.join('|'); }).join('\n');
+    const img='data:image/svg+xml;base64,'+btoa(logo), preset='<scr'+'ipt>window.__TAPE_PRESET='+JSON.stringify({S,projects:abs}).replace(/</g,'\\u003c')+'</scr'+'ipt>';
+    const out=html.replace('<link rel="stylesheet" href="ui.css">',()=>'<style>'+css+'</style>').replace('<script src="ui.js"><\/script>',()=>'<scr'+'ipt>'+js+'</scr'+'ipt>'+preset)
+      .split('src="logo.svg"').join('src="'+img+'"').replace('href="favicon.svg"',()=>'href="'+img+'"').split('href="index.html"').join('href="'+here+'"');
+    const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([out],{type:'text/html'})); a.download='tape-deck-offline.html'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); b.textContent='Saved'; }
+  catch(e){ b.textContent='Needs the live page'; }
+  setTimeout(()=>b.textContent=label,1600); };
+
+let last=performance.now();
+function frame(now){ const real=(now-last)/1000, dt=Math.min(.05,real); last=now;
+  if (S.playing){ t+=dt; intro=Math.min(4,intro+Math.min(.25,real)); }      // the entrance runs on the wall clock, so a slow first frame cannot stall it
+  const h=drag===null?pick():-1; if (h!==hover && (h>=0 || hoverAmt<.05)) hover=h; hoverAmt=clamp(hoverAmt+(h>=0 && h===hover?dt*3.2:-dt*4),0,1); if (hoverAmt===0 && h<0) hover=-1;
+  slow+=((hover>=0?.08:1)-slow)*Math.min(1,dt*5); if (drag===null){ spinVel*=Math.pow(.02,dt); if (S.playing) spin+=S.speed*dt*slow+spinVel; }
+  const tp=tapes.find(x=>x.i===hover), p=tp&&projects[tp.proj]; cv.classList.toggle('link',!!(p&&p.url)&&drag===null);
+  draw(); drawTracker(); requestAnimationFrame(frame); }
+addEventListener('resize',resize);
+buildLabels(); resize(); syncAll(); (document.fonts?document.fonts.ready:Promise.resolve()).then(buildLabels);
+window.TD={S,get tapes(){ return tapes; },get hover(){ return hover; }};
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

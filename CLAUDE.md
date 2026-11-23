@@ -11,7 +11,7 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
 - `terminal-type.html` (01), `dither-lab.html` (02), `line-relief.html` (03),
   `glyph-matrix.html` (04), `prism-core.html` (05), `compass-mark.html` (06),
   `brand-engine.html` (07), `jelly-pitch.html` (08),
-  `pretext-play.html` (09) — the effects.
+  `pretext-play.html` (09), `tape-deck.html` (10) — the effects.
 - `logo.svg` (white on transparent), `favicon.svg` (on black) — Moxx Lab brand mark; every
   page uses them for tab icon, panel header (`.mark`) and back link.
 - `ui.css`, `ui.js` — shared interface layer, loaded right after each page's own `<style>`.
@@ -89,6 +89,17 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
   library is not vendored. Uses the shared `ui.css`/`ui.js`. Canvas 2D; `reprepare()` runs
   `prepareWithSegments` only when text/font/options change, width changes only re-run layout.
   Modes: `drawWrap`, `drawBubbles`, `drawFlow`, `drawSegments`. Exposed as `window.PP`.
+
+- **Tape Deck** (10): cassette carousel in raw WebGL 2, shared `ui.css`/`ui.js`. Inspired by
+  webgl.dev (Luis Bizarro's portfolio: one 115 kB hand-written WebGPU bundle, no model files,
+  lazy media; its desktop app is the same scene as a native Rust/wgpu binary) — an original
+  implementation with its own model, labels and tracker design, none of that site's code,
+  assets or names. Everything is procedural: `mesh` (two boxes), `paintLabel` → one
+  `TEXTURE_2D_ARRAY` layer per project, hubs/window drawn in `FS`. Passes: MSAA float scene →
+  resolve → bright + 2 blurs at quarter size → `FS_OUT`. `layout()` rebuilds tape transforms
+  each frame, `pick()` is a CPU ray/box test, `drawTracker()` is the 2D overlay (`#hud2`).
+  `Offline copy` inlines `ui.css`, `ui.js`, `logo.svg` and a `__TAPE_PRESET`. Settings and
+  the project list live in localStorage `moxx-tape-deck`. Exposed as `window.TD`.
 
 ## Status (last work)
 All work is committed and pushed (HEAD `c8d6758`, minimal index + IBM Plex Mono).

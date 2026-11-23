@@ -156,6 +156,18 @@ with their widths and kinds. Font, size, weight, line height, letter spacing, wh
 word-break are adjustable, and a readout times `prepare()` and `layout()`. The library
 (1.0.0, MIT) is imported from a CDN at run time, so this page needs a network connection.
 
+**`tape-deck.html` — Tape Deck.** A carousel of cassette tapes on a turning drum, one tape
+per project, drawn with WebGL 2 and no assets: the cassette is two boxes, every label is
+painted on a 2D canvas into one texture array, and the reels turn in the fragment shader.
+The scene is rendered multisampled into a float buffer, then a bright pass and a small blur
+give the glow, with a filmic curve, optional black and white, vignette and grain on top.
+Hovering a tape slows the drum and draws a tracker over it — its box on screen with
+coordinates, the project's name, tag, year and link, a note, and a few seeded panels — and
+clicking opens the link. Drag spins the drum, scroll dives in for close-ups. The project
+list is editable (`Name | Tag | Year | Link | Description`, one per line) and defaults to
+the lab's own tools. **Offline copy** saves the page with its styles, script, logo,
+projects and settings folded into one HTML file that opens without a connection.
+
 ## Interface
 
 Every page loads two shared files, `ui.css` and `ui.js`. Together they give the site a
