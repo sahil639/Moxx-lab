@@ -16,7 +16,7 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
 - `terminal-type.html` (01), `dither-lab.html` (02), `line-relief.html` (03),
   `glyph-matrix.html` (04), `prism-core.html` (05), `compass-mark.html` (06),
   `brand-engine.html` (07), `jelly-pitch.html` (08),
-  `pretext-play.html` (09), `tape-deck.html` (10) — the effects.
+  `pretext-play.html` (09), `tape-deck.html` (10), `grain-stack.html` (11) — the effects.
 - `logo.svg` (white on transparent), `favicon.svg` (on black) — Moxx Lab brand mark; every
   page uses them for tab icon, panel header (`.mark`) and back link.
 - `ui.css`, `ui.js` — shared interface layer, loaded right after each page's own `<style>`.
@@ -107,6 +107,15 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
   each frame, `pick()` is a CPU ray/box test, `drawTracker()` is the 2D overlay (`#hud2`).
   `Offline copy` inlines `ui.css`, `ui.js`, `logo.svg` and a `__TAPE_PRESET`. Settings and
   the project list live in localStorage `moxx-tape-deck`. Exposed as `window.TD`.
+
+- **Grain Stack** (11): Canvas 2D, shared `ui.css`/`ui.js`, built from the user's spec and two
+  reference videos (dense grain bands, bright at the leading edge). File order: state →
+  `Shapes` (unit polygons; add a function to add a shape) → Layer (`layerGeometry`,
+  `columnTable`: 240 vertical columns with each shape's top/bottom) → Particles (`seedParticles`,
+  `stepLayer`: a grain is a column index + progress 0..1, so it cannot leave the shape) →
+  Renderer (body fill casts the shadow, grains drawn clipped in 28 colour buckets) → UI →
+  Export (PNG, 6 s WebM). Count scales with layer area. Custom polygon is drawn on the canvas.
+  Presets Dunes/Stack/Bloom. R = randomize. Exposed as `window.GS`. Dunes costs ~10 ms a frame.
 
 ## Status (last work)
 All work is committed; see `git log`.

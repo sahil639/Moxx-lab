@@ -168,6 +168,16 @@ list is editable (`Name | Tag | Year | Link | Description`, one per line) and de
 the lab's own tools. **Offline copy** saves the page with its styles, script, logo,
 projects and settings folded into one HTML file that opens without a connection.
 
+**`grain-stack.html` — Grain Stack.** A stack of shapes, each filled with small circles
+that are born along the shape's bottom edge, rise to its top edge and darken on the way, so
+every layer glows at its base and fades out. Layers overlap and cast soft shadows on the ones
+below. Shapes: circle, square, triangle, hexagon, blob, a wavy ribbon, or a polygon you draw
+on the canvas. Controls for count, size, speed, drift and opacity of the grains; base, top and
+canvas colours with three fade curves and an optional palette per layer; number of layers,
+offset, scale step and rotation; shadow blur, offset, opacity and colour (and a switch per
+layer); speed, pause, randomize and reset. Exports a PNG or a 6-second WebM.
+Keys: H panel, R randomize, S save PNG, space pause.
+
 ## Interface
 
 Every page loads two shared files, `ui.css` and `ui.js`. Together they give the site a
