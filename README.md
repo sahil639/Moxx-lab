@@ -178,6 +178,20 @@ offset, scale step and rotation; shadow blur, offset, opacity and colour (and a 
 layer); speed, pause, randomize and reset. Exports a PNG or a 6-second WebM.
 Keys: H panel, R randomize, S save PNG, space pause.
 
+**`pattern-maker.html` — Pattern Maker.** A builder for seamless repeat patterns. A pattern
+is a stack of layers; each layer places one motif across the tile. Motifs: 28 built-in shapes
+and line marks, any typed characters or emoji in a chosen typeface, an uploaded image, a pasted
+SVG path or SVG file, or a shape drawn by hand on a pad. Layouts: grid, brick, half drop, hex,
+scatter and radial. Per layer: size, stretch, rotation, turn per row and column, mirroring and
+turning of every other motif, random position, turn and size, leaving motifs out, a field
+(waves, rings, weave, noise, checker) that drives size, turn, opacity and colour, fill from one
+colour or from the palette in several orders, outline, opacity, blend mode, and motion (spin,
+field drift, pulse). Global: tile size, background, an editable palette (presets, random, or
+taken from an image), seed, zoom, pan and turn of the view. Twelve starting points, a random
+composer, undo and redo, and autosave in the browser. Exports the repeat tile as PNG (up to
+8×) or SVG, the view as PNG, a CSS background, a WebM, or a JSON file that opens again.
+Keys: H panel, R new seed, S save tile, space motion, Cmd/Ctrl+Z undo.
+
 ## Interface
 
 Every page loads two shared files, `ui.css` and `ui.js`. Together they give the site a

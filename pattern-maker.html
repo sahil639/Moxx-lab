@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="fonts.css">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Moxx Lab — Pattern Maker</title>
+<style>
+  :root{ --panel-w:360px; }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{height:100%}
+  body{margin:0;overflow:hidden;background:#111;font:12px/1.4 'GT Zirkon',system-ui,sans-serif;-webkit-text-size-adjust:100%}
+  #c{position:fixed;left:0;top:0;display:block;touch-action:none;cursor:grab}
+  #c:active{cursor:grabbing}
+  #panel{position:fixed;top:0;right:0;bottom:0;width:var(--panel-w);overflow-y:auto;z-index:10;transition:transform .18s ease}
+  body.ui-hidden #panel{transform:translateX(100%)}
+  h1 small{display:block}
+  .grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin:2px 0 8px}
+  .grid.two{grid-template-columns:1fr 1fr}
+  .grid.five{grid-template-columns:repeat(5,1fr)}
+  #shapeGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin:4px 0 8px}
+  #shapeGrid button{padding:7px 0;display:grid;place-items:center}
+  #shapeGrid svg{width:18px;height:18px;display:block;overflow:visible}
+  #layerList{display:grid;gap:5px;margin:4px 0 8px}
+  .lyr{display:flex;align-items:center;gap:4px}
+  .lyr .pick{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lyr .mini{flex:0 0 28px;padding:9px 0;text-align:center}
+  .lyr .mini.off{opacity:.35}
+  #swatches{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+  #swatches input[type=color]{width:34px;flex:0 0 34px}
+  #pad{display:block;width:100%;aspect-ratio:1;border-radius:8px;background:var(--u-tile);touch-action:none;cursor:crosshair;margin:6px 0}
+  textarea{width:100%;height:74px;resize:vertical;line-height:1.5;font-size:10.5px}
+  .row input[type=text]{flex:1;min-width:0}
+  .sub{margin:14px 2px 6px;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--u-dim)}
+  #hud{position:fixed;left:12px;bottom:10px;font-size:10px;letter-spacing:.08em;z-index:9;pointer-events:none;color:#fff;mix-blend-mode:difference;opacity:.7}
+  body.ui-hidden #hud{display:none}
+  .mark{width:15px;height:15px;vertical-align:-2px;margin-right:8px}
+  #back{position:fixed;left:14px;top:14px;z-index:11;display:inline-flex;align-items:center;gap:8px;padding:8px 13px 8px 11px;
+    font:500 12px/1 'GT Zirkon',system-ui,sans-serif;letter-spacing:.06em;text-decoration:none;white-space:nowrap;
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);transition:opacity .18s ease,background .15s ease,border-color .15s ease}
+  #back img{width:13px;height:13px;display:block}
+  body.ui-hidden #back{opacity:0} body.ui-hidden #back:hover,body.ui-hidden #back:focus-visible{opacity:1}
+  #drop{position:fixed;inset:0;z-index:30;display:none;place-items:center;background:rgba(0,0,0,.7);color:#fff;font-size:14px;letter-spacing:.14em;text-transform:uppercase;pointer-events:none}
+  body.dragging #drop{display:grid}
+</style>
+<link rel="stylesheet" href="ui.css">
+<script src="ui.js"></script>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+<a id="back" href="index.html" aria-label="Back to Moxx Lab index"><img src="logo.svg" alt="">← Moxx Lab</a>
+<div id="hud">drag to pan · scroll to zoom · <kbd>H</kbd> panel · <kbd>R</kbd> new seed · <kbd>S</kbd> save tile · <kbd>space</kbd> motion · <kbd>⌘Z</kbd> undo</div>
+<div id="drop">Drop an image, an SVG or a saved pattern</div>
+<input type="file" id="file" hidden>
+
+<div id="panel">
+  <h1><img class="mark" src="logo.svg" alt="">Pattern Maker<small>seamless repeats, built in layers</small></h1>
+
+  <details open>
+    <summary>Start from</summary>
+    <div class="grid" id="presets"></div>
+    <div class="btns"><button id="bSurprise">Surprise me</button><button id="bUndo">Undo</button><button id="bRedo">Redo</button></div>
+  </details>
+
+  <details open>
+    <summary>Layers</summary>
+    <div id="layerList"></div>
+    <div class="btns"><button id="bAdd">Add layer</button><button id="bDup">Duplicate</button></div>
+    <p class="hint">Everything below, down to Motion, edits the selected layer. The top of the list is the front.</p>
+  </details>
+
+  <details open>
+    <summary>Motif</summary>
+    <div class="grid five" id="motifKinds"></div>
+    <div id="shapeGrid"></div>
+    <div id="f-text"></div>
+    <div id="f-image"><div class="btns"><button id="bImage">Choose an image</button></div><p class="hint">PNG, JPG, GIF, WebP or SVG. It is scaled down to 320 px and kept inside the pattern file.</p></div>
+    <div id="f-path"><textarea id="pathD" spellcheck="false" placeholder="Paste an SVG path (the d attribute) or a whole SVG file"></textarea>
+      <div class="btns"><button id="bPathUse">Use it</button><button id="bPathFile">Load an SVG file</button></div></div>
+    <div id="f-draw"><canvas id="pad" width="600" height="600"></canvas>
+      <div class="btns"><button id="bPadUndo">Undo stroke</button><button id="bPadClear">Clear</button></div></div>
+    <div id="f-motif"></div>
+  </details>
+
+  <details open><summary>Layout</summary><div class="grid" id="layouts"></div><div id="f-layout"></div></details>
+  <details open><summary>Transform</summary><div id="f-transform"></div></details>
+  <details><summary>Variation</summary><div id="f-vary"></div></details>
+  <details><summary>Field</summary><p class="hint">A field is a smooth map across the tile. It can drive the size, turn, opacity and colour of each motif, and it always repeats.</p><div id="f-field"></div></details>
+  <details open><summary>Colour of the layer</summary><div id="f-colour"></div></details>
+  <details><summary>Motion</summary><div id="f-motion"></div></details>
+
+  <details open>
+    <summary>Tile and palette</summary>
+    <div id="f-tile"></div>
+    <div class="btns"><button id="bSeed">New seed</button><button id="bSquare">Make square</button></div>
+    <div class="sub">Palette</div>
+    <div id="swatches"></div>
+    <div class="btns"><button id="bPalAdd">+</button><button id="bPalDel">−</button><button id="bPalRand">Random</button><button id="bPalImg">From image</button></div>
+    <div class="grid" id="palettes"></div>
+  </details>
+
+  <details open>
+    <summary>View</summary>
+    <div id="f-view"></div>
+    <div class="btns"><button id="bFit">Reset view</button><button id="bHide">Hide panel</button></div>
+  </details>
+
+  <details open>
+    <summary>Export</summary>
+    <div id="f-export"></div>
+    <div class="btns"><button id="bTile">Tile PNG</button><button id="bSvg">Tile SVG</button><button id="bView">View PNG</button></div>
+    <div class="btns"><button id="bCss">Copy CSS</button><button id="bVideo">Record 6 s</button></div>
+    <div class="btns"><button id="bJson">Save pattern</button><button id="bLoad">Open pattern</button><button id="bReset">Reset</button></div>
+    <p class="hint">The tile repeats with no seam. SVG keeps shapes and text as vectors. A saved pattern is a JSON file that can be opened again here; work is also kept in this browser.</p>
+  </details>
+</div>
+
+<script>
+/* Pattern Maker — seamless repeat patterns built from layers of motifs.
+   File order: helpers → state → Motifs → Fields → Layout (buildItems: one display list per layer) →
+   Renderers (canvas and SVG read the same list) → view → UI → input (files, drawing, palette) → export. */
+const $ = id => document.getElementById(id), el = (t, c) => { const e = document.createElement(t); if (c) e.className = c; return e; };
+const clamp = (v,a,b) => v<a?a:v>b?b:v, TAU = Math.PI*2, mod = (a,n) => ((a%n)+n)%n;
+const hash = (a,b,c,d) => { let x = Math.imul(a|0, 374761393) ^ Math.imul(b|0, 668265263) ^ Math.imul(c|0, 1274126177) ^ Math.imul(d|0, 2246822519); x = Math.imul(x ^ x>>>15, 2246822519); x = Math.imul(x ^ x>>>13, 3266489917); return ((x ^ x>>>16)>>>0)/4294967296; };
+const f3 = v => +v.toFixed(3);
+const hsl = (h,s,l) => { s/=100; l/=100; const k = n => (n+h/30)%12, a = s*Math.min(l,1-l), f = n => l-a*Math.max(-1, Math.min(k(n)-3, 9-k(n), 1)); return '#'+[f(0),f(8),f(4)].map(v => Math.round(v*255).toString(16).padStart(2,'0')).join(''); };
+
+/* ------------------------------------------------------------ state */
+let uid = 1;
+const newLayer = o => Object.assign({
+  id: uid++, seed: Math.random()*1e9|0, on:true,
+  motif:'shape', shape:'circle', text:'✿', font:'GT Zirkon', weight:500, img:null, pathD:'', pathBox:null, strokes:[], drawFill:false,
+  layout:'grid', cols:6, rows:6, count:40, relax:true, rings:4, perRing:6, spread:.9, orient:true, centre:true, offX:0, offY:0, stagger:.5,
+  size:.5, sx:1, sy:1, rot:0, rotCol:0, rotRow:0, altRot:0, altFlip:'none',
+  jPos:0, jRot:0, jSize:0, mask:'all', maskN:2, drop:0,
+  field:'none', freq:1, phase:0, fSize:0, fRot:0, fOp:0,
+  fillMode:'solid', fill:'#f2efe6', palStart:0, stroke:false, strokeCol:'#111111', strokeW:3, opacity:1, blend:'normal',
+  spin:0, drift:0, pulse:0 }, o || {});
+const PALETTES = {
+  Paper:  ['#f2efe6','#e4572e','#17bebb','#ffc914','#2e282a'],
+  Night:  ['#f5f3ee','#7b8cde','#e8a87c','#c38d9e','#41b3a3'],
+  Mono:   ['#ffffff','#bdbdbd','#7a7a7a','#3d3d3d','#111111'],
+  Clay:   ['#f4e9d8','#c8553d','#f28f3b','#588b8b','#2d3047'],
+  Garden: ['#fefae0','#606c38','#283618','#dda15e','#bc6c25'],
+  Candy:  ['#fff1e6','#ff5d8f','#7bdff2','#b2f7ef','#f7d6e0'],
+};
+const fresh = () => ({ v:1, seed:1234, tileW:480, tileH:480, bg:'#16161a', palette:PALETTES.Paper.slice(), layers:[], act:0,
+  view:{ zoom:1, rot:0, panX:0, panY:0, outline:false, single:false }, motion:true, speed:1, scale:2 });
+let S = fresh();
+const A = () => S.layers[S.act];                                 // the selected layer
+const cv = $('c'), ctx = cv.getContext('2d');
+let W = 1, H = 1, dpr = 1, dirty = true, time = 0;
+
+/* ------------------------------------------------------------ Motifs
+   Built-in shapes are SVG paths in a unit box (-0.5..0.5, y down). `line` marks ones that are stroked, not filled. */
+const pp = pts => 'M'+pts.map(p => f3(p[0])+' '+f3(p[1])).join('L')+'Z';
+const reg = (n, r=.5, turn=0) => Array.from({length:n}, (_,k) => { const a = turn+k/n*TAU; return [Math.sin(a)*r, -Math.cos(a)*r]; });
+const star = (n, r1, r2) => Array.from({length:n*2}, (_,k) => { const a = k/(n*2)*TAU, r = k%2 ? r2 : r1; return [Math.sin(a)*r, -Math.cos(a)*r]; });
+const CIRC = r => `M${-r} 0A${r} ${r} 0 1 0 ${r} 0A${r} ${r} 0 1 0 ${-r} 0Z`;
+const plus = t => pp([[-t,-.5],[t,-.5],[t,-t],[.5,-t],[.5,t],[t,t],[t,.5],[-t,.5],[-t,t],[-.5,t],[-.5,-t],[-t,-t]]);
+const SHAPES = {
+  circle:['Circle', CIRC(.5)], ring:['Ring', CIRC(.5)+CIRC(.3)], square:['Square','M-.5-.5H.5V.5H-.5Z'],
+  round:['Rounded square','M-.3-.5H.3A.2 .2 0 0 1 .5-.3V.3A.2 .2 0 0 1 .3 .5H-.3A.2 .2 0 0 1 -.5 .3V-.3A.2 .2 0 0 1 -.3-.5Z'],
+  triangle:['Triangle', pp(reg(3,.56).map(p => [p[0],p[1]+.13]))], diamond:['Diamond', pp(reg(4))], hexagon:['Hexagon', pp(reg(6,.5,TAU/12))], octagon:['Octagon', pp(reg(8,.52,TAU/16))],
+  star:['Star', pp(star(5,.52,.22))], burst:['Burst', pp(star(12,.5,.36))], sparkle:['Sparkle','M0-.5Q.08-.08 .5 0Q.08 .08 0 .5Q-.08 .08 -.5 0Q-.08-.08 0-.5Z'],
+  plus:['Plus', plus(.16)], heart:['Heart','M0 .44C-.62 .02 -.52-.42 -.26-.42C-.1-.42 0-.3 0-.2C0-.3 .1-.42 .26-.42C.52-.42 .62 .02 0 .44Z'],
+  drop:['Drop','M0-.5C.3-.1 .38 .06 .38 .14A.38 .38 0 0 1 -.38 .14C-.38 .06 -.3-.1 0-.5Z'], leaf:['Leaf','M0-.5Q.46 0 0 .5Q-.46 0 0-.5Z'],
+  moon:['Moon','M.12-.5A.5 .5 0 1 0 .12 .5A.4 .4 0 1 1 .12-.5Z'], half:['Half circle','M-.5 .25A.5 .5 0 0 1 .5 .25Z'], quarter:['Quarter circle','M-.5 .5V-.5A1 1 0 0 1 .5 .5Z'],
+  flower:['Flower', Array.from({length:6}, (_,k) => { const a = k/6*TAU, q = (r, d) => f3(Math.sin(a+d)*r)+' '+f3(-Math.cos(a+d)*r); return `M0 0Q${q(.36,-.5)} ${q(.5,0)}Q${q(.36,.5)} 0 0Z`; }).join('')],
+  blob:['Blob', pp(Array.from({length:48}, (_,k) => { const a = k/48*TAU, r = .4+.07*Math.sin(a*2+1)+.05*Math.sin(a*3+4)+.03*Math.sin(a*5); return [Math.sin(a)*r, -Math.cos(a)*r]; }))],
+  cross:['Cross','M-.4-.4L.4 .4M.4-.4L-.4 .4', 1], line:['Line','M-.5 0H.5', 1], wave:['Wave','M-.5 0Q-.25-.5 0 0T.5 0', 1], zigzag:['Zigzag','M-.5 .25L-.25-.25L0 .25L.25-.25L.5 .25', 1],
+  chevron:['Chevron','M-.4-.2L0 .2L.4-.2', 1], arc:['Arc','M-.5 .25A.5 .5 0 0 1 .5 .25', 1], hoop:['Hoop', CIRC(.5), 1], corner:['Corner','M-.5-.5V.5H.5', 1],
+};
+const FONTS = ['GT Zirkon','Georgia','Times New Roman','Helvetica Neue','Courier New','Impact','system-ui'];
+const pathCache = new Map(), imgCache = new Map();
+const path2d = d => { let p = pathCache.get(d); if (!p){ try { p = new Path2D(d); } catch(e){ p = new Path2D(); } pathCache.set(d, p); if (pathCache.size > 400) pathCache.clear(); } return p; };
+function strokesToPath(L){ let d = ''; for (const s of L.strokes){ if (s.length < 2) continue; d += 'M'+s.map(p => f3(p[0])+' '+f3(p[1])).join('L')+(L.drawFill ? 'Z' : ''); } return d; }
+/* what a layer draws: { kind:'path', d, pre:[scale,cx,cy]|null, line } | { kind:'text' } | { kind:'image', img, ar } | null */
+function motifOf(L){
+  if (L.motif === 'text') return L.text ? { kind:'text' } : null;
+  if (L.motif === 'image'){ if (!L.img) return null; let im = imgCache.get(L.img); if (!im){ im = new Image(); im.onload = () => { dirty = true; }; im.src = L.img; imgCache.set(L.img, im); }
+    return im.complete && im.naturalWidth ? { kind:'image', img:im, ar:im.naturalWidth/im.naturalHeight } : null; }
+  if (L.motif === 'path'){ if (!L.pathD || !L.pathBox) return null; const b = L.pathBox, m = Math.max(b[2], b[3]) || 1; return { kind:'path', d:L.pathD, pre:[1/m, b[0]+b[2]/2, b[1]+b[3]/2], line:false }; }
+  if (L.motif === 'draw'){ const d = strokesToPath(L); return d ? { kind:'path', d, pre:null, line:!L.drawFill } : null; }
+  const s = SHAPES[L.shape] || SHAPES.circle; return { kind:'path', d:s[1], pre:null, line:!!s[2] };
+}
+function measurePath(d){ const svg = document.createElementNS('http://www.w3.org/2000/svg','svg'), p = document.createElementNS('http://www.w3.org/2000/svg','path');
+  svg.style.cssText = 'position:absolute;left:-9999px;width:10px;height:10px;visibility:hidden'; p.setAttribute('d', d); svg.append(p); document.body.append(svg);
+  let b = null; try { const r = p.getBBox(); if (r.width > 0 || r.height > 0) b = [r.x, r.y, r.width, r.height]; } catch(e){} svg.remove(); return b; }
+
+/* ------------------------------------------------------------ Fields: (u, v) in 0..1 → -1..1, periodic across the tile */
+const smooth = t => t*t*(3-2*t);
+const FIELDS = {
+  none:['None', () => 0],
+  waveX:['Wave across', (u,v,f,p) => Math.sin(TAU*(u*f+p))], waveY:['Wave down', (u,v,f,p) => Math.sin(TAU*(v*f+p))], diag:['Diagonal', (u,v,f,p) => Math.sin(TAU*((u+v)*f+p))],
+  radial:['Rings', (u,v,f,p) => { const dx = Math.abs(mod(u,1)-.5), dy = Math.abs(mod(v,1)-.5); return Math.sin(TAU*(Math.hypot(dx,dy)*f*2-p)); }],
+  weave:['Weave', (u,v,f,p) => Math.sin(TAU*(u*f+p))*Math.sin(TAU*(v*f+p))],
+  noise:['Noise', (u,v,f,p,seed) => { const n = Math.max(1, Math.round(f*2)), x = mod(u+p,1)*n, y = mod(v,1)*n, x0 = Math.floor(x), y0 = Math.floor(y), fx = smooth(x-x0), fy = smooth(y-y0), g = (i,j) => hash(seed, 77, mod(i,n), mod(j,n));
+    return ((g(x0,y0)*(1-fx)+g(x0+1,y0)*fx)*(1-fy) + (g(x0,y0+1)*(1-fx)+g(x0+1,y0+1)*fx)*fy)*2-1; }],
+  checker:['Checker', (u,v,f,p) => (Math.floor(mod(u+p,1)*f*2)+Math.floor(mod(v,1)*f*2))%2 ? 1 : -1],
+};
+
+/* ------------------------------------------------------------ Layout: a layer → a flat list of things to draw */
+const LAYOUTS = { grid:'Grid', brick:'Brick', drop:'Half drop', hex:'Hex', scatter:'Scatter', radial:'Radial' };
+const scatterCache = new Map();
+function scatterPoints(L){ const key = [S.seed, L.seed, L.count, L.relax, S.tileW, S.tileH].join(); let pts = scatterCache.get(key); if (pts) return pts; pts = [];
+  const ar = S.tileW/S.tileH;
+  for (let i = 0; i < L.count; i++){ let best = null, bd = -1;
+    for (let k = 0; k < (L.relax ? 14 : 1); k++){ const c = [hash(S.seed, L.seed, i, k*2+1), hash(S.seed, L.seed, i, k*2+2)]; let d = 9;       // best candidate, measured on the torus
+      for (const q of pts){ let dx = Math.abs(c[0]-q[0]), dy = Math.abs(c[1]-q[1]); dx = Math.min(dx, 1-dx)*ar; dy = Math.min(dy, 1-dy); d = Math.min(d, dx*dx+dy*dy); }
+      if (d > bd){ bd = d; best = c; } }
+    pts.push(best); }
+  if (scatterCache.size > 60) scatterCache.clear(); scatterCache.set(key, pts); return pts; }
+
+function buildItems(L, t){
+  const M = motifOf(L), out = []; if (!M) return { M, items:out };
+  const TW = S.tileW, TH = S.tileH, pal = S.palette, field = (FIELDS[L.field] || FIELDS.none)[1], ph = L.phase + t*L.drift, cells = [];
+  let ref;
+  if (L.layout === 'scatter'){ ref = Math.sqrt(TW*TH/Math.max(1, L.count)); scatterPoints(L).forEach((p, i) => cells.push([mod(p[0]+L.offX*.2,1)*TW, mod(p[1]+L.offY*.2,1)*TH, i%5, i, i, 0])); }
+  else if (L.layout === 'radial'){ const R = Math.min(TW,TH)/2*L.spread; ref = R/Math.max(1, L.rings); let n = 0;
+    if (L.centre) cells.push([TW/2+L.offX*ref, TH/2+L.offY*ref, 0, 0, n++, 0]);
+    for (let j = 1; j <= L.rings; j++){ const count = L.perRing*j; for (let i = 0; i < count; i++){ const a = i/count*TAU + j*L.stagger*TAU/count;
+      cells.push([TW/2+L.offX*ref+Math.sin(a)*ref*j, TH/2+L.offY*ref-Math.cos(a)*ref*j, i, j, n++, L.orient ? a*180/Math.PI : 0]); } } }
+  else { let cols = L.cols, rows = L.rows; const brick = L.layout === 'brick' || L.layout === 'hex';
+    if (brick && L.stagger && rows%2) rows++; if (L.layout === 'drop' && L.stagger && cols%2) cols++;              // an even count, or the stagger would not repeat
+    const cw = TW/cols, ch = TH/rows; ref = L.layout === 'hex' ? cw : Math.min(cw, ch);
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++)
+      cells.push([(c+.5+L.offX+(brick ? (r%2)*L.stagger : 0))*cw, (r+.5+L.offY+(L.layout === 'drop' ? (c%2)*L.stagger : 0))*ch, c, r, r*cols+c, 0]); }
+  for (const [cx, cy, ci, ri, idx, face] of cells){
+    const rnd = k => hash(S.seed, L.seed, idx, k), alt = (ci+ri)%2 === 1;
+    if (L.mask === 'a' && alt) continue; if (L.mask === 'b' && !alt) continue;
+    if (L.mask === 'col' && ci%L.maskN) continue; if (L.mask === 'row' && ri%L.maskN) continue; if (L.mask === 'both' && (ci%L.maskN || ri%L.maskN)) continue;
+    if (L.drop && rnd(1) < L.drop) continue;
+    let x = cx + (rnd(2)-.5)*2*L.jPos*ref, y = cy + (rnd(3)-.5)*2*L.jPos*ref;
+    const F = L.field === 'none' ? 0 : field(x/TW, y/TH, L.freq, ph, L.seed);
+    const size = ref*L.size*(1+L.jSize*(rnd(4)*2-1))*(1+L.fSize*F)*(1+L.pulse*Math.sin(t*2.2+rnd(8)*TAU));
+    if (!(size > .2)) continue;
+    const rot = L.rot + ci*L.rotCol + ri*L.rotRow + (alt ? L.altRot : 0) + L.jRot*(rnd(5)*2-1)*180 + L.fRot*F*180 + t*L.spin + face;
+    const sx = L.sx*(alt && (L.altFlip === 'x' || L.altFlip === 'xy') ? -1 : 1), sy = L.sy*(alt && (L.altFlip === 'y' || L.altFlip === 'xy') ? -1 : 1);
+    const op = clamp(L.opacity*(1 - L.fOp*(.5-.5*F)), 0, 1); if (op <= .003) continue;
+    let fill = L.fill; const n = pal.length, pick = k => pal[mod(L.palStart+k, n)];
+    if (L.fillMode === 'none') fill = null; else if (L.fillMode === 'cycle') fill = pick(idx); else if (L.fillMode === 'row') fill = pick(ri); else if (L.fillMode === 'col') fill = pick(ci);
+    else if (L.fillMode === 'diag') fill = pick(ci+ri); else if (L.fillMode === 'random') fill = pick(rnd(6)*n|0); else if (L.fillMode === 'field') fill = pick(clamp((F*.5+.5)*n|0, 0, n-1));
+    x = mod(x, TW); y = mod(y, TH);
+    const rad = size*Math.max(Math.abs(sx), Math.abs(sy))*.75 + L.strokeW;                                       // copies over the edges make the tile seamless
+    for (const dx of [-TW, 0, TW]) for (const dy of [-TH, 0, TH]) if (x+dx+rad > 0 && x+dx-rad < TW && y+dy+rad > 0 && y+dy-rad < TH)
+      out.push({ x:x+dx, y:y+dy, rot, sx:sx*size, sy:sy*size, fill, op }); }
+  return { M, items:out };
+}
+
+/* ------------------------------------------------------------ Renderers */
+const BLEND = { normal:'source-over', multiply:'multiply', screen:'screen', overlay:'overlay', difference:'difference', lighten:'lighten', darken:'darken', 'soft-light':'soft-light' };
+const fontOf = L => `${L.weight} 100px "${L.font}",system-ui,sans-serif`;
+function drawTile(g, k, t){
+  g.setTransform(k, 0, 0, k, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+  g.fillStyle = S.bg; g.fillRect(0, 0, S.tileW, S.tileH);
+  for (const L of S.layers){ if (!L.on) continue; const { M, items } = buildItems(L, t); if (!M) continue;
+    g.globalCompositeOperation = BLEND[L.blend] || 'source-over'; g.lineWidth = L.strokeW; g.lineCap = g.lineJoin = 'round';
+    let base = null; if (M.kind === 'path'){ base = path2d(M.d); if (M.pre){ const q = new Path2D(); q.addPath(base, new DOMMatrix().scale(M.pre[0]).translate(-M.pre[1], -M.pre[2])); base = q; } }
+    if (M.kind === 'text'){ g.font = fontOf(L); g.textAlign = 'center'; g.textBaseline = 'middle'; }
+    for (const it of items){ g.globalAlpha = it.op;
+      const m = new DOMMatrix().translate(it.x, it.y).rotate(it.rot).scale(it.sx, it.sy);
+      if (M.kind === 'path'){ const p = new Path2D(); p.addPath(base, m);
+        if (M.line){ const c = it.fill || L.strokeCol; g.strokeStyle = c; g.stroke(p); }
+        else { if (it.fill){ g.fillStyle = it.fill; g.fill(p, 'evenodd'); } if (L.stroke){ g.strokeStyle = L.strokeCol; g.stroke(p); } } }
+      else { g.save(); g.transform(m.a, m.b, m.c, m.d, m.e, m.f);
+        if (M.kind === 'text'){ g.scale(.01, .01); if (it.fill){ g.fillStyle = it.fill; g.fillText(L.text, 0, 0); } if (L.stroke){ g.strokeStyle = L.strokeCol; g.lineWidth = L.strokeW*100/Math.abs(it.sx || 1); g.strokeText(L.text, 0, 0); } }
+        else { const w = M.ar >= 1 ? 1 : M.ar, h = M.ar >= 1 ? 1/M.ar : 1; g.drawImage(M.img, -w/2, -h/2, w, h); }
+        g.restore(); } } }
+  g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function tileSvg(t){
+  const TW = S.tileW, TH = S.tileH; let defs = '', body = `<rect width="${TW}" height="${TH}" fill="${S.bg}"/>`;
+  for (const L of S.layers){ if (!L.on) continue; const { M, items } = buildItems(L, t); if (!M || !items.length) continue; const id = 'm'+L.id;
+    if (M.kind === 'path') defs += `<path id="${id}" d="${esc(M.d)}" fill-rule="evenodd" vector-effect="non-scaling-stroke"${M.pre ? ` transform="scale(${f3(M.pre[0])}) translate(${f3(-M.pre[1])} ${f3(-M.pre[2])})"` : ''}/>`;
+    body += `<g${L.blend !== 'normal' ? ` style="mix-blend-mode:${L.blend}"` : ''} stroke-linecap="round" stroke-linejoin="round">`;
+    for (const it of items){ const tf = `translate(${f3(it.x)} ${f3(it.y)}) rotate(${f3(it.rot)}) scale(${f3(it.sx)} ${f3(it.sy)})`, op = it.op < 1 ? ` opacity="${f3(it.op)}"` : '';
+      if (M.kind === 'path'){ const stroke = M.line ? (it.fill || L.strokeCol) : L.stroke ? L.strokeCol : null;
+        body += `<use href="#${id}" transform="${tf}" fill="${M.line || !it.fill ? 'none' : it.fill}"${stroke ? ` stroke="${stroke}" stroke-width="${L.strokeW}"` : ''}${op}/>`; }
+      else if (M.kind === 'text') body += `<text transform="${tf} scale(.01)" font-family="${esc(L.font)}, sans-serif" font-weight="${L.weight}" font-size="100" text-anchor="middle" dominant-baseline="central" fill="${it.fill || 'none'}"${L.stroke ? ` stroke="${L.strokeCol}" stroke-width="${f3(L.strokeW*100/Math.abs(it.sx || 1))}"` : ''}${op}>${esc(L.text)}</text>`;
+      else { const w = M.ar >= 1 ? 1 : M.ar, h = M.ar >= 1 ? 1/M.ar : 1; body += `<image href="${L.img}" x="${f3(-w/2)}" y="${f3(-h/2)}" width="${f3(w)}" height="${f3(h)}" transform="${tf}"${op}/>`; } }
+    body += '</g>'; }
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${TW}" height="${TH}" viewBox="0 0 ${TW} ${TH}"><defs>${defs}<clipPath id="tile"><rect width="${TW}" height="${TH}"/></clipPath></defs><g clip-path="url(#tile)">${body}</g></svg>`;
+}
+
+/* ------------------------------------------------------------ view: the tile, repeated across the stage */
+const tile = document.createElement('canvas'), tg = tile.getContext('2d');
+let tileK = 0;
+const moving = () => S.motion && S.layers.some(L => L.on && (L.spin || L.drift || L.pulse));
+function renderView(){
+  const V = S.view, k = clamp(V.zoom*dpr, .5, 3)*Math.min(1, 2400/Math.max(S.tileW, S.tileH)/clamp(V.zoom*dpr, .5, 3));
+  const w = Math.max(1, Math.round(S.tileW*k)), h = Math.max(1, Math.round(S.tileH*k));
+  if (dirty || tile.width !== w || tile.height !== h || moving()){ if (tile.width !== w || tile.height !== h){ tile.width = w; tile.height = h; } tileK = k; drawTile(tg, w/S.tileW, time); tg.setTransform(1,0,0,1,0,0); dirty = false; }
+  const m = new DOMMatrix().translate((W/2+V.panX)*dpr, (H/2+V.panY)*dpr).rotate(V.rot).scale(V.zoom*dpr);                // tile space → device pixels
+  ctx.setTransform(1,0,0,1,0,0); ctx.imageSmoothingQuality = 'high';
+  if (V.single){ ctx.fillStyle = '#0c0c0e'; ctx.fillRect(0, 0, cv.width, cv.height); ctx.setTransform(m.a, m.b, m.c, m.d, m.e, m.f); ctx.drawImage(tile, -S.tileW/2, -S.tileH/2, S.tileW, S.tileH); }
+  else { const pat = ctx.createPattern(tile, 'repeat'); pat.setTransform(m.translate(-S.tileW/2, -S.tileH/2).scale(S.tileW/w, S.tileH/h)); ctx.fillStyle = pat; ctx.fillRect(0, 0, cv.width, cv.height); }
+  if (V.outline){ ctx.setTransform(m.a, m.b, m.c, m.d, m.e, m.f); ctx.lineWidth = 1.5/V.zoom; ctx.setLineDash([6/V.zoom, 5/V.zoom]);
+    ctx.strokeStyle = '#000'; ctx.strokeRect(-S.tileW/2, -S.tileH/2, S.tileW, S.tileH); ctx.lineDashOffset = 5.5/V.zoom; ctx.strokeStyle = '#fff'; ctx.strokeRect(-S.tileW/2, -S.tileH/2, S.tileW, S.tileH); ctx.setLineDash([]); ctx.lineDashOffset = 0; }
+}
+function resize(){ const hidden = document.body.classList.contains('ui-hidden');
+  W = Math.max(1, innerWidth - (hidden || innerWidth < 760 ? 0 : 360)); H = Math.max(1, innerHeight); dpr = Math.min(devicePixelRatio || 1, 2);
+  cv.width = Math.round(W*dpr); cv.height = Math.round(H*dpr); cv.style.width = W+'px'; cv.style.height = H+'px'; }
+let last = 0;
+function frame(now){ const dt = Math.min(.05, (now-last)/1000 || 0); last = now; if (moving()) time += dt*S.speed; renderView(); requestAnimationFrame(frame); }
+
+/* ------------------------------------------------------------ history and storage */
+const KEY = 'moxx-pattern-maker'; let hist = [], hi = -1, saveT = 0;
+function commit(){ const j = JSON.stringify(S); if (hist[hi] === j) return; hist = hist.slice(0, hi+1); hist.push(j); if (hist.length > 60) hist.shift(); hi = hist.length-1;
+  try { localStorage.setItem(KEY, j); } catch(e){} }
+function touch(){ dirty = true; clearTimeout(saveT); saveT = setTimeout(commit, 350); }
+function load(j){ const o = typeof j === 'string' ? JSON.parse(j) : j; if (!o || !Array.isArray(o.layers)) throw new Error('not a pattern');
+  S = Object.assign(fresh(), o); S.view = Object.assign(fresh().view, o.view || {}); S.layers = o.layers.map(l => newLayer(l)); S.layers.forEach(l => { uid = Math.max(uid, l.id+1); });
+  S.act = clamp(S.act|0, 0, Math.max(0, S.layers.length-1)); dirty = true; refresh(); }
+function step(d){ clearTimeout(saveT); commit(); const n = hi+d; if (n < 0 || n >= hist.length) return; hi = n; load(hist[hi]); try { localStorage.setItem(KEY, hist[hi]); } catch(e){} }
+
+/* ------------------------------------------------------------ UI: one generic control builder, bound to a target object */
+const refreshers = [];
+function ctl(host, o){                                            // o: { on:()=>object, key, label, type, min, max, step, fmt, opts, when, then }
+  const tgt = o.on || A; let row, inp, val;
+  if (o.type === 'toggle'){ row = el('label','toggle'); inp = el('input'); inp.type = 'checkbox'; row.append(inp, ' '+o.label); }
+  else { row = el('div','row'); const lab = el('label'); lab.textContent = o.label;
+    if (o.type === 'select'){ inp = el('select'); for (const [v, n] of o.opts){ const op = el('option'); op.value = v; op.textContent = n; inp.append(op); } }
+    else { inp = el('input'); inp.type = o.type || 'range'; if (inp.type === 'range'){ inp.min = o.min; inp.max = o.max; inp.step = o.step || 1; val = el('span','val'); } }
+    row.append(lab, inp); if (val) row.append(val); }
+  const fmt = o.fmt || (v => String(v));
+  const read = () => inp.type === 'checkbox' ? inp.checked : inp.type === 'range' ? parseFloat(inp.value) : o.num ? (parseFloat(inp.value) || 0) : inp.value;
+  inp[inp.type === 'text' || inp.type === 'range' || inp.type === 'color' ? 'oninput' : 'onchange'] = () => { const t = tgt(); if (!t) return; t[o.key] = read(); if (val) val.textContent = fmt(t[o.key]);
+    if (o.then) o.then(); touch(); if (inp.type === 'checkbox' || o.type === 'select') refresh(); };
+  refreshers.push(() => { const t = tgt(); row.hidden = !t || !!(o.when && !o.when(t)); if (row.hidden) return;
+    if (inp.type === 'checkbox') inp.checked = !!t[o.key]; else if (document.activeElement !== inp || inp.type === 'range') inp.value = t[o.key]; if (val) val.textContent = fmt(t[o.key]); });
+  $(host).append(row); return row;
+}
+const pct = v => Math.round(v*100)+'%', deg = v => Math.round(v)+'°', f2 = v => (+v).toFixed(2), pxf = v => v+' px', gridLike = L => L.layout !== 'scatter' && L.layout !== 'radial';
+
+ctl('f-text', { key:'text', label:'Characters', type:'text' }); ctl('f-text', { key:'font', label:'Typeface', type:'select', opts:FONTS.map(f => [f, f]) }); ctl('f-text', { key:'weight', label:'Weight', min:100, max:900, step:100 });
+ctl('f-motif', { key:'drawFill', label:'Close and fill what I drew', type:'toggle', when:L => L.motif === 'draw' });
+
+ctl('f-layout', { key:'cols', label:'Columns', min:1, max:40, when:gridLike }); ctl('f-layout', { key:'rows', label:'Rows', min:1, max:40, when:gridLike });
+ctl('f-layout', { key:'stagger', label:'Stagger', min:0, max:1, step:.01, fmt:f2, when:L => L.layout === 'brick' || L.layout === 'drop' || L.layout === 'hex' || L.layout === 'radial' });
+ctl('f-layout', { key:'count', label:'How many', min:1, max:400, when:L => L.layout === 'scatter' }); ctl('f-layout', { key:'relax', label:'Keep them apart', type:'toggle', when:L => L.layout === 'scatter' });
+ctl('f-layout', { key:'rings', label:'Rings', min:1, max:14, when:L => L.layout === 'radial' }); ctl('f-layout', { key:'perRing', label:'Per ring', min:1, max:24, when:L => L.layout === 'radial' });
+ctl('f-layout', { key:'spread', label:'Spread', min:.1, max:2, step:.01, fmt:f2, when:L => L.layout === 'radial' });
+ctl('f-layout', { key:'orient', label:'Turn motifs to face outward', type:'toggle', when:L => L.layout === 'radial' }); ctl('f-layout', { key:'centre', label:'One in the centre', type:'toggle', when:L => L.layout === 'radial' });
+ctl('f-layout', { key:'offX', label:'Shift X', min:-1, max:1, step:.01, fmt:f2 }); ctl('f-layout', { key:'offY', label:'Shift Y', min:-1, max:1, step:.01, fmt:f2 });
+
+ctl('f-transform', { key:'size', label:'Size', min:.02, max:4, step:.01, fmt:pct }); ctl('f-transform', { key:'sx', label:'Stretch X', min:.05, max:4, step:.01, fmt:pct }); ctl('f-transform', { key:'sy', label:'Stretch Y', min:.05, max:4, step:.01, fmt:pct });
+ctl('f-transform', { key:'rot', label:'Rotation', min:-180, max:180, fmt:deg }); ctl('f-transform', { key:'rotCol', label:'Turn per column', min:-180, max:180, fmt:deg }); ctl('f-transform', { key:'rotRow', label:'Turn per row', min:-180, max:180, fmt:deg });
+ctl('f-transform', { key:'altRot', label:'Turn every other', min:-180, max:180, fmt:deg });
+ctl('f-transform', { key:'altFlip', label:'Mirror every other', type:'select', opts:[['none','No'],['x','Left to right'],['y','Top to bottom'],['xy','Both']] });
+
+ctl('f-vary', { key:'jPos', label:'Random position', min:0, max:1.5, step:.01, fmt:pct }); ctl('f-vary', { key:'jRot', label:'Random turn', min:0, max:1, step:.01, fmt:pct }); ctl('f-vary', { key:'jSize', label:'Random size', min:0, max:1, step:.01, fmt:pct });
+ctl('f-vary', { key:'drop', label:'Leave out at random', min:0, max:.95, step:.01, fmt:pct });
+ctl('f-vary', { key:'mask', label:'Keep', type:'select', opts:[['all','Every one'],['a','Checker, odd'],['b','Checker, even'],['col','Every Nth column'],['row','Every Nth row'],['both','Every Nth of both']] });
+ctl('f-vary', { key:'maskN', label:'N', min:2, max:8, when:L => L.mask === 'col' || L.mask === 'row' || L.mask === 'both' });
+ctl('f-vary', { key:'seed', label:'Layer seed', min:0, max:9999, fmt:v => String(v|0) });
+
+ctl('f-field', { key:'field', label:'Field', type:'select', opts:Object.keys(FIELDS).map(k => [k, FIELDS[k][0]]) });
+const hasField = L => L.field !== 'none';
+ctl('f-field', { key:'freq', label:'Frequency', min:1, max:8, when:hasField }); ctl('f-field', { key:'phase', label:'Phase', min:0, max:1, step:.01, fmt:f2, when:hasField });
+ctl('f-field', { key:'fSize', label:'Drives size', min:-1, max:1, step:.01, fmt:pct, when:hasField }); ctl('f-field', { key:'fRot', label:'Drives turn', min:-1, max:1, step:.01, fmt:pct, when:hasField });
+ctl('f-field', { key:'fOp', label:'Drives opacity', min:0, max:1, step:.01, fmt:pct, when:hasField });
+
+ctl('f-colour', { key:'fillMode', label:'Fill', type:'select', opts:[['solid','One colour'],['cycle','Palette, in turn'],['row','Palette, by row'],['col','Palette, by column'],['diag','Palette, diagonal'],['random','Palette, random'],['field','Palette, by field'],['none','No fill']] });
+ctl('f-colour', { key:'fill', label:'Colour', type:'color', when:L => L.fillMode === 'solid' }); ctl('f-colour', { key:'palStart', label:'Start at swatch', min:0, max:11, when:L => L.fillMode !== 'solid' && L.fillMode !== 'none' });
+ctl('f-colour', { key:'stroke', label:'Outline', type:'toggle' }); ctl('f-colour', { key:'strokeCol', label:'Outline colour', type:'color' });
+ctl('f-colour', { key:'strokeW', label:'Line weight', min:.25, max:40, step:.25, fmt:pxf }); ctl('f-colour', { key:'opacity', label:'Opacity', min:0, max:1, step:.01, fmt:pct });
+ctl('f-colour', { key:'blend', label:'Blend', type:'select', opts:Object.keys(BLEND).map(k => [k, k[0].toUpperCase()+k.slice(1)]) });
+
+ctl('f-motion', { key:'spin', label:'Spin', min:-180, max:180, fmt:v => v+'°/s' }); ctl('f-motion', { key:'drift', label:'Field drift', min:-1, max:1, step:.01, fmt:f2 }); ctl('f-motion', { key:'pulse', label:'Pulse', min:0, max:.9, step:.01, fmt:pct });
+
+const onS = () => S, onV = () => S.view;
+ctl('f-tile', { on:onS, key:'tileW', label:'Tile width', min:60, max:1600, step:10, fmt:pxf }); ctl('f-tile', { on:onS, key:'tileH', label:'Tile height', min:60, max:1600, step:10, fmt:pxf });
+ctl('f-tile', { on:onS, key:'bg', label:'Background', type:'color' }); ctl('f-tile', { on:onS, key:'seed', label:'Seed', type:'text', num:true });
+ctl('f-view', { on:onV, key:'zoom', label:'Zoom', min:.1, max:6, step:.01, fmt:pct }); ctl('f-view', { on:onV, key:'rot', label:'Turn the whole pattern', min:-180, max:180, fmt:deg });
+ctl('f-view', { on:onV, key:'outline', label:'Show the tile outline', type:'toggle' }); ctl('f-view', { on:onV, key:'single', label:'Show one tile only', type:'toggle' });
+ctl('f-view', { on:onS, key:'motion', label:'Play motion', type:'toggle' }); ctl('f-view', { on:onS, key:'speed', label:'Motion speed', min:0, max:4, step:.05, fmt:v => f2(v)+'×' });
+ctl('f-export', { on:onS, key:'scale', label:'PNG scale', min:1, max:8, fmt:v => v+'× · '+S.tileW*v+' × '+S.tileH*v });
+
+/* buttons that pick from a set */
+const KINDS = { shape:'Shape', text:'Text', image:'Image', path:'SVG', draw:'Draw' }, kindBtns = {}, shapeBtns = {}, layoutBtns = {};
+for (const k in KINDS){ const b = el('button'); b.textContent = KINDS[k]; b.onclick = () => { A().motif = k; touch(); refresh(); }; $('motifKinds').append(b); kindBtns[k] = b; }
+for (const k in SHAPES){ const b = el('button'), s = SHAPES[k]; b.title = s[0]; b.setAttribute('aria-label', s[0]);
+  b.innerHTML = `<svg viewBox="-.62 -.62 1.24 1.24"><path d="${s[1]}" fill-rule="evenodd" ${s[2] ? 'fill="none" stroke="currentColor" stroke-width=".1" stroke-linecap="round" stroke-linejoin="round"' : 'fill="currentColor"'}/></svg>`;
+  b.onclick = () => { A().shape = k; A().motif = 'shape'; touch(); refresh(); }; $('shapeGrid').append(b); shapeBtns[k] = b; }
+for (const k in LAYOUTS){ const b = el('button'); b.textContent = LAYOUTS[k]; b.onclick = () => { A().layout = k; touch(); refresh(); }; $('layouts').append(b); layoutBtns[k] = b; }
+for (const k in PALETTES){ const b = el('button'); b.textContent = k; b.onclick = () => { S.palette = PALETTES[k].slice(); touch(); refresh(); }; $('palettes').append(b); }
+
+const layerName = L => (L.motif === 'shape' ? SHAPES[L.shape][0] : L.motif === 'text' ? '“'+(L.text || '').slice(0, 8)+'”' : KINDS[L.motif])+' · '+LAYOUTS[L.layout];
+function layerList(){ const host = $('layerList'); host.textContent = '';
+  for (let i = S.layers.length-1; i >= 0; i--){ const L = S.layers[i], row = el('div','lyr');
+    const mk = (txt, title, fn, cls) => { const b = el('button', cls || 'mini'); b.textContent = txt; b.title = title; b.setAttribute('aria-label', title); b.onclick = fn; row.append(b); return b; };
+    mk(L.on ? '●' : '○', L.on ? 'Hide layer' : 'Show layer', () => { L.on = !L.on; touch(); refresh(); }).classList.toggle('off', !L.on);
+    mk(layerName(L), 'Select layer', () => { S.act = i; refresh(); }, 'pick').classList.toggle('on', i === S.act);
+    mk('↑', 'Bring forward', () => { if (i < S.layers.length-1){ [S.layers[i], S.layers[i+1]] = [S.layers[i+1], S.layers[i]]; S.act = i+1; touch(); refresh(); } });
+    mk('↓', 'Send back', () => { if (i > 0){ [S.layers[i], S.layers[i-1]] = [S.layers[i-1], S.layers[i]]; S.act = i-1; touch(); refresh(); } });
+    mk('×', 'Delete layer', () => { if (S.layers.length < 2) return; S.layers.splice(i, 1); S.act = clamp(S.act > i ? S.act-1 : S.act, 0, S.layers.length-1); touch(); refresh(); });
+    host.append(row); } }
+function swatches(){ const host = $('swatches'); host.textContent = '';
+  S.palette.forEach((c, i) => { const inp = el('input'); inp.type = 'color'; inp.value = c; inp.title = 'Swatch '+i; inp.oninput = () => { S.palette[i] = inp.value; touch(); }; host.append(inp); }); }
+function refresh(){ const L = A(); if (!L) return;
+  for (const r of refreshers) r();
+  for (const k in kindBtns) kindBtns[k].classList.toggle('on', k === L.motif);
+  for (const k in shapeBtns) shapeBtns[k].classList.toggle('on', L.motif === 'shape' && k === L.shape);
+  for (const k in layoutBtns) layoutBtns[k].classList.toggle('on', k === L.layout);
+  $('shapeGrid').hidden = L.motif !== 'shape'; $('f-text').hidden = L.motif !== 'text'; $('f-image').hidden = L.motif !== 'image'; $('f-path').hidden = L.motif !== 'path'; $('f-draw').hidden = L.motif !== 'draw';
+  if (document.activeElement !== $('pathD')) $('pathD').value = L.pathD || '';
+  $('bImage').textContent = L.img ? 'Replace the image' : 'Choose an image';
+  layerList(); swatches(); drawPad(); }
+
+$('bAdd').onclick = () => { S.layers.push(newLayer({ fillMode:'cycle', shape:'ring', cols:4, rows:4 })); S.act = S.layers.length-1; touch(); refresh(); };
+$('bDup').onclick = () => { const c = newLayer(JSON.parse(JSON.stringify(A()))); c.id = uid++; c.seed = Math.random()*1e9|0; S.layers.splice(S.act+1, 0, c); S.act++; touch(); refresh(); };
+$('bSeed').onclick = () => { S.seed = Math.random()*100000|0; touch(); refresh(); };
+$('bSquare').onclick = () => { S.tileH = S.tileW; touch(); refresh(); };
+$('bPalAdd').onclick = () => { if (S.palette.length < 12){ S.palette.push(hsl(Math.random()*360, 70, 60)); touch(); refresh(); } };
+$('bPalDel').onclick = () => { if (S.palette.length > 1){ S.palette.pop(); touch(); refresh(); } };
+function randomPalette(){ const h = Math.random()*360, kind = Math.random()*4|0, n = 5, dark = Math.random() < .5, out = [];
+  for (let i = 0; i < n; i++){ const hh = kind === 0 ? h+i*18 : kind === 1 ? h+(i%2)*180+i*8 : kind === 2 ? h+i*120 : h+i*72; out.push(hsl(mod(hh, 360), 45+Math.random()*40, i === 0 ? (dark ? 90 : 16) : 35+Math.random()*40)); }
+  return { palette:out, bg:hsl(mod(h+20, 360), 18+Math.random()*20, dark ? 9+Math.random()*8 : 90+Math.random()*6) }; }
+$('bPalRand').onclick = () => { const p = randomPalette(); S.palette = p.palette; S.bg = p.bg; touch(); refresh(); };
+$('bUndo').onclick = () => step(-1); $('bRedo').onclick = () => step(1);
+$('bFit').onclick = () => { Object.assign(S.view, { zoom:1, rot:0, panX:0, panY:0 }); touch(); refresh(); };
+$('bHide').onclick = () => { document.body.classList.toggle('ui-hidden'); resize(); };
+$('bReset').onclick = () => { S = fresh(); PRESETS.Dots(); commit(); refresh(); };
+
+/* ------------------------------------------------------------ presets and the random composer */
+const start = (o, layers) => { const v = S.view; S = Object.assign(fresh(), o); S.view = v; S.layers = layers.map(newLayer); S.act = S.layers.length-1; dirty = true; };
+const PRESETS = {
+  Dots:     () => start({ bg:'#16161a', palette:PALETTES.Paper.slice() }, [{ layout:'brick', cols:8, rows:8, size:.42, fillMode:'solid', fill:'#f2efe6' }]),
+  Memphis:  () => start({ bg:'#f2efe6', palette:['#e4572e','#17bebb','#ffc914','#2e282a','#76b041'], tileW:560, tileH:560 }, [
+              { layout:'scatter', count:16, shape:'zigzag', size:.62, jRot:1, fillMode:'random', strokeW:5 }, { layout:'scatter', count:14, shape:'triangle', size:.36, jRot:1, fillMode:'random' },
+              { layout:'scatter', count:14, shape:'circle', size:.26, fillMode:'random', palStart:1 }, { layout:'scatter', count:12, shape:'cross', size:.3, jRot:.3, fillMode:'solid', fill:'#2e282a', strokeW:4 }]),
+  Scales:   () => start({ bg:'#1d3557', palette:['#f1faee','#a8dadc','#457b9d','#e63946'], tileW:420, tileH:420 }, [{ layout:'brick', cols:6, rows:12, shape:'half', size:2.04, rot:180, fillMode:'row', stroke:true, strokeCol:'#1d3557', strokeW:3 }]),
+  Waves:    () => start({ bg:'#0d1b2a', palette:['#e0e1dd','#778da9','#415a77','#1b263b'], tileW:400, tileH:400 }, [{ layout:'grid', cols:4, rows:10, shape:'wave', size:2.5, sy:.5, fillMode:'row', strokeW:5 }]),
+  Checks:   () => start({ bg:'#f4e9d8', palette:PALETTES.Clay.slice(), tileW:400, tileH:400 }, [{ layout:'grid', cols:8, rows:8, shape:'square', size:1, mask:'a', fillMode:'diag', palStart:1 }, { layout:'grid', cols:8, rows:8, shape:'circle', size:.34, mask:'b', fillMode:'solid', fill:'#2d3047' }]),
+  Bloom:    () => start({ bg:'#fefae0', palette:PALETTES.Garden.slice(), tileW:480, tileH:416 }, [{ layout:'hex', cols:6, rows:6, shape:'flower', size:.92, fillMode:'cycle', palStart:1, altRot:30, spin:12 }, { layout:'hex', cols:6, rows:6, shape:'circle', size:.2, fillMode:'solid', fill:'#fefae0' }]),
+  'Op art': () => start({ bg:'#0b0b0c', palette:PALETTES.Mono.slice(), tileW:480, tileH:480 }, [{ layout:'grid', cols:20, rows:20, shape:'circle', size:.62, field:'radial', freq:2, fSize:.62, drift:.25, fillMode:'solid', fill:'#ffffff' }]),
+  Tiles:    () => start({ bg:'#f7f3e9', palette:['#264653','#2a9d8f','#e9c46a','#f4a261','#e76f51'], tileW:400, tileH:400 }, [{ layout:'grid', cols:4, rows:4, shape:'quarter', size:1, rotCol:90, rotRow:90, fillMode:'random' }]),
+  Stars:    () => start({ bg:'#10102a', palette:PALETTES.Night.slice(), tileW:520, tileH:520 }, [{ layout:'scatter', count:90, shape:'circle', size:.1, jSize:.6, fillMode:'solid', fill:'#f5f3ee', opacity:.7 }, { layout:'scatter', count:22, shape:'sparkle', size:.5, jSize:.5, jRot:.1, fillMode:'random', pulse:.35 }]),
+  Type:     () => start({ bg:'#e9e4d8', palette:['#111111','#d1401f','#1d4ed8'], tileW:480, tileH:320 }, [{ motif:'text', text:'MOXX', weight:500, layout:'brick', cols:3, rows:4, size:.5, fillMode:'row' }]),
+  Mandala:  () => start({ bg:'#1a1423', palette:['#f6e7cb','#e94f37','#f6bd60','#84a59d','#f28482'], tileW:560, tileH:560 }, [{ layout:'radial', rings:5, perRing:6, spread:.95, shape:'leaf', size:.95, fillMode:'row', spin:0 }, { layout:'radial', rings:5, perRing:6, spread:.95, stagger:.5, shape:'circle', size:.2, fillMode:'solid', fill:'#f6e7cb', centre:false }]),
+  Terrazzo: () => start({ bg:'#f3ede2', palette:PALETTES.Clay.slice(), tileW:560, tileH:560 }, [{ layout:'scatter', count:70, shape:'blob', size:.62, jSize:.7, jRot:1, sx:1.3, fillMode:'random', palStart:1 }, { layout:'scatter', count:120, shape:'blob', size:.22, jSize:.6, jRot:1, fillMode:'random', palStart:1 }]),
+};
+for (const k in PRESETS){ const b = el('button'); b.textContent = k; b.onclick = () => { PRESETS[k](); commit(); refresh(); }; $('presets').append(b); }
+$('bSurprise').onclick = () => { const R = Math.random, pick = a => a[R()*a.length|0], p = randomPalette(), keys = Object.keys(SHAPES), n = 1+(R()*3|0), layers = [];
+  for (let i = 0; i < n; i++){ const layout = pick(['grid','grid','brick','drop','hex','scatter','radial']), cells = 2+(R()*9|0);
+    layers.push({ layout, shape:pick(keys), cols:cells, rows:layout === 'hex' ? cells+(cells%2) : cells, count:8+(R()*60|0), rings:2+(R()*4|0), perRing:3+(R()*6|0),
+      size:.3+R()*(i ? .5 : .8), rot:pick([0,0,45,90,30]), rotCol:pick([0,0,0,90,45]), rotRow:pick([0,0,0,90]), altRot:pick([0,0,90,180]), altFlip:pick(['none','none','x','y']),
+      jRot:layout === 'scatter' ? R() : 0, jSize:R() < .4 ? R()*.5 : 0, mask:pick(['all','all','all','a','b']), field:pick(['none','none','waveX','diag','radial','noise']), freq:1+(R()*3|0), fSize:R() < .5 ? R()*.6 : 0, fRot:R() < .25 ? R()*.4 : 0,
+      fillMode:pick(['cycle','row','col','diag','random','field','solid']), fill:pick(p.palette), palStart:i, stroke:R() < .2, strokeCol:p.palette[0], strokeW:2+R()*5, opacity:i ? .7+R()*.3 : 1, drift:R() < .3 ? .2 : 0 }); }
+  const t = pick([320,400,480,560]); start({ bg:p.bg, palette:p.palette, seed:R()*100000|0, tileW:t, tileH:t }, layers); commit(); refresh(); };
+
+/* ------------------------------------------------------------ input: panning, files, the drawing pad, the palette from a picture */
+let drag = null;
+cv.addEventListener('pointerdown', e => { drag = [e.clientX, e.clientY, S.view.panX, S.view.panY]; cv.setPointerCapture(e.pointerId); });
+cv.addEventListener('pointermove', e => { if (!drag) return; S.view.panX = drag[2]+e.clientX-drag[0]; S.view.panY = drag[3]+e.clientY-drag[1]; });
+cv.addEventListener('pointerup', () => { drag = null; }); cv.addEventListener('pointercancel', () => { drag = null; });
+cv.addEventListener('wheel', e => { e.preventDefault(); const V = S.view, z = clamp(V.zoom*Math.exp(-e.deltaY*.0015), .1, 6), r = cv.getBoundingClientRect(), px = e.clientX-r.left-W/2, py = e.clientY-r.top-H/2, k = z/V.zoom;
+  V.panX = px-(px-V.panX)*k; V.panY = py-(py-V.panY)*k; V.zoom = z; refreshers.forEach(f => f()); }, { passive:false });
+cv.addEventListener('dblclick', () => $('bFit').click());
+
+let want = 'any';
+const pickFile = (kind, accept) => { want = kind; const f = $('file'); f.accept = accept; f.value = ''; f.click(); };
+$('file').onchange = e => { const f = e.target.files[0]; if (f) takeFile(f, want); };
+$('bImage').onclick = () => pickFile('image', 'image/*'); $('bPathFile').onclick = () => pickFile('svg', '.svg,image/svg+xml');
+$('bPalImg').onclick = () => pickFile('palette', 'image/*'); $('bLoad').onclick = () => pickFile('json', '.json,application/json');
+const readImage = file => new Promise((res, rej) => { const im = new Image(), u = URL.createObjectURL(file); im.onload = () => { URL.revokeObjectURL(u); res(im); }; im.onerror = rej; im.src = u; });
+async function takeFile(file, kind){ const name = file.name.toLowerCase(), isSvg = name.endsWith('.svg') || file.type === 'image/svg+xml', isJson = name.endsWith('.json') || file.type === 'application/json';
+  try {
+    if (kind === 'json' || (kind === 'any' && isJson)){ load(await file.text()); commit(); return; }
+    if (kind === 'svg'){ usePath(await file.text()); return; }
+    const im = await readImage(file);
+    if (kind === 'palette'){ S.palette = paletteFrom(im); touch(); refresh(); return; }
+    const m = 320/Math.max(im.naturalWidth || 320, im.naturalHeight || 320, 320), c = el('canvas'); c.width = Math.max(1, Math.round((im.naturalWidth || 320)*m)); c.height = Math.max(1, Math.round((im.naturalHeight || 320)*m));
+    c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); const L = A(); L.img = c.toDataURL('image/png'); L.motif = 'image'; touch(); refresh();
+  } catch(err){ flash('That file could not be read'); } }
+function usePath(text){ let d = text.trim(); if (d.includes('<')) d = [...d.matchAll(/\sd\s*=\s*"([^"]+)"|\sd\s*=\s*'([^']+)'/g)].map(m => m[1] || m[2]).join(' ');
+  const box = d && measurePath(d); if (!box){ flash('No usable path found'); return; } const L = A(); L.pathD = d; L.pathBox = box; L.motif = 'path'; touch(); refresh(); }
+$('bPathUse').onclick = () => usePath($('pathD').value);
+function paletteFrom(im){ const c = el('canvas'), n = 48; c.width = c.height = n; const g = c.getContext('2d'); g.drawImage(im, 0, 0, n, n); const d = g.getImageData(0, 0, n, n).data, bins = new Map();
+  for (let i = 0; i < d.length; i += 4){ if (d[i+3] < 128) continue; const k = (d[i]>>4)<<8 | (d[i+1]>>4)<<4 | d[i+2]>>4, b = bins.get(k) || [0,0,0,0]; b[0] += d[i]; b[1] += d[i+1]; b[2] += d[i+2]; b[3]++; bins.set(k, b); }
+  const cols = [...bins.values()].sort((a, b) => b[3]-a[3]).map(b => [b[0]/b[3], b[1]/b[3], b[2]/b[3]]), out = [];
+  for (let min = 70; out.length < 5 && min >= 0; min -= 20) for (const q of cols){ if (out.length >= 5) break; if (out.every(o => Math.hypot(o[0]-q[0], o[1]-q[1], o[2]-q[2]) > min) && !out.includes(q)) out.push(q); }
+  return (out.length ? out : [[255,255,255]]).map(q => '#'+q.map(v => Math.round(v).toString(16).padStart(2,'0')).join('')); }
+let dragN = 0;
+addEventListener('dragenter', e => { e.preventDefault(); dragN++; document.body.classList.add('dragging'); });
+addEventListener('dragleave', () => { if (--dragN <= 0){ dragN = 0; document.body.classList.remove('dragging'); } });
+addEventListener('dragover', e => e.preventDefault());
+addEventListener('drop', e => { e.preventDefault(); dragN = 0; document.body.classList.remove('dragging'); const f = e.dataTransfer.files[0]; if (!f) return;
+  if (f.name.toLowerCase().endsWith('.svg') && A().motif === 'path') takeFile(f, 'svg'); else takeFile(f, 'any'); });
+addEventListener('paste', e => { if (/^(TEXTAREA|INPUT)$/.test(e.target.tagName)) return; const f = [...(e.clipboardData.files || [])][0]; if (f) takeFile(f, 'any'); });
+
+/* the pad: strokes are stored in the motif's own unit box */
+const pad = $('pad'), pg = pad.getContext('2d'); let stroke = null;
+const padPos = e => { const r = pad.getBoundingClientRect(); return [f3((e.clientX-r.left)/r.width-.5), f3((e.clientY-r.top)/r.height-.5)]; };
+function drawPad(){ const L = A(), cs = getComputedStyle(document.documentElement), fg = cs.getPropertyValue('--u-fg') || '#fff'; pg.setTransform(1,0,0,1,0,0); pg.clearRect(0, 0, 600, 600); if (!L) return;
+  pg.strokeStyle = cs.getPropertyValue('--u-line') || '#444'; pg.lineWidth = 1; pg.strokeRect(60, 60, 480, 480); pg.setTransform(480, 0, 0, 480, 300, 300);
+  const d = strokesToPath(L); if (!d) return; pg.lineWidth = 6/480; pg.lineCap = pg.lineJoin = 'round'; pg.strokeStyle = pg.fillStyle = fg; if (L.drawFill) pg.fill(new Path2D(d), 'evenodd'); else pg.stroke(new Path2D(d)); }
+pad.addEventListener('pointerdown', e => { stroke = [padPos(e)]; A().strokes.push(stroke); pad.setPointerCapture(e.pointerId); });
+pad.addEventListener('pointermove', e => { if (!stroke) return; const p = padPos(e), q = stroke[stroke.length-1]; if (Math.hypot(p[0]-q[0], p[1]-q[1]) > .012){ stroke.push(p); drawPad(); dirty = true; } });
+pad.addEventListener('pointerup', () => { if (stroke){ stroke = null; touch(); } });
+$('bPadUndo').onclick = () => { A().strokes.pop(); touch(); drawPad(); }; $('bPadClear').onclick = () => { A().strokes = []; touch(); drawPad(); };
+addEventListener('moxx-theme', drawPad);
+
+/* ------------------------------------------------------------ export */
+const download = (blob, name) => { const a = el('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
+function flash(msg){ const h = $('hud'), was = h.dataset.was || h.innerHTML; h.dataset.was = was; h.textContent = msg; clearTimeout(flash.t); flash.t = setTimeout(() => { h.innerHTML = was; }, 2200); }
+$('bTile').onclick = () => { const c = el('canvas'), k = S.scale; c.width = S.tileW*k; c.height = S.tileH*k; drawTile(c.getContext('2d'), k, time); c.toBlob(b => download(b, `pattern-tile-${S.tileW*k}x${S.tileH*k}.png`)); };
+$('bSvg').onclick = () => download(new Blob([tileSvg(time)], { type:'image/svg+xml' }), 'pattern-tile.svg');
+$('bView').onclick = () => { renderView(); cv.toBlob(b => download(b, 'pattern-view.png')); };
+$('bCss').onclick = async () => { const css = `background: ${S.bg} url("data:image/svg+xml,${encodeURIComponent(tileSvg(time))}") 0 0 / ${S.tileW}px ${S.tileH}px repeat;`;
+  try { await navigator.clipboard.writeText(css); flash('CSS copied · '+Math.round(css.length/1024)+' kB'); } catch(e){ download(new Blob([css], { type:'text/css' }), 'pattern.css'); } };
+$('bJson').onclick = () => download(new Blob([JSON.stringify(S, null, 1)], { type:'application/json' }), 'pattern.json');
+$('bVideo').onclick = () => { const b = $('bVideo'); if (b.disabled) return; if (!window.MediaRecorder || !cv.captureStream){ b.textContent = 'Not supported'; return; }
+  const type = ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4'].find(t => MediaRecorder.isTypeSupported(t)) || '';
+  const rec = new MediaRecorder(cv.captureStream(60), { mimeType:type, videoBitsPerSecond:16e6 }), chunks = []; let left = 6; b.disabled = true; b.textContent = 'Recording 6';
+  const tick = setInterval(() => { left--; b.textContent = 'Recording '+Math.max(0, left); }, 1000);
+  rec.ondataavailable = e => e.data.size && chunks.push(e.data);
+  rec.onstop = () => { clearInterval(tick); b.disabled = false; b.textContent = 'Record 6 s'; download(new Blob(chunks, { type:type || 'video/webm' }), 'pattern'+(type.includes('mp4') ? '.mp4' : '.webm')); };
+  rec.start(); setTimeout(() => rec.stop(), 6000); };
+
+addEventListener('keydown', e => { const typing = /^(TEXTAREA|SELECT)$/.test(e.target.tagName) || (e.target.tagName === 'INPUT' && e.target.type === 'text');
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !typing){ e.preventDefault(); step(e.shiftKey ? 1 : -1); return; }
+  if (typing || e.metaKey || e.ctrlKey || e.altKey) return; const k = e.key.toLowerCase();
+  if (k === 'h') $('bHide').click(); else if (k === 'r') $('bSeed').click(); else if (k === 's') $('bTile').click(); else if (e.key === ' '){ e.preventDefault(); S.motion = !S.motion; touch(); refresh(); } });
+addEventListener('resize', resize);
+
+/* ------------------------------------------------------------ go */
+resize();
+try { const saved = localStorage.getItem(KEY); if (saved) load(saved); } catch(e){}
+if (!S.layers.length) PRESETS.Memphis();
+commit(); refresh(); requestAnimationFrame(frame);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { dirty = true; });
+window.PM = { get S(){ return S; }, PRESETS, SHAPES, FIELDS, tileSvg, buildItems, load, refresh };
+</script>
+</body>
+</html>

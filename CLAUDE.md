@@ -16,7 +16,8 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
 - `terminal-type.html` (01), `dither-lab.html` (02), `line-relief.html` (03),
   `glyph-matrix.html` (04), `prism-core.html` (05), `compass-mark.html` (06),
   `brand-engine.html` (07), `jelly-pitch.html` (08),
-  `pretext-play.html` (09), `tape-deck.html` (10), `grain-stack.html` (11) — the effects.
+  `pretext-play.html` (09), `tape-deck.html` (10), `grain-stack.html` (11),
+  `pattern-maker.html` (12) — the effects.
 - `logo.svg` (white on transparent), `favicon.svg` (on black) — Moxx Lab brand mark; every
   page uses them for tab icon, panel header (`.mark`) and back link.
 - `ui.css`, `ui.js` — shared interface layer, loaded right after each page's own `<style>`.
@@ -116,6 +117,20 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
   Renderer (body fill casts the shadow, grains drawn clipped in 28 colour buckets) → UI →
   Export (PNG, 6 s WebM). Count scales with layer area. Custom polygon is drawn on the canvas.
   Presets Dunes/Stack/Bloom. R = randomize. Exposed as `window.GS`. Dunes costs ~10 ms a frame.
+
+- **Pattern Maker** (12): seamless repeat-pattern builder, Canvas 2D + SVG, shared
+  `ui.css`/`ui.js`. State `S` = tile size, bg, palette, `layers[]`, view; each layer is a flat
+  object (see `newLayer` for every option). File order: state → Motifs (`SHAPES` unit-box SVG
+  paths; also text, image, pasted SVG path, hand-drawn strokes — `motifOf`) → `FIELDS`
+  (periodic maps driving size/turn/opacity/colour) → Layout (`buildItems`: one display list per
+  layer, with edge copies so the tile repeats) → Renderers (`drawTile` canvas and `tileSvg`
+  read the same list; keep them in step) → view (tile repeated with `createPattern`) → history
+  (undo, localStorage `moxx-pattern-maker`) → generic `ctl()` control builder → presets →
+  input (files, drag-drop, paste, pad, palette from image) → export (tile PNG, SVG, view PNG,
+  CSS data URI, JSON, WebM). Never use `Math.random` inside `buildItems` (use `hash`).
+  Keys: R = new seed, S = save tile, space = motion, Cmd/Ctrl+Z undo. Exposed as `window.PM`.
+  Not checked: real file uploads, drag-drop, clipboard paste, CSS copy, video (only presets,
+  SVG validity and the draw/path/text motifs were exercised, via script).
 
 ## Status (last work)
 All work is committed; see `git log`.
