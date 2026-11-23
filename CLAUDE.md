@@ -41,7 +41,7 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
 - Keys on effect pages: H hides panel, S saves PNG, R replays, space pauses.
 - Commit trailer: `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`.
 - Test locally with `python3 -m http.server` (file:// breaks relative assets like logo.svg).
-- Commit every change straight away without asking (user instruction, 2026-11-23). Push only when the user asks.
+- When the changes for a prompt are finished, commit and push to `main` without asking (user instruction, 2026-11-23). No separate "commit" or "push" prompt is needed.
 
 ## Effect notes
 - **Glyph Matrix**: Canvas 2D + WebGL2 instancing; source can be image, video
