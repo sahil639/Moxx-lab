@@ -72,6 +72,13 @@
     <p class="hint" id="stat"></p>
   </details>
 
+  <details open id="d-roads">
+    <summary>Roads</summary>
+    <div id="f-roads"></div>
+    <div id="roadBody"><div class="sub">Road colours (the first is the main one)</div>
+    <div class="sw" id="roadPal"></div></div>
+  </details>
+
   <details open id="d-types">
     <summary>Types</summary>
     <div class="grid" id="modes"></div>
@@ -135,7 +142,7 @@ const DEFAULT_TYPES = () => [
   newType({ name:'Colour tower', weight:6, palette:CITY.slice(0, 10), wMin:.5, wMax:.9, dMin:.5, dMax:.9, hMin:2.5, hMax:7 }),
   newType({ name:'Flat grid', weight:10, colorMode:'faces', top:'#7b52ab', left:'#f28c28', right:'#5c3d8f', wMin:.78, wMax:.78, dMin:.78, dMax:.78, hMin:.2, hMax:.45 }),
 ];
-const DEFAULTS = () => ({ view:'city', sw:120, sd:120, sh:320, sInner:.5, sOuter:1.5, sFaces:true, innerScale:1, animate:true, seed:20261, count:2600, gap:0, cluster:.8, zone:12, mode:'mixed', types:DEFAULT_TYPES(), act:0,
+const DEFAULTS = () => ({ view:'city', sw:120, sd:120, sh:320, sInner:.5, sOuter:1.5, sFaces:true, innerScale:1, animate:true, roadOn:true, roadDir:'y', roadGap:30, roadWidth:3, roadClear:4, roadWobble:.15, roadRag:.25, roadH:.35, roadVariety:.3, roadStroke:false, roadFlat:true, roadPal:['#f28c28','#e8443a','#f7c531','#f4a7b9','#2f8f6b'], seed:20261, count:2600, gap:0, cluster:.8, zone:12, mode:'mixed', types:DEFAULT_TYPES(), act:0,
   bg:'#e6e0d2', outlines:true, strokeScale:1, accent:.05, accents:['#e8443a','#f7c531','#f4a7b9','#5bb5e0'],
   rW:1, rD:1, rH:1, rC:1, rS:0,
   playing:true, speed:1, blend:.35, hMin:.08, hMax:11,
@@ -154,6 +161,14 @@ function noise(x, y, k){ const x0 = Math.floor(x), y0 = Math.floor(y), fx = sm(x
   const v = (g(x0,y0)*(1-fx)+g(x0+1,y0)*fx)*(1-fy) + (g(x0,y0+1)*(1-fx)+g(x0+1,y0+1)*fx)*fy; return clamp((v-.22)/.56, 0, .9999); }
 const rgb = h => [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)];
 const vary = (min, max, r, amt) => { const lo = Math.min(min, max), hi = Math.max(min, max); return (lo+hi)/2 + (r-.5)*(hi-lo)*amt; };
+
+/* roads: straight strips of low, flush, coloured boxes along a grid axis, one per band of `roadGap` cells */
+function onRoad(i, j){ const g = Math.max(4, S.roadGap), half = S.roadWidth/2; let best = 0;                  // 2 = on a road, 1 = beside one (kept low so the road shows), 0 = neither
+  const test = (a, b, k) => { const band = Math.floor(b/g); for (let q = band-1; q <= band+1; q++){
+      const c = (q+.5)*g + (hash(S.seed, q, k, 1)-.5)*g*.6 + (noise(a/18, q*3.7, 31+k)-.5)*S.roadWobble*g, dist = Math.abs(b+.5-c);
+      if (dist < half && !(dist > half-1 && hash(S.seed, a, b, 40+k) < S.roadRag)) return 2;                             /* ragged edges */
+      if (dist < half+S.roadClear) best = 1; } return 0; };
+  if ((S.roadDir !== 'x' && test(j, i, 6) === 2) || (S.roadDir !== 'y' && test(i, j, 5) === 2)) return 2; return best; }
 
 /* ------------------------------------------------------------ city: the cells on screen → one instance each */
 let fbuf = new Float32Array(0), cbuf = new Uint8Array(0);
@@ -177,7 +192,7 @@ function buildCity(){
     const sx = ox+(i-j)*C30*cell, sy = oy+(i+j)*.5*cell; if (sx < -m || sx > W+m || sy < -m || sy > H+m+maxH*cell) continue;
     const r = k => hash(S.seed, i, j, k), zoned = r(1) < S.cluster;
     let pickv = (zoned ? noise(i/zs, j/zs, 11) : r(2))*total, T = types[types.length-1]; for (const t of types){ if (pickv < t.weight){ T = t; break; } pickv -= t.weight; }
-    const w = clamp(vary(T.wMin, T.wMax, r(3), S.rW), .05, 4)*fill, d = clamp(vary(T.dMin, T.dMax, r(4), S.rD), .05, 4)*fill, h = Math.max(.02, vary(T.hMin, T.hMax, r(5), S.rH));
+    let w = clamp(vary(T.wMin, T.wMax, r(3), S.rW), .05, 4)*fill, d = clamp(vary(T.dMin, T.dMax, r(4), S.rD), .05, 4)*fill, h = Math.max(.02, vary(T.hMin, T.hMax, r(5), S.rH)), still = 0;
     let top, left, right, on = T.fill ? 255 : 0;
     if (!T.fill){ top = left = right = bg; }
     else if (T.colorMode === 'palette' && T.palette.length){ const P = T.palette, np = P.length, base = zoned ? Math.floor(noise(i/zs+40, j/zs-17, 23)*np) : Math.floor(r(6)*np), loose = r(7) < S.rC;   /* a zone shares its colours */
@@ -187,8 +202,12 @@ function buildCity(){
     let aT = on, aL = on, aR = on;
     if ((!T.fill || T.colorMode === 'one') && S.accents.length && r(12) < S.accent){ const c = rgb(S.accents[Math.floor(r(13)*S.accents.length)]), f = Math.floor(r(14)*3);       /* one bright face on a neutral box */
       if (f === 0){ top = c; aT = 255; } else if (f === 1){ left = c; aL = 255; } else { right = c; aR = 255; } }
-    const f8 = n*8, c16 = n*16, sc = rgb(T.strokeCol), sw = T.stroke && S.outlines ? Math.max(0, T.strokeW*(1+(r(15)-.5)*2*S.rS)) : 0;
-    fbuf[f8] = i; fbuf[f8+1] = j; fbuf[f8+2] = w; fbuf[f8+3] = d; fbuf[f8+4] = h; fbuf[f8+5] = r(16); fbuf[f8+6] = r(17); fbuf[f8+7] = sw;
+    let sc = rgb(T.strokeCol), sw = T.stroke && S.outlines ? Math.max(0, T.strokeW*(1+(r(15)-.5)*2*S.rS)) : 0;
+    const road = S.roadOn && S.roadPal.length ? onRoad(i, j) : 0; if (road === 1) h = Math.min(h, S.roadH+.25+r(27)*.9);
+    if (road === 2){ const RP = S.roadPal, c = (k, base) => rgb(r(k) < S.roadVariety ? RP[Math.floor(r(k+1)*RP.length)] : RP[base%RP.length]);
+      w = d = fill; h = Math.max(.02, S.roadH*(1+(r(20)-.5)*.7)); top = c(21, 0); left = c(23, 1); right = c(25, 2); aT = aL = aR = 255; sc = [17,17,17]; sw = S.roadStroke && S.outlines ? 1 : 0; still = S.roadFlat ? 2 : 0; }
+    const f8 = n*8, c16 = n*16;
+    fbuf[f8] = i; fbuf[f8+1] = j; fbuf[f8+2] = w; fbuf[f8+3] = d; fbuf[f8+4] = h; fbuf[f8+5] = r(16); fbuf[f8+6] = r(17)+still; fbuf[f8+7] = sw;
     cbuf.set([top[0],top[1],top[2],aT, left[0],left[1],left[2],aL, right[0],right[1],right[2],aR, sc[0],sc[1],sc[2],255], c16);
     if (i+j < dmin) dmin = i+j; if (i+j > dmax) dmax = i+j; n++; }
   count = n; depth = [dmin-3, 1/Math.max(1, dmax-dmin+maxH+8)];
@@ -211,7 +230,7 @@ float height(){                                              /* the only thing t
   float wave = sin(6.2831853*ph);
   float tau = uTime*uRFreq*(.6+.8*aRnd.x) + aRnd.y*37., k = floor(tau), f = ease(clamp(fract(tau)*uRSpeed,0.,1.));
   float rnd = mix(hash1(aRnd.x*91.7+k), hash1(aRnd.x*91.7+k+1.), f)*2.-1.;
-  return clamp(aSize.z + mix(wave*uWAmp, rnd*uRAmp, uBlend), uHMin, uHMax); }
+  return clamp(aSize.z + mix(wave*uWAmp, rnd*uRAmp, uBlend)*(1.-step(1.5,aRnd.y)), uHMin, uHMax); }   /* aRnd.y >= 2 marks a box that stays still (roads) */
 vec3 world(vec3 u, float h){ return vec3(aPos.x+(u.x-.5)*aSize.x, aPos.y+(u.y-.5)*aSize.y, u.z*h); }
 vec2 screen(vec3 p){ return uOrigin + vec2((p.x-p.y)*.8660254, (p.x+p.y)*.5-p.z)*uS; }
 float depthOf(vec3 p){ return 1.-(p.x+p.y+p.z-uDepth.x)*uDepth.y; }
@@ -287,6 +306,14 @@ ctl('f-layout', { key:'gap', label:'Gap between boxes', min:0, max:.8, step:.01,
 ctl('f-layout', { key:'cluster', label:'Clustering into zones', min:0, max:1, step:.01, fmt:pct });
 ctl('f-layout', { key:'zone', label:'Zone size', min:2, max:40, step:.5, fmt:v => f1(v)+' boxes' });
 
+ctl('f-roads', { key:'roadOn', label:'Roads through the city', type:'toggle' });
+const rOn = s => s.roadOn;
+ctl('f-roads', { key:'roadDir', label:'Direction', type:'select', opts:[['y','Up to the right'],['x','Down to the right'],['both','Both ways']], when:rOn });
+ctl('f-roads', { key:'roadGap', label:'Distance apart', min:6, max:120, fmt:v => v+' boxes', when:rOn }); ctl('f-roads', { key:'roadWidth', label:'Width', min:1, max:12, step:.5, fmt:v => f1(v)+' boxes', when:rOn });
+ctl('f-roads', { key:'roadClear', label:'Low buildings beside it', min:0, max:12, step:.5, fmt:v => f1(v)+' boxes', when:rOn });
+ctl('f-roads', { key:'roadWobble', label:'Wander', min:0, max:1, step:.01, fmt:pct, when:rOn }); ctl('f-roads', { key:'roadRag', label:'Ragged edges', min:0, max:.9, step:.01, fmt:pct, when:rOn });
+ctl('f-roads', { key:'roadH', label:'Height', min:.05, max:3, step:.05, fmt:f2, when:rOn }); ctl('f-roads', { key:'roadVariety', label:'Colour variety', min:0, max:1, step:.01, fmt:pct, when:rOn });
+ctl('f-roads', { key:'roadStroke', label:'Outline the road boxes', type:'toggle', when:rOn }); ctl('f-roads', { key:'roadFlat', label:'Keep roads still when heights animate', type:'toggle', when:rOn });
 ctl('f-type', { on:A, key:'name', label:'Name', type:'text', list:true, city:false });
 ctl('f-type', { on:A, key:'weight', label:'Spawn weight', min:0, max:100, list:true, fmt:v => v+' · '+Math.round(v/Math.max(1, S.types.reduce((a, t) => a+t.weight, 0))*100)+'%', when:() => S.mode === 'mixed' });
 for (const [k, n, mx] of [['w','Width',3],['d','Depth',3],['h','Height',12]]){ ctl('f-type', { on:A, key:k+'Min', label:n+', least', min:k === 'h' ? .05 : .1, max:mx, step:.05, fmt:f2 }); ctl('f-type', { on:A, key:k+'Max', label:n+', most', min:k === 'h' ? .05 : .1, max:mx, step:.05, fmt:f2 }); }
@@ -328,9 +355,9 @@ function swatches(host, list, onchange){ const h = $(host); h.textContent = '';
   const add = el('button'); add.textContent = '+'; add.title = 'Add a colour'; add.onclick = () => { if (list.length < 16){ list.push(CITY[list.length%CITY.length]); onchange(); refresh(); } };
   const del = el('button'); del.textContent = '−'; del.title = 'Remove the last colour'; del.onclick = () => { if (list.length > 1){ list.pop(); onchange(); refresh(); } }; h.append(add, del); }
 function refresh(){ S.act = clamp(S.act|0, 0, S.types.length-1); for (const r of refreshers) r(); const one = single(); for (const k in viewBtns) viewBtns[k].classList.toggle('on', k === S.view);
-  $('d-single').hidden = !one; for (const id of ['d-layout','d-types','d-rand','d-anim','cityStyle','bVideo']) $(id).hidden = one; $('bSvg').hidden = !one; $('animBody').hidden = !S.animate; for (const k in modeBtns) modeBtns[k].classList.toggle('on', k === S.mode);
+  $('d-single').hidden = !one; for (const id of ['d-layout','d-roads','d-types','d-rand','d-anim','cityStyle','bVideo']) $(id).hidden = one; $('bSvg').hidden = !one; $('animBody').hidden = !S.animate; for (const k in modeBtns) modeBtns[k].classList.toggle('on', k === S.mode);
   typeList(); $('typeBtns').hidden = S.mode !== 'mixed'; const t = A(), pal = t.fill && t.colorMode === 'palette'; $('palTitle').hidden = $('typePal').hidden = !pal; if (pal) swatches('typePal', t.palette, () => touch(true));
-  swatches('accPal', S.accents, () => touch(true)); $('bPlay').textContent = S.playing ? 'Pause' : 'Play'; document.body.style.background = S.bg; }
+  swatches('accPal', S.accents, () => touch(true)); swatches('roadPal', S.roadPal, () => touch(true)); $('roadBody').hidden = !S.roadOn; $('bPlay').textContent = S.playing ? 'Pause' : 'Play'; document.body.style.background = S.bg; }
 $('bAddType').onclick = () => { S.types.push(newType({ name:'Type '+(S.types.length+1) })); S.act = S.types.length-1; touch(true); refresh(); };
 $('bDupType').onclick = () => { const c = JSON.parse(JSON.stringify(A())); c.name += ' copy'; S.types.splice(S.act+1, 0, c); S.act++; touch(true); refresh(); };
 $('bSeed').onclick = () => { S.seed = Math.random()*100000|0; touch(true); refresh(); };
