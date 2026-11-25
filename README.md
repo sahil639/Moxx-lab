@@ -212,6 +212,19 @@ heavier outline around the whole shape (default 1.5). Sliders and number boxes f
 depth, height and both stroke weights; faces white or transparent. Saves SVG or PNG.
 Keys: H panel, S save SVG, R reset.
 
+**`isocuboid.html` — Isocuboid.** A frame-filling city of isometric boxes (WebGL 2,
+instanced). Flat colour on the top, left and right faces, optional crisp outlines, no
+lighting. Layout: how many boxes fit the frame, the gap between them, and clustering into
+zones of a chosen size. Types: Uniform or Mixed; each type has a spawn weight, least and most
+width, depth and height, face colours (one colour, three faces, or a palette), outline colour
+and thickness, and fill on or off (off gives the blank, outline-only look). Style: background,
+outline scale, and a chance of one bright accent face on a neutral box. Randomize rerolls the
+types; a seed reproduces a layout; five sliders set how much width, depth, height, colour and
+outline vary. Animation moves height only: a wave (straight, rings from a point, or
+diagonal) and per-box random motion, blended, with height limits, easing, speed and pause.
+Drag to move through the city, scroll to zoom. Saves a PNG or a 6-second video.
+Keys: H panel, R randomize, S save PNG, space pause.
+
 ## Interface
 
 Every page loads two shared files, `ui.css` and `ui.js`. Together they give the site a
