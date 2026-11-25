@@ -17,8 +17,7 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
   `glyph-matrix.html` (04), `prism-core.html` (05), `compass-mark.html` (06),
   `brand-engine.html` (07), `jelly-pitch.html` (08),
   `pretext-play.html` (09), `tape-deck.html` (10), `grain-stack.html` (11),
-  `pattern-maker.html` (12), `particle-morph.html` (13), `iso-cuboid.html` (14),
-  `isocuboid.html` (15) — the effects.
+  `pattern-maker.html` (12), `particle-morph.html` (13), `isocuboid.html` (14) — the effects.
 - `logo.svg` (white on transparent), `favicon.svg` (on black) — Moxx Lab brand mark; every
   page uses them for tab icon, panel header (`.mark`) and back link.
 - `ui.css`, `ui.js` — shared interface layer, loaded right after each page's own `<style>`.
@@ -149,25 +148,24 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
   `window.PMX` (engine) and `window.PMUI`. Not done: GIF export (video only). Not checked: real
   uploads, drag reorder, the exported snippet running on its own, video recording, frame rate
   (the preview pane throttles to ~2 fps), touch.
-- **Iso Cuboid** (14): one isometric box as SVG, black line only, shared `ui.css`/`ui.js`.
-  `cuboid({w,d,h})` returns faces, the three inner edges and the six-corner outline; `style()`
-  holds every colour (the place to add colour later); `svg(scale)` is used for screen and
-  export, strokes are `non-scaling-stroke` so weights stay in pixels. Each value has a slider
-  and a number box (`ctl`). Keys: S = save SVG, R = reset. Exposed as `window.IC`.
-
-- **Isocuboid** (15): the city version of Iso Cuboid, a separate page (`isocuboid.html`; 14 is
-  `iso-cuboid.html`, the single box — do not confuse them). WebGL 2, shared `ui.css`/`ui.js`.
-  One GPU instance per box: 18 face vertices + 54 edge vertices (nine edges as screen-space
-  quads). Height animation (wave + per-box random targets, blended, clamped) is entirely in the
-  vertex shader (`height()` in `COMMON`); the depth buffer orders boxes (depth = x+y+z), so
-  there is no sorting and no per-frame CPU work. `buildCity()` runs only when layout, types,
-  seed, pan or zoom change: it walks the grid cells that project into the frame and derives
-  everything about a box from `hash(seed, i, j, k)`, so panning reveals a stable endless city.
-  Zones come from smooth `noise()`; "fill off" boxes are painted in the background colour so
-  they still hide what is behind them. "Boxes in the frame" sets the zoom. State `S` (types in
-  `S.types`), saved in localStorage `moxx-isocuboid`. Exposed as `window.IQ`.
+- **Isocuboid** (14): isometric boxes, WebGL 2, shared `ui.css`/`ui.js`. Two modes (`S.view`):
+  `city` and `single`. The earlier separate single-box page (`iso-cuboid.html`) was merged into
+  this one on the user's request and deleted. One GPU instance per box: 18 face vertices + 54
+  edge vertices (nine edges as screen-space quads; edges 1, 2 and 5 are flagged "inner" and
+  take `uWIn`, the other six take `uWOut`). Height animation (wave + per-box random targets,
+  blended, clamped) is entirely in the vertex shader (`height()` in `COMMON`); `S.animate`
+  switches it off for a still city (amplitudes sent as 0), separate from play/pause. The depth
+  buffer orders boxes (depth = x+y+z), so there is no sorting and no per-frame CPU work.
+  `buildCity()` runs only when layout, types, seed, pan or zoom change: it walks the grid cells
+  that project into the frame and derives everything about a box from `hash(seed, i, j, k)`,
+  so panning reveals a stable endless city. Zones come from smooth `noise()`; "fill off" boxes
+  are painted in the background colour so they still hide what is behind them. "Boxes in the
+  frame" sets the zoom. `buildSingle()` makes one instance sized in pixels (`sw`, `sd`, `sh`,
+  strokes `sInner` 0.5 / `sOuter` 1.5), scaled down only to fit; Save SVG exists in that mode
+  only and is built separately in `bSvg` (keep its geometry in step with the shader).
+  State `S`, saved in localStorage `moxx-isocuboid`. Exposed as `window.IQ`.
   Not checked: animation in motion (the preview pane throttles frames), Uniform mode, the
-  type editor by hand, video, very high counts.
+  type editor by hand, SVG/PNG/video export, very high counts.
 
 ## Status (last work)
 All work is committed; see `git log`.

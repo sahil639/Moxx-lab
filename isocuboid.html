@@ -28,6 +28,9 @@
   .sw input[type=color]{width:34px;flex:0 0 34px}
   .sw button{flex:0 0 34px;height:34px;padding:0}
   .row input[type=text]{flex:1;min-width:0}
+  html[data-theme] .row input[type=number]{flex:0 0 64px;width:64px;height:34px;padding:0 8px;border-radius:8px;border:1.5px solid transparent;background:var(--u-tile);color:var(--u-fg);
+    font:inherit;font-size:11px;font-variant-numeric:tabular-nums;text-align:right;outline:none;-moz-appearance:textfield}
+  html[data-theme] .row input[type=number]:focus{border-color:var(--u-accent)}
   .sub{margin:14px 2px 6px;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--u-dim)}
   #hud{position:fixed;left:12px;bottom:10px;font-size:10px;letter-spacing:.08em;z-index:9;pointer-events:none;color:#000;opacity:.5}
   body.ui-hidden #hud{display:none}
@@ -50,15 +53,26 @@
 <div id="err"><div><b>Isocuboid needs WebGL 2.</b><br>This browser or device does not offer it.<br><a href="index.html">← Back to Moxx Lab</a></div></div>
 
 <div id="panel">
-  <h1><img class="mark" src="logo.svg" alt="">Isocuboid<small>an endless city of isometric boxes</small></h1>
+  <h1><img class="mark" src="logo.svg" alt="">Isocuboid<small>isometric boxes: one, or an endless city</small></h1>
 
   <details open>
+    <summary>Mode</summary>
+    <div class="grid" id="views"></div>
+  </details>
+
+  <details open id="d-single">
+    <summary>Single box</summary>
+    <div id="f-single"></div>
+    <p class="hint">Inner strokes are the three edges where the visible faces meet; the outer stroke is the outline around the box. Weights are in pixels.</p>
+  </details>
+
+  <details open id="d-layout">
     <summary>Layout</summary>
     <div id="f-layout"></div>
     <p class="hint" id="stat"></p>
   </details>
 
-  <details open>
+  <details open id="d-types">
     <summary>Types</summary>
     <div class="grid" id="modes"></div>
     <div id="typeList"></div>
@@ -71,31 +85,33 @@
   <details open>
     <summary>Style</summary>
     <div id="f-style"></div>
+    <div id="cityStyle"><div id="f-style2"></div>
     <div class="sub">Accent colours</div>
-    <div class="sw" id="accPal"></div>
+    <div class="sw" id="accPal"></div></div>
   </details>
 
-  <details open>
+  <details open id="d-rand">
     <summary>Randomize</summary>
     <div id="f-rand"></div>
     <div class="btns"><button id="bRand">Randomize</button><button id="bSeed">New seed only</button></div>
     <p class="hint">Randomize rerolls the types, their sizes, colours and strokes. The sliders set how much each property varies from box to box: 0% locks it to the middle of its range, 100% uses the whole range.</p>
   </details>
 
-  <details open>
+  <details open id="d-anim">
     <summary>Animation</summary>
-    <div id="f-anim"></div>
+    <div id="f-animOn"></div>
+    <div id="animBody"><div id="f-anim"></div>
     <div class="sub">Wave</div>
     <div id="f-wave"></div>
     <div class="sub">Random</div>
     <div id="f-random"></div>
-    <div class="btns"><button id="bPlay">Pause</button></div>
+    <div class="btns"><button id="bPlay">Pause</button></div></div>
     <p class="hint">Only height moves. Each box grows from its base; width, depth, position and colour stay fixed.</p>
   </details>
 
   <details open>
     <summary>Export</summary>
-    <div class="btns"><button id="bSave">Save PNG</button><button id="bVideo">Record 6 s</button></div>
+    <div class="btns"><button id="bSave">Save PNG</button><button id="bSvg">Save SVG</button><button id="bVideo">Record 6 s</button></div>
     <div class="btns"><button id="bReset">Reset</button><button id="bHide">Hide panel</button></div>
   </details>
 </div>
@@ -119,7 +135,7 @@ const DEFAULT_TYPES = () => [
   newType({ name:'Colour tower', weight:6, palette:CITY.slice(0, 10), wMin:.5, wMax:.9, dMin:.5, dMax:.9, hMin:2.5, hMax:7 }),
   newType({ name:'Flat grid', weight:10, colorMode:'faces', top:'#7b52ab', left:'#f28c28', right:'#5c3d8f', wMin:.78, wMax:.78, dMin:.78, dMax:.78, hMin:.2, hMax:.45 }),
 ];
-const DEFAULTS = () => ({ seed:20261, count:2600, gap:0, cluster:.8, zone:12, mode:'mixed', types:DEFAULT_TYPES(), act:0,
+const DEFAULTS = () => ({ view:'city', sw:120, sd:120, sh:320, sInner:.5, sOuter:1.5, sFaces:true, innerScale:1, animate:true, seed:20261, count:2600, gap:0, cluster:.8, zone:12, mode:'mixed', types:DEFAULT_TYPES(), act:0,
   bg:'#e6e0d2', outlines:true, strokeScale:1, accent:.05, accents:['#e8443a','#f7c531','#f4a7b9','#5bb5e0'],
   rW:1, rD:1, rH:1, rC:1, rS:0,
   playing:true, speed:1, blend:.35, hMin:.08, hMax:11,
@@ -128,7 +144,8 @@ const DEFAULTS = () => ({ seed:20261, count:2600, gap:0, cluster:.8, zone:12, mo
 let S = DEFAULTS();
 const A = () => S.types[S.mode === 'uniform' ? 0 : S.act];
 const cv = $('c'), gl = cv.getContext('webgl2', { antialias:true, alpha:false, depth:true });
-let W = 1, H = 1, dpr = 1, dirty = true, cityDirty = true, time = 0, count = 0, cell = 20, depth = [0, 1];
+let W = 1, H = 1, dpr = 1, dirty = true, cityDirty = true, time = 0, count = 0, cell = 20, depth = [0, 1], oyAdj = 0;
+const single = () => S.view === 'single';
 
 /* ------------------------------------------------------------ random helpers: everything about a box comes from its cell */
 const hash = (a,b,c,d) => { let x = Math.imul(a|0, 374761393) ^ Math.imul(b|0, 668265263) ^ Math.imul(c|0, 1274126177) ^ Math.imul(d|0, 2246822519); x = Math.imul(x ^ x>>>15, 2246822519); x = Math.imul(x ^ x>>>13, 3266489917); return ((x ^ x>>>16)>>>0)/4294967296; };
@@ -140,7 +157,15 @@ const vary = (min, max, r, amt) => { const lo = Math.min(min, max), hi = Math.ma
 
 /* ------------------------------------------------------------ city: the cells on screen → one instance each */
 let fbuf = new Float32Array(0), cbuf = new Uint8Array(0);
+function buildSingle(){                                           // one box, sized in pixels, centred, scaled down only if it does not fit
+  const w = S.sw, d = S.sd, h = S.sh, bw = (w+d)*C30, bh = (w+d)*.5+h, room = 110; cell = Math.max(.02, Math.min(1, (W-room)/bw, (H-room)/bh)); oyAdj = h/2*cell;
+  if (fbuf.length < 8){ fbuf = new Float32Array(8); cbuf = new Uint8Array(16); }
+  fbuf.set([0, 0, w, d, h, 0, 0, 1]); const f = S.sFaces ? [255,255,255,255] : [0,0,0,0]; cbuf.set([...f, ...f, ...f, 0,0,0,255]);
+  count = 1; depth = [-(w+d)-4, 1/(2*(w+d)+h+16)];
+  gl.bindBuffer(gl.ARRAY_BUFFER, instF); gl.bufferData(gl.ARRAY_BUFFER, fbuf.subarray(0, 8), gl.DYNAMIC_DRAW); gl.bindBuffer(gl.ARRAY_BUFFER, instC); gl.bufferData(gl.ARRAY_BUFFER, cbuf.subarray(0, 16), gl.DYNAMIC_DRAW);
+  cityDirty = false; dirty = true; }
 function buildCity(){
+  if (single()) return buildSingle(); oyAdj = 0;
   const area = W*H; cell = Math.sqrt(area/(.866*Math.max(50, S.count)));                       // pixels per grid cell, from the count
   const types = S.mode === 'uniform' ? [S.types[0]] : S.types.filter(t => t.weight > 0), total = types.reduce((a, t) => a+t.weight, 0) || 1, maxH = S.hMax;
   if (!types.length) types.push(S.types[0]);
@@ -178,7 +203,7 @@ const COMMON = `#version 300 es
 precision highp float;
 layout(location=3) in vec2 aPos; layout(location=4) in vec3 aSize; layout(location=5) in vec2 aRnd; layout(location=6) in float aStrokeW;
 layout(location=7) in vec4 aTop; layout(location=8) in vec4 aLeft; layout(location=9) in vec4 aRight; layout(location=10) in vec4 aStrokeCol;
-uniform vec2 uRes, uOrigin, uDepth, uWCentre; uniform float uS, uTime, uBlend, uHMin, uHMax, uWAng, uWLen, uWSpeed, uWAmp, uRFreq, uRSpeed, uRAmp, uDpr, uStrokeScale; uniform int uWShape, uREase;
+uniform vec2 uRes, uOrigin, uDepth, uWCentre; uniform float uS, uTime, uBlend, uHMin, uHMax, uWAng, uWLen, uWSpeed, uWAmp, uRFreq, uRSpeed, uRAmp, uDpr, uWIn, uWOut; uniform int uWShape, uREase;
 float hash1(float n){ return fract(sin(n*12.9898)*43758.5453); }
 float ease(float t){ if(uREase==1) return t<.5 ? 16.*t*t*t*t*t : 1.-pow(-2.*t+2.,5.)/2.; if(uREase==2) return 1.-pow(1.-t,3.); return t*t*(3.-2.*t); }
 float height(){                                              /* the only thing that animates */
@@ -194,8 +219,8 @@ vec4 clip(vec2 s, float d){ return vec4(s.x/uRes.x*2.-1., 1.-s.y/uRes.y*2., clam
 `;
 const VS_FACE = COMMON + `layout(location=0) in vec3 aV; layout(location=1) in float aFace; uniform vec3 uBg; out vec3 vCol;
 void main(){ vec3 p = world(aV, height()); vec4 c = aFace<.5 ? aTop : aFace<1.5 ? aLeft : aRight; vCol = c.a>.5 ? c.rgb : uBg; gl_Position = clip(screen(p), depthOf(p)); }`;
-const VS_EDGE = COMMON + `layout(location=0) in vec3 aE0; layout(location=1) in vec3 aE1; layout(location=2) in vec2 aTS; out vec3 vCol;
-void main(){ float w = aStrokeW*uStrokeScale*uDpr; if(w<=0.){ gl_Position = vec4(2.,2.,2.,1.); return; }
+const VS_EDGE = COMMON + `layout(location=0) in vec3 aE0; layout(location=1) in vec3 aE1; layout(location=2) in vec3 aTS; out vec3 vCol;
+void main(){ float w = aStrokeW*(aTS.z>.5 ? uWIn : uWOut)*uDpr; if(w<=0.){ gl_Position = vec4(2.,2.,2.,1.); return; }
   float h = height(); vec3 p0 = world(aE0,h), p1 = world(aE1,h); vec2 s0 = screen(p0), s1 = screen(p1), dir = normalize(s1-s0+1e-5), nrm = vec2(-dir.y,dir.x);
   vec2 s = mix(s0,s1,aTS.x) + nrm*aTS.y*w*.5 + dir*(aTS.x*2.-1.)*w*.5;                       /* a screen-space quad per edge, with square ends */
   vCol = aStrokeCol.rgb; gl_Position = clip(s, mix(depthOf(p0),depthOf(p1),aTS.x)-uDepth.y*.06); }`;
@@ -213,15 +238,15 @@ function initGL(){
   faceVao = gl.createVertexArray(); gl.bindVertexArray(faceVao); gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(fv), gl.STATIC_DRAW);
   gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 16, 0); gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 1, gl.FLOAT, false, 16, 12); inst();
   const edges = [[[0,0,1],[1,0,1]], [[1,0,1],[1,1,1]], [[1,1,1],[0,1,1]], [[0,1,1],[0,0,1]], [[1,0,0],[1,0,1]], [[1,1,0],[1,1,1]], [[0,1,0],[0,1,1]], [[1,0,0],[1,1,0]], [[1,1,0],[0,1,0]]], ev = [];
-  for (const [a, b] of edges) for (const [t, s] of [[0,-1],[1,-1],[1,1],[0,-1],[1,1],[0,1]]) ev.push(...a, ...b, t, s);
+  edges.forEach(([a, b], k) => { for (const [t, s] of [[0,-1],[1,-1],[1,1],[0,-1],[1,1],[0,1]]) ev.push(...a, ...b, t, s, k === 1 || k === 2 || k === 5 ? 1 : 0); });   /* edges 1, 2 and 5 meet at the near top corner: the inner ones */
   edgeVao = gl.createVertexArray(); gl.bindVertexArray(edgeVao); gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(ev), gl.STATIC_DRAW);
-  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 32, 0); gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 32, 12); gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 32, 24); inst();
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 36, 0); gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 36, 12); gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 3, gl.FLOAT, false, 36, 24); inst();
   gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL);
 }
 const SHAPES = { sine:0, radial:1, diagonal:2 }, EASES = { smooth:0, inout:1, out:2 };
-function uniforms(P){ const U = P.U, f = (n, ...v) => { if (U[n]) gl['uniform'+v.length+'f'](U[n], ...v); }, bg = rgb(S.bg), ox = W/2+S.panX, oy = H/2+S.panY;
-  gl.useProgram(P.p); f('uRes', W*dpr, H*dpr); f('uOrigin', ox*dpr, oy*dpr); f('uDepth', depth[0], depth[1]); f('uS', cell*dpr); f('uTime', time); f('uBlend', S.blend); f('uHMin', Math.min(S.hMin, S.hMax)); f('uHMax', Math.max(S.hMin, S.hMax));
-  f('uWAng', S.wAngle*Math.PI/180); f('uWLen', Math.max(.5, S.wLen)); f('uWSpeed', S.wSpeed); f('uWAmp', S.wAmp); f('uRFreq', S.rFreq); f('uRSpeed', Math.max(1, S.rSpeed)); f('uRAmp', S.rAmp); f('uDpr', dpr); f('uStrokeScale', S.strokeScale);
+function uniforms(P){ const U = P.U, f = (n, ...v) => { if (U[n]) gl['uniform'+v.length+'f'](U[n], ...v); }, bg = rgb(S.bg), ox = W/2+S.panX, oy = H/2+S.panY+oyAdj, one = single(), anim = S.animate && !one;
+  gl.useProgram(P.p); f('uRes', W*dpr, H*dpr); f('uOrigin', ox*dpr, oy*dpr); f('uDepth', depth[0], depth[1]); f('uS', cell*dpr); f('uTime', time); f('uBlend', S.blend); f('uHMin', one ? 0 : Math.min(S.hMin, S.hMax)); f('uHMax', one ? 1e6 : Math.max(S.hMin, S.hMax));
+  f('uWAng', S.wAngle*Math.PI/180); f('uWLen', Math.max(.5, S.wLen)); f('uWSpeed', S.wSpeed); f('uWAmp', anim ? S.wAmp : 0); f('uRFreq', S.rFreq); f('uRSpeed', Math.max(1, S.rSpeed)); f('uRAmp', anim ? S.rAmp : 0); f('uDpr', dpr); f('uWOut', one ? S.sOuter : S.strokeScale); f('uWIn', one ? S.sInner : S.strokeScale*S.innerScale);
   const a = ((S.wCx*W-ox)/(C30*cell)), b = (S.wCy*H-oy)*2/cell; f('uWCentre', (a+b)/2, (b-a)/2); f('uBg', bg[0]/255, bg[1]/255, bg[2]/255);
   if (U.uWShape) gl.uniform1i(U.uWShape, SHAPES[S.wShape] || 0); if (U.uREase) gl.uniform1i(U.uREase, EASES[S.rEase] || 0); }
 function draw(){ if (cityDirty) buildCity(); const bg = rgb(S.bg);
@@ -230,7 +255,7 @@ function draw(){ if (cityDirty) buildCity(); const bg = rgb(S.bg);
   uniforms(edgeP); gl.bindVertexArray(edgeVao); gl.drawArraysInstanced(gl.TRIANGLES, 0, 54, count); dirty = false; }
 function resize(){ const hidden = document.body.classList.contains('ui-hidden'); W = Math.max(1, innerWidth-(hidden || innerWidth < 760 ? 0 : 360)); H = Math.max(1, innerHeight); dpr = Math.min(devicePixelRatio || 1, 2);
   cv.width = Math.round(W*dpr); cv.height = Math.round(H*dpr); cv.style.width = W+'px'; cv.style.height = H+'px'; cityDirty = true; }
-const moving = () => S.playing && S.speed > 0 && ((S.wAmp > 0 && S.blend < 1) || (S.rAmp > 0 && S.blend > 0));
+const moving = () => S.animate && !single() && S.playing && S.speed > 0 && ((S.wAmp > 0 && S.blend < 1) || (S.rAmp > 0 && S.blend > 0));
 let last = 0;
 function frame(now){ requestAnimationFrame(frame); const dt = Math.min(.05, (now-last)/1000 || 0); last = now; if (document.hidden) return; if (moving()){ time += dt*S.speed; dirty = true; } if (dirty || cityDirty) draw(); }
 
@@ -238,20 +263,25 @@ function frame(now){ requestAnimationFrame(frame); const dt = Math.min(.05, (now
 const KEY = 'moxx-isocuboid', refreshers = []; let saveT = 0;
 const touch = city => { if (city) cityDirty = true; dirty = true; clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} }, 400); };
 function ctl(host, o){                                            // o: { on:()=>object, key, label, type, min, max, step, fmt, opts, when, city }
-  const tgt = o.on || (() => S); let row, inp, val;
+  const tgt = o.on || (() => S); let row, inp, val, box;
   if (o.type === 'toggle'){ row = el('label','toggle'); inp = el('input'); inp.type = 'checkbox'; row.append(inp, ' '+o.label); }
   else { row = el('div','row'); const lab = el('label'); lab.textContent = o.label;
     if (o.type === 'select'){ inp = el('select'); for (const [v, n] of o.opts){ const op = el('option'); op.value = v; op.textContent = n; inp.append(op); } }
     else { inp = el('input'); inp.type = o.type || 'range'; if (inp.type === 'range'){ inp.min = o.min; inp.max = o.max; inp.step = o.step || 1; val = el('span','val'); } }
-    row.append(lab, inp); if (val) row.append(val); }
+    row.append(lab, inp); if (val && !o.box) row.append(val);
+    if (o.box){ box = el('input'); box.type = 'number'; box.min = o.min; box.max = o.max; box.step = o.step || 1; box.setAttribute('aria-label', o.label); row.append(box);
+      box.oninput = () => { const t = tgt(), v = parseFloat(box.value); if (!t || !isFinite(v)) return; t[o.key] = clamp(v, o.min, o.max); inp.value = t[o.key]; touch(o.city !== false); }; box.onchange = () => { box.value = tgt()[o.key]; }; } }
   const fmt = o.fmt || (v => String(v)), read = () => inp.type === 'checkbox' ? inp.checked : inp.type === 'range' ? parseFloat(inp.value) : o.num ? (parseInt(inp.value, 10) || 0) : inp.value;
-  inp[inp.type === 'range' || inp.type === 'color' || inp.type === 'text' ? 'oninput' : 'onchange'] = () => { const t = tgt(); if (!t) return; t[o.key] = read(); if (val) val.textContent = fmt(t[o.key]); touch(o.city !== false);
+  inp[inp.type === 'range' || inp.type === 'color' || inp.type === 'text' ? 'oninput' : 'onchange'] = () => { const t = tgt(); if (!t) return; t[o.key] = read(); if (val) val.textContent = fmt(t[o.key]); if (box) box.value = t[o.key]; touch(o.city !== false);
     if (inp.type === 'checkbox' || o.type === 'select' || o.list) refresh(); };
   refreshers.push(() => { const t = tgt(); row.hidden = !t || !!(o.when && !o.when(t)); if (row.hidden) return;
-    if (inp.type === 'checkbox') inp.checked = !!t[o.key]; else if (document.activeElement !== inp || inp.type === 'range') inp.value = t[o.key]; if (val) val.textContent = fmt(t[o.key]); });
+    if (inp.type === 'checkbox') inp.checked = !!t[o.key]; else if (document.activeElement !== inp || inp.type === 'range') inp.value = t[o.key]; if (val) val.textContent = fmt(t[o.key]); if (box && document.activeElement !== box) box.value = t[o.key]; });
   $(host).append(row);
 }
 const pct = v => Math.round(v*100)+'%', f1 = v => (+v).toFixed(1), f2 = v => (+v).toFixed(2), deg = v => Math.round(v)+'°', pxf = v => (+v).toFixed(2).replace(/0$/,'')+' px';
+ctl('f-single', { key:'sw', label:'Width', min:10, max:600, box:true }); ctl('f-single', { key:'sd', label:'Depth', min:10, max:600, box:true }); ctl('f-single', { key:'sh', label:'Height', min:10, max:900, box:true });
+ctl('f-single', { key:'sInner', label:'Inner stroke', min:0, max:12, step:.05, box:true }); ctl('f-single', { key:'sOuter', label:'Outer stroke', min:0, max:12, step:.05, box:true });
+ctl('f-single', { key:'sFaces', label:'White faces (off = background colour)', type:'toggle' });
 ctl('f-layout', { key:'count', label:'Boxes in the frame', min:100, max:40000, step:100, fmt:v => v.toLocaleString() });
 ctl('f-layout', { key:'gap', label:'Gap between boxes', min:0, max:.8, step:.01, fmt:pct });
 ctl('f-layout', { key:'cluster', label:'Clustering into zones', min:0, max:1, step:.01, fmt:pct });
@@ -266,13 +296,15 @@ ctl('f-type', { on:A, key:'color', label:'Colour', type:'color', list:true, when
 ctl('f-type', { on:A, key:'top', label:'Top', type:'color', list:true, when:t => t.fill && t.colorMode === 'faces' }); ctl('f-type', { on:A, key:'left', label:'Left', type:'color', when:t => t.fill && t.colorMode === 'faces' }); ctl('f-type', { on:A, key:'right', label:'Right', type:'color', when:t => t.fill && t.colorMode === 'faces' });
 ctl('f-type', { on:A, key:'stroke', label:'Outline', type:'toggle' }); ctl('f-type', { on:A, key:'strokeCol', label:'Outline colour', type:'color', when:t => t.stroke }); ctl('f-type', { on:A, key:'strokeW', label:'Outline thickness', min:.25, max:8, step:.25, fmt:pxf, when:t => t.stroke });
 
-ctl('f-style', { key:'bg', label:'Background', type:'color' }); ctl('f-style', { key:'outlines', label:'Draw outlines', type:'toggle' });
-ctl('f-style', { key:'strokeScale', label:'Outline scale', min:.25, max:4, step:.05, fmt:v => f2(v)+'×', city:false });
-ctl('f-style', { key:'accent', label:'Accent chance', min:0, max:.5, step:.005, fmt:v => (v*100).toFixed(1)+'%' });
+ctl('f-style', { key:'bg', label:'Background', type:'color' }); ctl('f-style2', { key:'outlines', label:'Draw outlines', type:'toggle' });
+ctl('f-style2', { key:'strokeScale', label:'Outline scale', min:.25, max:4, step:.05, fmt:v => f2(v)+'×', city:false });
+ctl('f-style2', { key:'innerScale', label:'Inner edges', min:0, max:1.5, step:.05, fmt:v => f2(v)+'× of the outline', city:false });
+ctl('f-style2', { key:'accent', label:'Accent chance', min:0, max:.5, step:.005, fmt:v => (v*100).toFixed(1)+'%' });
 
 ctl('f-rand', { key:'seed', label:'Seed', type:'text', num:true });
 for (const [k, n] of [['rW','Width'],['rD','Depth'],['rH','Height'],['rC','Colour'],['rS','Outline']]) ctl('f-rand', { key:k, label:n+' randomness', min:0, max:1, step:.01, fmt:pct });
 
+ctl('f-animOn', { key:'animate', label:'Animate the heights (off = a still city)', type:'toggle', city:false });
 ctl('f-anim', { key:'speed', label:'Speed', min:0, max:4, step:.05, fmt:v => f2(v)+'×', city:false });
 ctl('f-anim', { key:'blend', label:'Wave ↔ random', min:0, max:1, step:.01, fmt:v => Math.round((1-v)*100)+' / '+Math.round(v*100), city:false });
 ctl('f-anim', { key:'hMin', label:'Lowest height', min:.02, max:6, step:.02, fmt:f2 }); ctl('f-anim', { key:'hMax', label:'Highest height', min:.5, max:20, step:.1, fmt:f1 });
@@ -283,6 +315,7 @@ ctl('f-wave', { key:'wLen', label:'Wavelength', min:1, max:80, step:.5, fmt:v =>
 ctl('f-random', { key:'rFreq', label:'Frequency', min:.02, max:3, step:.01, fmt:f2, city:false }); ctl('f-random', { key:'rSpeed', label:'Speed', min:1, max:8, step:.1, fmt:v => f1(v)+'×', city:false }); ctl('f-random', { key:'rAmp', label:'Amplitude', min:0, max:8, step:.05, fmt:f2, city:false });
 ctl('f-random', { key:'rEase', label:'Easing', type:'select', opts:[['smooth','Smooth'],['inout','Ease in-out'],['out','Ease out']], city:false });
 
+const viewBtns = {}; for (const [k, n] of [['city','City'],['single','Single box']]){ const b = el('button'); b.textContent = n; b.onclick = () => { S.view = k; S.panX = S.panY = 0; touch(true); refresh(); }; $('views').append(b); viewBtns[k] = b; }
 const modeBtns = {}; for (const [k, n] of [['uniform','Uniform'],['mixed','Mixed']]){ const b = el('button'); b.textContent = n; b.onclick = () => { S.mode = k; touch(true); refresh(); }; $('modes').append(b); modeBtns[k] = b; }
 const swatchOf = t => !t.fill ? S.bg : t.colorMode === 'one' ? t.color : t.colorMode === 'faces' ? t.top : (t.palette[0] || '#888');
 function typeList(){ const host = $('typeList'); host.textContent = ''; const total = S.types.reduce((a, t) => a+t.weight, 0) || 1;
@@ -294,7 +327,8 @@ function swatches(host, list, onchange){ const h = $(host); h.textContent = '';
   list.forEach((c, i) => { const inp = el('input'); inp.type = 'color'; inp.value = c; inp.oninput = () => { list[i] = inp.value; onchange(); }; h.append(inp); });
   const add = el('button'); add.textContent = '+'; add.title = 'Add a colour'; add.onclick = () => { if (list.length < 16){ list.push(CITY[list.length%CITY.length]); onchange(); refresh(); } };
   const del = el('button'); del.textContent = '−'; del.title = 'Remove the last colour'; del.onclick = () => { if (list.length > 1){ list.pop(); onchange(); refresh(); } }; h.append(add, del); }
-function refresh(){ S.act = clamp(S.act|0, 0, S.types.length-1); for (const r of refreshers) r(); for (const k in modeBtns) modeBtns[k].classList.toggle('on', k === S.mode);
+function refresh(){ S.act = clamp(S.act|0, 0, S.types.length-1); for (const r of refreshers) r(); const one = single(); for (const k in viewBtns) viewBtns[k].classList.toggle('on', k === S.view);
+  $('d-single').hidden = !one; for (const id of ['d-layout','d-types','d-rand','d-anim','cityStyle','bVideo']) $(id).hidden = one; $('bSvg').hidden = !one; $('animBody').hidden = !S.animate; for (const k in modeBtns) modeBtns[k].classList.toggle('on', k === S.mode);
   typeList(); $('typeBtns').hidden = S.mode !== 'mixed'; const t = A(), pal = t.fill && t.colorMode === 'palette'; $('palTitle').hidden = $('typePal').hidden = !pal; if (pal) swatches('typePal', t.palette, () => touch(true));
   swatches('accPal', S.accents, () => touch(true)); $('bPlay').textContent = S.playing ? 'Pause' : 'Play'; document.body.style.background = S.bg; }
 $('bAddType').onclick = () => { S.types.push(newType({ name:'Type '+(S.types.length+1) })); S.act = S.types.length-1; touch(true); refresh(); };
@@ -313,12 +347,19 @@ let drag = null;
 cv.addEventListener('pointerdown', e => { drag = [e.clientX, e.clientY, S.panX, S.panY]; cv.setPointerCapture(e.pointerId); });
 cv.addEventListener('pointermove', e => { if (!drag) return; S.panX = drag[2]+e.clientX-drag[0]; S.panY = drag[3]+e.clientY-drag[1]; touch(true); });
 cv.addEventListener('pointerup', () => { drag = null; }); cv.addEventListener('pointercancel', () => { drag = null; });
-cv.addEventListener('wheel', e => { e.preventDefault(); const before = cell, n = clamp(S.count*Math.exp(e.deltaY*.0015), 100, 40000), k = Math.sqrt(S.count/n); S.count = Math.round(n/50)*50;   /* zooming is changing how many boxes fit */
+cv.addEventListener('wheel', e => { e.preventDefault(); if (single()) return; const before = cell, n = clamp(S.count*Math.exp(e.deltaY*.0015), 100, 40000), k = Math.sqrt(S.count/n); S.count = Math.round(n/50)*50;   /* zooming is changing how many boxes fit */
   const r = cv.getBoundingClientRect(), px = e.clientX-r.left-W/2, py = e.clientY-r.top-H/2; S.panX = px-(px-S.panX)*k; S.panY = py-(py-S.panY)*k; touch(true); refreshers.forEach(f => f()); }, { passive:false });
 
 /* ------------------------------------------------------------ export */
 const download = (blob, name) => { const a = el('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
 $('bSave').onclick = () => { draw(); cv.toBlob(b => download(b, 'isocuboid-'+S.seed+'.png')); };
+$('bSvg').onclick = () => { const w = S.sw, d = S.sd, h = S.sh, n = v => +v.toFixed(3), P = (x, y, z) => n((x-y)*C30)+','+n((x+y)*.5-z), m = Math.max(S.sInner, S.sOuter)/2+1, face = S.sFaces ? '#ffffff' : 'none';
+  const near = P(w,d,h), right = P(w,0,h), left = P(0,d,h), far = P(0,0,h), nb = P(w,d,0), rb = P(w,0,0), lb = P(0,d,0), line = 'fill="none" stroke="#000000" stroke-linejoin="round" stroke-linecap="round"';
+  const vb = [-d*C30-m, -h-m, (w+d)*C30+2*m, (w+d)*.5+h+2*m].map(n);
+  download(new Blob([`<svg xmlns="http://www.w3.org/2000/svg" width="${vb[2]}" height="${vb[3]}" viewBox="${vb.join(' ')}">`
+    + [[near,right,far,left],[near,left,lb,nb],[near,right,rb,nb]].map(f => `<polygon points="${f.join(' ')}" fill="${face}"/>`).join('')
+    + (S.sInner > 0 ? [right, left, nb].map(e => `<polyline points="${near} ${e}" ${line} stroke-width="${S.sInner}"/>`).join('') : '')
+    + (S.sOuter > 0 ? `<polygon points="${[far,right,rb,nb,lb,left].join(' ')}" ${line} stroke-width="${S.sOuter}"/>` : '') + '</svg>'], { type:'image/svg+xml' }), 'isocuboid.svg'); };
 $('bVideo').onclick = () => { const b = $('bVideo'); if (b.disabled) return; if (!window.MediaRecorder || !cv.captureStream){ b.textContent = 'Not supported'; return; }
   const type = ['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(t => MediaRecorder.isTypeSupported(t)) || '', rec = new MediaRecorder(cv.captureStream(60), { mimeType:type, videoBitsPerSecond:18e6 }), chunks = []; let left = 6;
   S.playing = true; refresh(); b.disabled = true; b.textContent = 'Recording 6'; const tick = setInterval(() => { left--; b.textContent = 'Recording '+Math.max(0, left); }, 1000);
@@ -332,7 +373,7 @@ addEventListener('resize', resize);
 /* ------------------------------------------------------------ go */
 if (!gl) $('err').style.display = 'grid';
 else { try { const o = JSON.parse(localStorage.getItem(KEY)); if (o && Array.isArray(o.types) && o.types.length){ S = Object.assign(DEFAULTS(), o); S.types = o.types.map(newType); } } catch(e){}
-  initGL(); resize(); refresh(); requestAnimationFrame(frame); window.IQ = { get S(){ return S; }, get count(){ return count; }, draw, buildCity, refresh }; }
+  initGL(); resize(); refresh(); draw(); requestAnimationFrame(frame); window.IQ = { touch, get S(){ return S; }, get count(){ return count; }, draw, buildCity, refresh }; }
 </script>
 </body>
 </html>

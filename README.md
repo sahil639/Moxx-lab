@@ -206,12 +206,6 @@ transparent. Presets Soft Drift, Explosive, Liquid, Magnetic. Exports a PNG, a v
 setup, and a self-contained HTML/JS snippet to embed. Keys: ← → previous and next, H panel,
 R randomise, S save PNG, space pause.
 
-**`iso-cuboid.html` — Iso Cuboid.** A single tall box in true isometric projection, drawn as
-SVG in black line: thin inner strokes where the three visible faces meet (default 0.5) and a
-heavier outline around the whole shape (default 1.5). Sliders and number boxes for width,
-depth, height and both stroke weights; faces white or transparent. Saves SVG or PNG.
-Keys: H panel, S save SVG, R reset.
-
 **`isocuboid.html` — Isocuboid.** A frame-filling city of isometric boxes (WebGL 2,
 instanced). Flat colour on the top, left and right faces, optional crisp outlines, no
 lighting. Layout: how many boxes fit the frame, the gap between them, and clustering into
@@ -221,8 +215,11 @@ and thickness, and fill on or off (off gives the blank, outline-only look). Styl
 outline scale, and a chance of one bright accent face on a neutral box. Randomize rerolls the
 types; a seed reproduces a layout; five sliders set how much width, depth, height, colour and
 outline vary. Animation moves height only: a wave (straight, rings from a point, or
-diagonal) and per-box random motion, blended, with height limits, easing, speed and pause.
-Drag to move through the city, scroll to zoom. Saves a PNG or a 6-second video.
+diagonal) and per-box random motion, blended, with height limits, easing, speed and pause;
+it can also be switched off for a still city. Drag to move through the city, scroll to zoom.
+Saves a PNG or a 6-second video. A second mode, Single box, draws one box in line only, with
+sliders and number boxes for width, depth, height, inner stroke (0.5) and outer stroke (1.5),
+and saves it as SVG.
 Keys: H panel, R randomize, S save PNG, space pause.
 
 ## Interface
