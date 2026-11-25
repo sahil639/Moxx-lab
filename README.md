@@ -192,6 +192,26 @@ composer, undo and redo, and autosave in the browser. Exports the repeat tile as
 8×) or SVG, the view as PNG, a CSS background, a WebM, or a JSON file that opens again.
 Keys: H panel, R new seed, S save tile, space motion, Cmd/Ctrl+Z undo.
 
+**`particle-morph.html` — Particle Morph.** Each image becomes a field of particles (WebGL 2)
+that flows into the next image and reacts to the pointer. Add two or more PNG, JPG, WEBP or
+SVG images, reorder them by dragging, remove or replace any. Sampling is stippled (more
+particles where the image is brighter) or an even grid, with background detection and a
+threshold. Mapping: random, nearest position, by brightness, sweep, out from the centre.
+Transitions: direct, explode, swirl, flow-field drift, gravity drop. Hover: repel, attract,
+swirl, scatter, magnify, with radius, strength, spring and damping. Timing: autoplay, click,
+scroll, hover-and-hold or buttons; duration, hold, delay, easing (including a custom bezier),
+loop, ping-pong or once, a scrubber, and per-image overrides. Appearance: count, size, shape
+(or your own sprite), colour modes, opacity, glow, trails, idle shimmer, background or
+transparent. Presets Soft Drift, Explosive, Liquid, Magnetic. Exports a PNG, a video, a JSON
+setup, and a self-contained HTML/JS snippet to embed. Keys: ← → previous and next, H panel,
+R randomise, S save PNG, space pause.
+
+**`iso-cuboid.html` — Iso Cuboid.** A single tall box in true isometric projection, drawn as
+SVG in black line: thin inner strokes where the three visible faces meet (default 0.5) and a
+heavier outline around the whole shape (default 1.5). Sliders and number boxes for width,
+depth, height and both stroke weights; faces white or transparent. Saves SVG or PNG.
+Keys: H panel, S save SVG, R reset.
+
 ## Interface
 
 Every page loads two shared files, `ui.css` and `ui.js`. Together they give the site a

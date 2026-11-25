@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="fonts.css">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Moxx Lab — Iso Cuboid</title>
+<style>
+  :root{ --panel-w:340px; }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;overflow:hidden;background:#fff;font:12px/1.4 'GT Zirkon',system-ui,sans-serif;-webkit-text-size-adjust:100%}
+  #stage{position:fixed;left:0;top:0;bottom:0;right:var(--panel-w);background:#fff;display:grid;place-items:center;overflow:hidden}
+  body.ui-hidden #stage{right:0}
+  #stage svg{display:block;overflow:visible}
+  #panel{position:fixed;top:0;right:0;bottom:0;width:var(--panel-w);overflow-y:auto;z-index:10;transition:transform .18s ease}
+  body.ui-hidden #panel{transform:translateX(100%)}
+  h1 small{display:block}
+  /* a number box beside each slider, in the look of the shared fields */
+  html[data-theme] .row input[type=number]{flex:0 0 64px;width:64px;height:34px;padding:0 8px;border-radius:8px;border:1.5px solid transparent;background:var(--u-tile);color:var(--u-fg);
+    font:inherit;font-size:11px;font-variant-numeric:tabular-nums;text-align:right;outline:none;-moz-appearance:textfield}
+  html[data-theme] .row input[type=number]:focus{border-color:var(--u-accent)}
+  .row input[type=number]::-webkit-inner-spin-button{opacity:.5}
+  #hud{position:fixed;left:12px;bottom:10px;font-size:10px;letter-spacing:.08em;z-index:9;pointer-events:none;color:rgba(0,0,0,.45)}
+  body.ui-hidden #hud{display:none}
+  .mark{width:15px;height:15px;vertical-align:-2px;margin-right:8px}
+  #back{position:fixed;left:14px;top:14px;z-index:11;display:inline-flex;align-items:center;gap:8px;padding:8px 13px 8px 11px;
+    font:500 12px/1 'GT Zirkon',system-ui,sans-serif;letter-spacing:.06em;text-decoration:none;white-space:nowrap;
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);transition:opacity .18s ease,background .15s ease,border-color .15s ease}
+  #back img{width:13px;height:13px;display:block}
+  body.ui-hidden #back{opacity:0} body.ui-hidden #back:hover,body.ui-hidden #back:focus-visible{opacity:1}
+</style>
+<link rel="stylesheet" href="ui.css">
+<script src="ui.js"></script>
+</head>
+<body>
+
+<div id="stage"></div>
+<a id="back" href="index.html" aria-label="Back to Moxx Lab index"><img src="logo.svg" alt="">← Moxx Lab</a>
+<div id="hud"><kbd>H</kbd> panel · <kbd>S</kbd> save svg · <kbd>R</kbd> reset</div>
+
+<div id="panel">
+  <h1><img class="mark" src="logo.svg" alt="">Iso Cuboid<small>one isometric box, in line only</small></h1>
+
+  <details open>
+    <summary>Size</summary>
+    <div id="f-size"></div>
+  </details>
+
+  <details open>
+    <summary>Strokes</summary>
+    <div id="f-stroke"></div>
+    <label class="toggle"><input type="checkbox" id="faces"> White faces (off = transparent)</label>
+    <p class="hint">Inner strokes are the three edges where the visible faces meet. The outer stroke is the outline around the whole box. Weights are in pixels and do not change when the box is scaled to fit the window.</p>
+  </details>
+
+  <details open>
+    <summary>Export</summary>
+    <div class="btns"><button id="bSvg">Save SVG</button><button id="bPng">Save PNG</button></div>
+    <div class="btns"><button id="bReset">Reset</button><button id="bHide">Hide panel</button></div>
+  </details>
+</div>
+
+<script>
+/* Iso Cuboid — a single box in true isometric projection, drawn as SVG.
+   Parts: state → geometry (cuboid: numbers in, points out) → style → render (SVG string, used on screen and for export) → UI.
+   To add colour or more options later: put the value in DEFAULTS, read it in style() or render(), and add one ctl() line. */
+const $ = id => document.getElementById(id);
+
+/* ------------------------------------------------------------ state */
+const DEFAULTS = { w:120, d:120, h:320, inner:.5, outer:1.5, faces:true };
+const S = Object.assign({}, DEFAULTS);
+
+/* ------------------------------------------------------------ geometry
+   Isometric: the two ground axes run 30° below the horizontal, to the right (width) and to the left (depth); height is vertical.
+   The three visible faces are the top, the left and the right, which meet at the near top corner. */
+const COS = Math.cos(Math.PI/6), SIN = .5;
+function cuboid({ w, d, h }){
+  const near = [0, 0], right = [w*COS, -w*SIN], left = [-d*COS, -d*SIN], far = [(w-d)*COS, -(w+d)*SIN], down = p => [p[0], p[1]+h];
+  return {
+    faces:   { top:[near, right, far, left], left:[near, left, down(left), down(near)], right:[near, right, down(right), down(near)] },
+    inner:   [[near, right], [near, left], [near, down(near)]],                    // edges inside the shape
+    outline: [far, right, down(right), down(near), down(left), left],              // the silhouette, six corners
+    box:     { x:-d*COS, y:-(w+d)*SIN, width:(w+d)*COS, height:(w+d)*SIN+h }
+  };
+}
+
+/* ------------------------------------------------------------ style: every colour lives here */
+const style = () => ({ stroke:'#000000', face: S.faces ? '#ffffff' : 'none' });
+
+/* ------------------------------------------------------------ render */
+const n = v => +v.toFixed(3), pts = a => a.map(p => n(p[0])+','+n(p[1])).join(' ');
+function svg(scale, pad){                                          // scale: screen pixels per unit; strokes stay in pixels
+  const g = cuboid(S), st = style(), b = g.box, k = scale || 1, m = (pad === undefined ? Math.max(S.outer, S.inner)/2+1 : pad)/k;
+  const vb = [b.x-m, b.y-m, b.width+2*m, b.height+2*m], line = 'fill="none" stroke="'+st.stroke+'" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"';
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${n(vb[2]*k)}" height="${n(vb[3]*k)}" viewBox="${vb.map(n).join(' ')}">`
+    + Object.keys(g.faces).map(f => `<polygon data-face="${f}" points="${pts(g.faces[f])}" fill="${st.face}"/>`).join('')
+    + (S.inner > 0 ? g.inner.map(e => `<polyline data-edge="inner" points="${pts(e)}" ${line} stroke-width="${S.inner}"/>`).join('') : '')
+    + (S.outer > 0 ? `<polygon data-edge="outer" points="${pts(g.outline)}" ${line} stroke-width="${S.outer}"/>` : '')
+    + '</svg>';
+}
+function draw(){ const st = $('stage'), b = cuboid(S).box, room = 96, k = Math.min(1, (st.clientWidth-room)/b.width, (st.clientHeight-room)/b.height);
+  st.innerHTML = svg(Math.max(.02, k)); }
+
+/* ------------------------------------------------------------ UI: a slider and a number box per value */
+const shows = [];
+function ctl(host, key, label, min, max, step){
+  const row = document.createElement('div'); row.className = 'row'; const lab = document.createElement('label'); lab.textContent = label;
+  const range = document.createElement('input'); range.type = 'range'; const num = document.createElement('input'); num.type = 'number'; num.setAttribute('aria-label', label);
+  for (const i of [range, num]){ i.min = min; i.max = max; i.step = step; }
+  const set = (v, from) => { if (!isFinite(v)) return; S[key] = Math.min(max, Math.max(min, v)); if (from !== range) range.value = S[key]; if (from !== num) num.value = S[key]; draw(); };
+  range.oninput = () => set(parseFloat(range.value), range); num.oninput = () => set(parseFloat(num.value), num); num.onchange = () => { num.value = S[key]; };
+  row.append(lab, range, num); $(host).append(row); shows.push(() => { range.value = S[key]; num.value = S[key]; });
+}
+ctl('f-size', 'w', 'Width', 10, 600, 1);
+ctl('f-size', 'd', 'Depth', 10, 600, 1);
+ctl('f-size', 'h', 'Height', 10, 900, 1);
+ctl('f-stroke', 'inner', 'Inner stroke', 0, 12, .05);
+ctl('f-stroke', 'outer', 'Outer stroke', 0, 12, .05);
+const sync = () => { shows.forEach(f => f()); $('faces').checked = S.faces; draw(); };
+$('faces').onchange = e => { S.faces = e.target.checked; draw(); };
+$('bReset').onclick = () => { Object.assign(S, DEFAULTS); sync(); };
+$('bHide').onclick = () => { document.body.classList.toggle('ui-hidden'); draw(); };
+
+const download = (blob, name) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
+$('bSvg').onclick = () => download(new Blob([svg(1)], { type:'image/svg+xml' }), 'iso-cuboid.svg');
+$('bPng').onclick = () => { const k = 4, im = new Image(), keep = [S.inner, S.outer]; S.inner *= k; S.outer *= k; const src = svg(k); [S.inner, S.outer] = keep; const u = URL.createObjectURL(new Blob([src], { type:'image/svg+xml' }));   // 4× so the thin strokes hold up
+  im.onload = () => { const c = document.createElement('canvas'); c.width = Math.ceil(im.width); c.height = Math.ceil(im.height); c.getContext('2d').drawImage(im, 0, 0); URL.revokeObjectURL(u); c.toBlob(b => download(b, 'iso-cuboid.png')); }; im.src = u; };
+addEventListener('keydown', e => { if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) && e.target.type !== 'range' || e.metaKey || e.ctrlKey || e.altKey) return; const k = e.key.toLowerCase();
+  if (k === 'h') $('bHide').click(); else if (k === 's') $('bSvg').click(); else if (k === 'r') $('bReset').click(); });
+addEventListener('resize', draw);
+sync();
+window.IC = { S, cuboid, svg, draw };
+</script>
+</body>
+</html>

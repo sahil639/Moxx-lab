@@ -17,7 +17,7 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
   `glyph-matrix.html` (04), `prism-core.html` (05), `compass-mark.html` (06),
   `brand-engine.html` (07), `jelly-pitch.html` (08),
   `pretext-play.html` (09), `tape-deck.html` (10), `grain-stack.html` (11),
-  `pattern-maker.html` (12) — the effects.
+  `pattern-maker.html` (12), `particle-morph.html` (13), `iso-cuboid.html` (14) — the effects.
 - `logo.svg` (white on transparent), `favicon.svg` (on black) — Moxx Lab brand mark; every
   page uses them for tab icon, panel header (`.mark`) and back link.
 - `ui.css`, `ui.js` — shared interface layer, loaded right after each page's own `<style>`.
@@ -131,6 +131,28 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
   Keys: R = new seed, S = save tile, space = motion, Cmd/Ctrl+Z undo. Exposed as `window.PM`.
   Not checked: real file uploads, drag-drop, clipboard paste, CSS copy, video (only presets,
   SVG validity and the draw/path/text motifs were exercised, via script).
+
+- **Particle Morph** (13): WebGL 2, shared `ui.css`/`ui.js`, built from the user's spec and a
+  reference recording (white stippled dots, density follows brightness, dissolve to a noisy
+  cloud between images, repel hole under the cursor). Two script blocks: `<script id="engine">`
+  is `ParticleMorph(canvas, opts)` with NO dependency on the page — the Embed snippet ships that
+  block's text verbatim, so keep page helpers (`$`, `el`) out of it and never write a closing
+  script tag inside it. Engine parts: `sample` (stipple by CDF or grid; background by alpha or
+  corner colour) → `arrange` (points into N slots ordered by mapping mode; spare slots get
+  alpha 0) → GL (morph path, easing and colour in the vertex shader; attributes A/B positions,
+  A/B colours, delay key, randoms, hover offset) → timeline (`tick`: hold/delay/morph, triggers,
+  playback) → `hover` (CPU springs, uploaded only while something moves) → `frame`. Per-step
+  overrides live on each image as `own`. The second script is the panel (`ctl()` with tooltips,
+  thumbnails with drag reorder, presets, JSON, snippet, video). Settings (not images) persist
+  in localStorage `moxx-particle-morph`. Sample images are drawn in code. Exposed as
+  `window.PMX` (engine) and `window.PMUI`. Not done: GIF export (video only). Not checked: real
+  uploads, drag reorder, the exported snippet running on its own, video recording, frame rate
+  (the preview pane throttles to ~2 fps), touch.
+- **Iso Cuboid** (14): one isometric box as SVG, black line only, shared `ui.css`/`ui.js`.
+  `cuboid({w,d,h})` returns faces, the three inner edges and the six-corner outline; `style()`
+  holds every colour (the place to add colour later); `svg(scale)` is used for screen and
+  export, strokes are `non-scaling-stroke` so weights stay in pixels. Each value has a slider
+  and a number box (`ctl`). Keys: S = save SVG, R = reset. Exposed as `window.IC`.
 
 ## Status (last work)
 All work is committed; see `git log`.
