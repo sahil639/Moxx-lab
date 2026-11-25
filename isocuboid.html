@@ -31,6 +31,7 @@
   html[data-theme] .row input[type=number]{flex:0 0 64px;width:64px;height:34px;padding:0 8px;border-radius:8px;border:1.5px solid transparent;background:var(--u-tile);color:var(--u-fg);
     font:inherit;font-size:11px;font-variant-numeric:tabular-nums;text-align:right;outline:none;-moz-appearance:textfield}
   html[data-theme] .row input[type=number]:focus{border-color:var(--u-accent)}
+  .lead{margin:0 2px 10px!important}
   .sub{margin:14px 2px 6px;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--u-dim)}
   #hud{position:fixed;left:12px;bottom:10px;font-size:10px;letter-spacing:.08em;z-index:9;pointer-events:none;color:#000;opacity:.5}
   body.ui-hidden #hud{display:none}
@@ -57,23 +58,26 @@
 
   <details open>
     <summary>Mode</summary>
+    <p class="hint lead">A whole city of boxes, or one box drawn in line.</p>
     <div class="grid" id="views"></div>
   </details>
 
   <details open id="d-single">
     <summary>Single box</summary>
+    <p class="hint lead">Size and line weights of the one box, in pixels.</p>
     <div id="f-single"></div>
-    <p class="hint">Inner strokes are the three edges where the visible faces meet; the outer stroke is the outline around the box. Weights are in pixels.</p>
   </details>
 
   <details open id="d-layout">
     <summary>Layout</summary>
+    <p class="hint lead">How many boxes fill the frame and how they group into districts.</p>
     <div id="f-layout"></div>
     <p class="hint" id="stat"></p>
   </details>
 
   <details open id="d-roads">
     <summary>Roads</summary>
+    <p class="hint lead">Low coloured strips that cut diagonally through the city.</p>
     <div id="f-roads"></div>
     <div id="roadBody"><div class="sub">Road colours (the first is the main one)</div>
     <div class="sw" id="roadPal"></div></div>
@@ -81,6 +85,7 @@
 
   <details open id="d-types">
     <summary>Types</summary>
+    <p class="hint lead">The kinds of box in the city: their size, colours and outline.</p>
     <div class="grid" id="modes"></div>
     <div id="typeList"></div>
     <div class="btns" id="typeBtns"><button id="bAddType">Add a type</button><button id="bDupType">Duplicate</button></div>
@@ -89,9 +94,20 @@
     <div class="sw" id="typePal"></div>
   </details>
 
+  <details open id="d-motifs">
+    <summary>Motifs</summary>
+    <p class="hint lead">Small pixel patterns, 36 in all, printed on random faces.</p>
+    <div id="f-motifs"></div>
+    <div id="motifBody"><div class="sub">Motif colours</div>
+    <div class="sw" id="motifPal"></div></div>
+  </details>
+
   <details open>
     <summary>Style</summary>
+    <p class="hint lead">Colours for the whole scene: master palette, background, outlines, accents.</p>
     <div id="f-style"></div>
+    <div id="customBody"><div class="sub">Custom master palette</div>
+    <div class="sw" id="customPal"></div></div>
     <div id="cityStyle"><div id="f-style2"></div>
     <div class="sub">Accent colours</div>
     <div class="sw" id="accPal"></div></div>
@@ -99,13 +115,14 @@
 
   <details open id="d-rand">
     <summary>Randomize</summary>
+    <p class="hint lead">Reroll the city, and set how much each property varies between boxes.</p>
     <div id="f-rand"></div>
     <div class="btns"><button id="bRand">Randomize</button><button id="bSeed">New seed only</button></div>
-    <p class="hint">Randomize rerolls the types, their sizes, colours and strokes. The sliders set how much each property varies from box to box: 0% locks it to the middle of its range, 100% uses the whole range.</p>
   </details>
 
   <details open id="d-anim">
     <summary>Animation</summary>
+    <p class="hint lead">Heights rise and fall in waves or at random; nothing else moves.</p>
     <div id="f-animOn"></div>
     <div id="animBody"><div id="f-anim"></div>
     <div class="sub">Wave</div>
@@ -113,11 +130,11 @@
     <div class="sub">Random</div>
     <div id="f-random"></div>
     <div class="btns"><button id="bPlay">Pause</button></div></div>
-    <p class="hint">Only height moves. Each box grows from its base; width, depth, position and colour stay fixed.</p>
   </details>
 
   <details open>
     <summary>Export</summary>
+    <p class="hint lead">Save what is on screen as an image, a vector or a short video.</p>
     <div class="btns"><button id="bSave">Save PNG</button><button id="bSvg">Save SVG</button><button id="bVideo">Record 6 s</button></div>
     <div class="btns"><button id="bReset">Reset</button><button id="bHide">Hide panel</button></div>
   </details>
@@ -142,7 +159,9 @@ const DEFAULT_TYPES = () => [
   newType({ name:'Colour tower', weight:6, palette:CITY.slice(0, 10), wMin:.5, wMax:.9, dMin:.5, dMax:.9, hMin:2.5, hMax:7 }),
   newType({ name:'Flat grid', weight:10, colorMode:'faces', top:'#7b52ab', left:'#f28c28', right:'#5c3d8f', wMin:.78, wMax:.78, dMin:.78, dMax:.78, hMin:.2, hMax:.45 }),
 ];
-const DEFAULTS = () => ({ view:'city', sw:120, sd:120, sh:320, sInner:.5, sOuter:1.5, sFaces:true, innerScale:1, animate:true, roadOn:true, roadDir:'y', roadGap:30, roadWidth:3, roadClear:4, roadWobble:.15, roadRag:.25, roadH:.35, roadVariety:.3, roadStroke:false, roadFlat:true, roadPal:['#f28c28','#e8443a','#f7c531','#f4a7b9','#2f8f6b'], seed:20261, count:2600, gap:0, cluster:.8, zone:12, mode:'mixed', types:DEFAULT_TYPES(), act:0,
+const DEFAULTS = () => ({ view:'city', sw:120, sd:120, sh:320, sInner:.5, sOuter:1.5, sFaces:true, innerScale:1, animate:true, roadOn:true, roadDir:'y', roadGap:30, roadWidth:3, roadClear:4, roadWobble:.15, roadRag:.25, roadH:.35, roadVariety:.3, roadStroke:false, roadFlat:true, roadPal:['#f28c28','#e8443a','#f7c531','#f4a7b9','#2f8f6b'],
+  motifOn:true, motifChance:.14, motifFaces:'any', motifBlank:true, motifPal:['#2f8fdd','#f25fc9','#1b8a4b','#f5821f','#f7cf2d','#f3e3d3','#ecd3e6','#ffffff'],
+  master:'off', masterAll:true, masterCustom:['#ff4f3a','#0078bf','#ffe800','#00a95c','#ff48b0'], seed:20261, count:2600, gap:0, cluster:.8, zone:12, mode:'mixed', types:DEFAULT_TYPES(), act:0,
   bg:'#e6e0d2', outlines:true, strokeScale:1, accent:.05, accents:['#e8443a','#f7c531','#f4a7b9','#5bb5e0'],
   rW:1, rD:1, rH:1, rC:1, rS:0,
   playing:true, speed:1, blend:.35, hMin:.08, hMax:11,
@@ -162,6 +181,30 @@ function noise(x, y, k){ const x0 = Math.floor(x), y0 = Math.floor(y), fx = sm(x
 const rgb = h => [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)];
 const vary = (min, max, r, amt) => { const lo = Math.min(min, max), hi = Math.max(min, max); return (lo+hi)/2 + (r-.5)*(hi-lo)*amt; };
 
+/* master palettes: one set of colours for the whole scene, laid over whatever the types, roads and motifs ask for */
+const MASTERS = {
+  Pastel: { bg:'#f6efe6', ink:'#3b3440', cols:['#f7c6c7','#c9e4de','#c6def1','#dbcdf0','#f2c6de','#faedcb','#b8e0d2'] },
+  Mono:   { bg:'#f2f2f0', ink:'#111111', cols:['#111111','#3a3a3a','#6b6b6b','#9a9a9a','#c9c9c9','#ffffff'] },
+  Night:  { bg:'#0e1020', ink:'#e9e6ff', cols:['#3a2f6b','#5c4d9e','#8f7fd6','#f2a65a','#ef5d60','#2ec4b6','#1b1f3b'] },
+  Sunset: { bg:'#fbe9d7', ink:'#3b1f2b', cols:['#f6bd60','#f28482','#f5cac3','#84a59d','#e76f51','#9d4edd','#ffb703'] },
+  Ocean:  { bg:'#e8f1f2', ink:'#0b2545', cols:['#13315c','#134074','#8da9c4','#1b98e0','#00a6a6','#eef4ed','#247ba0'] },
+  Forest: { bg:'#eef0e5', ink:'#1b2a1f', cols:['#283618','#606c38','#dda15e','#bc6c25','#a3b18a','#588157','#344e41'] },
+  Candy:  { bg:'#fff4f9', ink:'#2a1a3a', cols:['#ff5d8f','#7bdff2','#b2f7ef','#f7d6e0','#ffd166','#9b5de5','#00f5d4'] },
+  Riso:   { bg:'#f4f0e6', ink:'#1d1d1b', cols:['#ff4f3a','#0078bf','#ffe800','#00a95c','#ff48b0'] },
+};
+const master = () => S.master === 'custom' ? (S.masterCustom.length ? { bg:S.bg, ink:'#111111', cols:S.masterCustom } : null) : MASTERS[S.master] || null;
+const bgHex = () => { const m = master(); return m && S.masterAll && S.master !== 'custom' ? m.bg : S.bg; };
+const hashStr = t => { let h = 2166136261; for (let i = 0; i < t.length; i++) h = Math.imul(h ^ t.charCodeAt(i), 16777619); return h>>>0; };
+
+/* motifs: 36 pixel patterns on a 5 x 5 grid, each mirrored eight ways. A motif is six digits, the cells of one wedge
+   (corner, beside the corner, edge middle, inner corner, inner edge, centre); 0 is empty, 1 to 3 are colours. */
+const MOTIFS = (() => { const list = ['111002','001012','100101','101101','010010','001102','010023','200003','121003','102210','011120','210012','120301','003210','112200','201021','030112','221001'], seen = new Set(list);
+  for (let k = 1; list.length < 36; k++){ let code = ''; for (let c = 0; c < 6; c++){ const v = hash(977, k, c, 5); code += v < .42 ? 0 : v < .72 ? 1 : v < .9 ? 2 : 3; }
+    if (!seen.has(code) && code.replace(/0/g,'').length >= 3){ seen.add(code); list.push(code); } }
+  return list; })();
+function motifAtlas(){ const px = new Uint8Array(30*30), at = (x, y) => { const a = Math.min(x, 4-x), b = Math.min(y, 4-y), lo = Math.min(a, b), hi = Math.max(a, b); return lo === 0 ? hi : lo === 1 ? 2+hi : 5; };
+  MOTIFS.forEach((code, m) => { for (let y = 0; y < 5; y++) for (let x = 0; x < 5; x++) px[((m/6|0)*5+y)*30 + (m%6)*5+x] = +code[at(x, y)]; }); return px; }
+
 /* roads: straight strips of low, flush, coloured boxes along a grid axis, one per band of `roadGap` cells */
 function onRoad(i, j){ const g = Math.max(4, S.roadGap), half = S.roadWidth/2; let best = 0;                  // 2 = on a road, 1 = beside one (kept low so the road shows), 0 = neither
   const test = (a, b, k) => { const band = Math.floor(b/g); for (let q = band-1; q <= band+1; q++){
@@ -174,10 +217,10 @@ function onRoad(i, j){ const g = Math.max(4, S.roadGap), half = S.roadWidth/2; l
 let fbuf = new Float32Array(0), cbuf = new Uint8Array(0);
 function buildSingle(){                                           // one box, sized in pixels, centred, scaled down only if it does not fit
   const w = S.sw, d = S.sd, h = S.sh, bw = (w+d)*C30, bh = (w+d)*.5+h, room = 110; cell = Math.max(.02, Math.min(1, (W-room)/bw, (H-room)/bh)); oyAdj = h/2*cell;
-  if (fbuf.length < 8){ fbuf = new Float32Array(8); cbuf = new Uint8Array(16); }
-  fbuf.set([0, 0, w, d, h, 0, 0, 1]); const f = S.sFaces ? [255,255,255,255] : [0,0,0,0]; cbuf.set([...f, ...f, ...f, 0,0,0,255]);
+  if (fbuf.length < 8){ fbuf = new Float32Array(8); cbuf = new Uint8Array(20); }
+  fbuf.set([0, 0, w, d, h, 0, 0, 1]); const f = S.sFaces ? [255,255,255,255] : [0,0,0,0]; cbuf.set([...f, ...f, ...f, 0,0,0,255, 0,0,0,0]);
   count = 1; depth = [-(w+d)-4, 1/(2*(w+d)+h+16)];
-  gl.bindBuffer(gl.ARRAY_BUFFER, instF); gl.bufferData(gl.ARRAY_BUFFER, fbuf.subarray(0, 8), gl.DYNAMIC_DRAW); gl.bindBuffer(gl.ARRAY_BUFFER, instC); gl.bufferData(gl.ARRAY_BUFFER, cbuf.subarray(0, 16), gl.DYNAMIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER, instF); gl.bufferData(gl.ARRAY_BUFFER, fbuf.subarray(0, 8), gl.DYNAMIC_DRAW); gl.bindBuffer(gl.ARRAY_BUFFER, instC); gl.bufferData(gl.ARRAY_BUFFER, cbuf.subarray(0, 20), gl.DYNAMIC_DRAW);
   cityDirty = false; dirty = true; }
 function buildCity(){
   if (single()) return buildSingle(); oyAdj = 0;
@@ -186,8 +229,11 @@ function buildCity(){
   if (!types.length) types.push(S.types[0]);
   const ox = W/2+S.panX, oy = H/2+S.panY, m = cell*1.6, inv = (sx, sy) => { const a = (sx-ox)/(C30*cell), b = (sy-oy)*2/cell; return [(a+b)/2, (b-a)/2]; };
   const cs = [inv(-m,-m), inv(W+m,-m), inv(-m,H+m+maxH*cell), inv(W+m,H+m+maxH*cell)], x0 = Math.floor(Math.min(...cs.map(c => c[0]))), x1 = Math.ceil(Math.max(...cs.map(c => c[0]))), y0 = Math.floor(Math.min(...cs.map(c => c[1]))), y1 = Math.ceil(Math.max(...cs.map(c => c[1])));
-  const cap = Math.max(1, (x1-x0+1)*(y1-y0+1)); if (fbuf.length < cap*8){ fbuf = new Float32Array(cap*8); cbuf = new Uint8Array(cap*16); }
-  const bg = rgb(S.bg), zs = Math.max(1.5, S.zone), fill = 1-clamp(S.gap, 0, .95); let n = 0, dmin = Infinity, dmax = -Infinity;
+  const cap = Math.max(1, (x1-x0+1)*(y1-y0+1)); if (fbuf.length < cap*8){ fbuf = new Float32Array(cap*8); cbuf = new Uint8Array(cap*20); }
+  const MP = master(), col = hx => MP ? rgb(MP.cols[hashStr(hx)%MP.cols.length]) : rgb(hx), ink = MP && S.masterAll && S.master !== 'custom' ? rgb(MP.ink) : null;
+  const mcols = MP ? MP.cols : S.motifPal, pal = new Uint8Array(64*3*4); for (let q = 0; q < 64; q++) for (let k = 0; k < 3; k++){ const c = rgb(mcols[(Math.floor(hash(S.seed, q, 3, 91)*mcols.length)+k*(1+Math.floor(hash(S.seed, q, k, 92)*2)))%mcols.length]); pal.set([c[0], c[1], c[2], 255], (q*3+k)*4); }
+  gl.bindTexture(gl.TEXTURE_2D, palTex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 3, 64, 0, gl.RGBA, gl.UNSIGNED_BYTE, pal);
+  const bg = rgb(bgHex()), zs = Math.max(1.5, S.zone), fill = 1-clamp(S.gap, 0, .95); let n = 0, dmin = Infinity, dmax = -Infinity;
   for (let j = y0; j <= y1; j++) for (let i = x0; i <= x1; i++){
     const sx = ox+(i-j)*C30*cell, sy = oy+(i+j)*.5*cell; if (sx < -m || sx > W+m || sy < -m || sy > H+m+maxH*cell) continue;
     const r = k => hash(S.seed, i, j, k), zoned = r(1) < S.cluster;
@@ -195,24 +241,26 @@ function buildCity(){
     let w = clamp(vary(T.wMin, T.wMax, r(3), S.rW), .05, 4)*fill, d = clamp(vary(T.dMin, T.dMax, r(4), S.rD), .05, 4)*fill, h = Math.max(.02, vary(T.hMin, T.hMax, r(5), S.rH)), still = 0;
     let top, left, right, on = T.fill ? 255 : 0;
     if (!T.fill){ top = left = right = bg; }
-    else if (T.colorMode === 'palette' && T.palette.length){ const P = T.palette, np = P.length, base = zoned ? Math.floor(noise(i/zs+40, j/zs-17, 23)*np) : Math.floor(r(6)*np), loose = r(7) < S.rC;   /* a zone shares its colours */
+    else if (T.colorMode === 'palette' && T.palette.length){ const P = MP ? MP.cols : T.palette, np = P.length, base = zoned ? Math.floor(noise(i/zs+40, j/zs-17, 23)*np) : Math.floor(r(6)*np), loose = r(7) < S.rC;   /* a zone shares its colours */
       top = rgb(P[(loose && !zoned ? Math.floor(r(8)*np) : base)%np]); left = rgb(P[(loose && !zoned ? Math.floor(r(9)*np) : base+1+(loose ? Math.floor(r(9)*2) : 0))%np]); right = rgb(P[(loose && !zoned ? Math.floor(r(10)*np) : base+2+(loose ? Math.floor(r(10)*3) : 0))%np]); }
-    else if (T.colorMode === 'faces'){ top = rgb(T.top); left = rgb(T.left); right = rgb(T.right); }
-    else { top = left = right = rgb(T.color); }
+    else if (T.colorMode === 'faces'){ top = col(T.top); left = col(T.left); right = col(T.right); }
+    else { top = left = right = col(T.color); }
     let aT = on, aL = on, aR = on;
-    if ((!T.fill || T.colorMode === 'one') && S.accents.length && r(12) < S.accent){ const c = rgb(S.accents[Math.floor(r(13)*S.accents.length)]), f = Math.floor(r(14)*3);       /* one bright face on a neutral box */
+    if ((!T.fill || T.colorMode === 'one') && S.accents.length && r(12) < S.accent){ const AC = MP ? MP.cols : S.accents, c = rgb(AC[Math.floor(r(13)*AC.length)]), f = Math.floor(r(14)*3);       /* one bright face on a neutral box */
       if (f === 0){ top = c; aT = 255; } else if (f === 1){ left = c; aL = 255; } else { right = c; aR = 255; } }
-    let sc = rgb(T.strokeCol), sw = T.stroke && S.outlines ? Math.max(0, T.strokeW*(1+(r(15)-.5)*2*S.rS)) : 0;
+    let sc = ink || rgb(T.strokeCol), mot = [0,0,0,0], sw = T.stroke && S.outlines ? Math.max(0, T.strokeW*(1+(r(15)-.5)*2*S.rS)) : 0;
     const road = S.roadOn && S.roadPal.length ? onRoad(i, j) : 0; if (road === 1) h = Math.min(h, S.roadH+.25+r(27)*.9);
-    if (road === 2){ const RP = S.roadPal, c = (k, base) => rgb(r(k) < S.roadVariety ? RP[Math.floor(r(k+1)*RP.length)] : RP[base%RP.length]);
-      w = d = fill; h = Math.max(.02, S.roadH*(1+(r(20)-.5)*.7)); top = c(21, 0); left = c(23, 1); right = c(25, 2); aT = aL = aR = 255; sc = [17,17,17]; sw = S.roadStroke && S.outlines ? 1 : 0; still = S.roadFlat ? 2 : 0; }
-    const f8 = n*8, c16 = n*16;
+    if (S.motifOn && road !== 2 && (T.fill || S.motifBlank) && r(30) < S.motifChance){ const mf = S.motifFaces;                 /* which motif, on which faces, in which colours */
+      mot = [Math.floor(r(31)*36), mf === 'top' ? 1 : mf === 'sides' ? [2,4,6][Math.floor(r(32)*3)] : mf === 'one' ? [1,2,4][Math.floor(r(32)*3)] : 1+Math.floor(r(32)*7), Math.floor(r(33)*64), 0]; }
+    if (road === 2){ const RP = MP ? MP.cols : S.roadPal, c = (k, base) => rgb(r(k) < S.roadVariety ? RP[Math.floor(r(k+1)*RP.length)] : RP[base%RP.length]);
+      w = d = fill; h = Math.max(.02, S.roadH*(1+(r(20)-.5)*.7)); top = c(21, 0); left = c(23, 1); right = c(25, 2); aT = aL = aR = 255; sc = ink || [17,17,17]; sw = S.roadStroke && S.outlines ? 1 : 0; still = S.roadFlat ? 2 : 0; }
+    const f8 = n*8, c16 = n*20;
     fbuf[f8] = i; fbuf[f8+1] = j; fbuf[f8+2] = w; fbuf[f8+3] = d; fbuf[f8+4] = h; fbuf[f8+5] = r(16); fbuf[f8+6] = r(17)+still; fbuf[f8+7] = sw;
-    cbuf.set([top[0],top[1],top[2],aT, left[0],left[1],left[2],aL, right[0],right[1],right[2],aR, sc[0],sc[1],sc[2],255], c16);
+    cbuf.set([top[0],top[1],top[2],aT, left[0],left[1],left[2],aL, right[0],right[1],right[2],aR, sc[0],sc[1],sc[2],255, mot[0],mot[1],mot[2],0], c16);
     if (i+j < dmin) dmin = i+j; if (i+j > dmax) dmax = i+j; n++; }
   count = n; depth = [dmin-3, 1/Math.max(1, dmax-dmin+maxH+8)];
   gl.bindBuffer(gl.ARRAY_BUFFER, instF); gl.bufferData(gl.ARRAY_BUFFER, fbuf.subarray(0, n*8), gl.DYNAMIC_DRAW);
-  gl.bindBuffer(gl.ARRAY_BUFFER, instC); gl.bufferData(gl.ARRAY_BUFFER, cbuf.subarray(0, n*16), gl.DYNAMIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER, instC); gl.bufferData(gl.ARRAY_BUFFER, cbuf.subarray(0, n*20), gl.DYNAMIC_DRAW);
   $('stat').textContent = n.toLocaleString()+' boxes drawn, including the ones just outside the frame';
   cityDirty = false; dirty = true;
 }
@@ -221,7 +269,7 @@ function buildCity(){
 const COMMON = `#version 300 es
 precision highp float;
 layout(location=3) in vec2 aPos; layout(location=4) in vec3 aSize; layout(location=5) in vec2 aRnd; layout(location=6) in float aStrokeW;
-layout(location=7) in vec4 aTop; layout(location=8) in vec4 aLeft; layout(location=9) in vec4 aRight; layout(location=10) in vec4 aStrokeCol;
+layout(location=7) in vec4 aTop; layout(location=8) in vec4 aLeft; layout(location=9) in vec4 aRight; layout(location=10) in vec4 aStrokeCol; layout(location=11) in vec4 aMotif;
 uniform vec2 uRes, uOrigin, uDepth, uWCentre; uniform float uS, uTime, uBlend, uHMin, uHMax, uWAng, uWLen, uWSpeed, uWAmp, uRFreq, uRSpeed, uRAmp, uDpr, uWIn, uWOut; uniform int uWShape, uREase;
 float hash1(float n){ return fract(sin(n*12.9898)*43758.5453); }
 float ease(float t){ if(uREase==1) return t<.5 ? 16.*t*t*t*t*t : 1.-pow(-2.*t+2.,5.)/2.; if(uREase==2) return 1.-pow(1.-t,3.); return t*t*(3.-2.*t); }
@@ -236,8 +284,18 @@ vec2 screen(vec3 p){ return uOrigin + vec2((p.x-p.y)*.8660254, (p.x+p.y)*.5-p.z)
 float depthOf(vec3 p){ return 1.-(p.x+p.y+p.z-uDepth.x)*uDepth.y; }
 vec4 clip(vec2 s, float d){ return vec4(s.x/uRes.x*2.-1., 1.-s.y/uRes.y*2., clamp(d,.001,.999)*2.-1., 1.); }
 `;
-const VS_FACE = COMMON + `layout(location=0) in vec3 aV; layout(location=1) in float aFace; uniform vec3 uBg; out vec3 vCol;
-void main(){ vec3 p = world(aV, height()); vec4 c = aFace<.5 ? aTop : aFace<1.5 ? aLeft : aRight; vCol = c.a>.5 ? c.rgb : uBg; gl_Position = clip(screen(p), depthOf(p)); }`;
+const VS_FACE = COMMON + `layout(location=0) in vec3 aV; layout(location=1) in float aFace; uniform vec3 uBg; out vec3 vCol; out vec2 vUV; flat out float vTile; flat out vec3 vM;
+void main(){ float h = height(); vec3 p = world(aV, h); vec4 c = aFace<.5 ? aTop : aFace<1.5 ? aLeft : aRight; vCol = c.a>.5 ? c.rgb : uBg;
+  if(aFace<.5){ vTile = min(aSize.x,aSize.y); vUV = aV.xy*aSize.xy - (aSize.xy-floor(aSize.xy/vTile+.001)*vTile)*.5; }        /* square tiles: centred on top, hung from the top edge on the sides */
+  else if(aFace<1.5){ vTile = aSize.x; vUV = vec2(aV.x*aSize.x, (1.-aV.z)*h); } else { vTile = aSize.y; vUV = vec2((1.-aV.y)*aSize.y, (1.-aV.z)*h); }
+  float bit = aFace<.5 ? 1. : aFace<1.5 ? 2. : 4.; vM = vec3(aMotif.x, aMotif.z, mod(floor(aMotif.y/bit),2.));
+  gl_Position = clip(screen(p), depthOf(p)); }`;
+const FS_FACE = `#version 300 es
+precision highp float; precision highp int; in vec3 vCol; in vec2 vUV; flat in float vTile; flat in vec3 vM; uniform sampler2D uAtlas, uPal; out vec4 o;
+void main(){ vec3 c = vCol;
+  if(vM.z>.5){ ivec2 q = ivec2(floor(fract(vUV/vTile)*7.))-1;                               /* a 5 x 5 motif with one cell of margin */
+    if(q.x>=0 && q.x<5 && q.y>=0 && q.y<5){ int m = int(vM.x+.5), k = int(texelFetch(uAtlas, ivec2((m%6)*5+q.x, (m/6)*5+q.y), 0).r*255.+.5); if(k>0) c = texelFetch(uPal, ivec2(k-1, int(vM.y+.5)), 0).rgb; } }
+  o = vec4(c,1.); }`;
 const VS_EDGE = COMMON + `layout(location=0) in vec3 aE0; layout(location=1) in vec3 aE1; layout(location=2) in vec3 aTS; out vec3 vCol;
 void main(){ float w = aStrokeW*(aTS.z>.5 ? uWIn : uWOut)*uDpr; if(w<=0.){ gl_Position = vec4(2.,2.,2.,1.); return; }
   float h = height(); vec3 p0 = world(aE0,h), p1 = world(aE1,h); vec2 s0 = screen(p0), s1 = screen(p1), dir = normalize(s1-s0+1e-5), nrm = vec2(-dir.y,dir.x);
@@ -247,11 +305,14 @@ const FS = `#version 300 es
 precision highp float; in vec3 vCol; out vec4 o; void main(){ o = vec4(vCol,1.); }`;
 function program(v, f){ const p = gl.createProgram(); for (const [t, src] of [[gl.VERTEX_SHADER, v], [gl.FRAGMENT_SHADER, f]]){ const s = gl.createShader(t); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(s)); gl.attachShader(p, s); }
   gl.linkProgram(p); const U = {}, n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS); for (let i = 0; i < n; i++){ const name = gl.getActiveUniform(p, i).name; U[name] = gl.getUniformLocation(p, name); } return { p, U }; }
-let faceP, edgeP, faceVao, edgeVao, instF, instC;
+let faceP, edgeP, faceVao, edgeVao, instF, instC, atlasTex, palTex;
 function initGL(){
-  faceP = program(VS_FACE, FS); edgeP = program(VS_EDGE, FS); instF = gl.createBuffer(); instC = gl.createBuffer();
+  faceP = program(VS_FACE, FS_FACE); edgeP = program(VS_EDGE, FS); instF = gl.createBuffer(); instC = gl.createBuffer();
+  const tex = () => { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); for (const k of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, k, gl.NEAREST); for (const k of [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T]) gl.texParameteri(gl.TEXTURE_2D, k, gl.CLAMP_TO_EDGE); return t; };
+  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1); atlasTex = tex(); gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, 30, 30, 0, gl.RED, gl.UNSIGNED_BYTE, motifAtlas()); palTex = tex();
   const inst = () => { gl.bindBuffer(gl.ARRAY_BUFFER, instF); [[3,2,0],[4,3,8],[5,2,20],[6,1,28]].forEach(([loc, size, off]) => { gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 32, off); gl.vertexAttribDivisor(loc, 1); });
-    gl.bindBuffer(gl.ARRAY_BUFFER, instC); [7,8,9,10].forEach((loc, k) => { gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 4, gl.UNSIGNED_BYTE, true, 16, k*4); gl.vertexAttribDivisor(loc, 1); }); };
+    gl.bindBuffer(gl.ARRAY_BUFFER, instC); [7,8,9,10].forEach((loc, k) => { gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 4, gl.UNSIGNED_BYTE, true, 20, k*4); gl.vertexAttribDivisor(loc, 1); });
+    gl.enableVertexAttribArray(11); gl.vertexAttribPointer(11, 4, gl.UNSIGNED_BYTE, false, 20, 16); gl.vertexAttribDivisor(11, 1); };
   const quad = (a, b, c, d) => [a, b, c, a, c, d], fv = [];                                    // the three faces you can see: top, left (y far side), right (x far side)
   [[[0,0,1],[1,0,1],[1,1,1],[0,1,1]], [[0,1,0],[1,1,0],[1,1,1],[0,1,1]], [[1,0,0],[1,1,0],[1,1,1],[1,0,1]]].forEach((f, id) => quad(...f).forEach(v => fv.push(v[0], v[1], v[2], id)));
   faceVao = gl.createVertexArray(); gl.bindVertexArray(faceVao); gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(fv), gl.STATIC_DRAW);
@@ -263,12 +324,13 @@ function initGL(){
   gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL);
 }
 const SHAPES = { sine:0, radial:1, diagonal:2 }, EASES = { smooth:0, inout:1, out:2 };
-function uniforms(P){ const U = P.U, f = (n, ...v) => { if (U[n]) gl['uniform'+v.length+'f'](U[n], ...v); }, bg = rgb(S.bg), ox = W/2+S.panX, oy = H/2+S.panY+oyAdj, one = single(), anim = S.animate && !one;
+function uniforms(P){ const U = P.U, f = (n, ...v) => { if (U[n]) gl['uniform'+v.length+'f'](U[n], ...v); }, bg = rgb(bgHex()), ox = W/2+S.panX, oy = H/2+S.panY+oyAdj, one = single(), anim = S.animate && !one;
   gl.useProgram(P.p); f('uRes', W*dpr, H*dpr); f('uOrigin', ox*dpr, oy*dpr); f('uDepth', depth[0], depth[1]); f('uS', cell*dpr); f('uTime', time); f('uBlend', S.blend); f('uHMin', one ? 0 : Math.min(S.hMin, S.hMax)); f('uHMax', one ? 1e6 : Math.max(S.hMin, S.hMax));
   f('uWAng', S.wAngle*Math.PI/180); f('uWLen', Math.max(.5, S.wLen)); f('uWSpeed', S.wSpeed); f('uWAmp', anim ? S.wAmp : 0); f('uRFreq', S.rFreq); f('uRSpeed', Math.max(1, S.rSpeed)); f('uRAmp', anim ? S.rAmp : 0); f('uDpr', dpr); f('uWOut', one ? S.sOuter : S.strokeScale); f('uWIn', one ? S.sInner : S.strokeScale*S.innerScale);
   const a = ((S.wCx*W-ox)/(C30*cell)), b = (S.wCy*H-oy)*2/cell; f('uWCentre', (a+b)/2, (b-a)/2); f('uBg', bg[0]/255, bg[1]/255, bg[2]/255);
+  if (U.uAtlas){ gl.uniform1i(U.uAtlas, 0); gl.uniform1i(U.uPal, 1); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, atlasTex); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, palTex); gl.activeTexture(gl.TEXTURE0); }
   if (U.uWShape) gl.uniform1i(U.uWShape, SHAPES[S.wShape] || 0); if (U.uREase) gl.uniform1i(U.uREase, EASES[S.rEase] || 0); }
-function draw(){ if (cityDirty) buildCity(); const bg = rgb(S.bg);
+function draw(){ if (cityDirty) buildCity(); const bg = rgb(bgHex());
   gl.viewport(0, 0, cv.width, cv.height); gl.clearColor(bg[0]/255, bg[1]/255, bg[2]/255, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   uniforms(faceP); gl.bindVertexArray(faceVao); gl.drawArraysInstanced(gl.TRIANGLES, 0, 18, count);
   uniforms(edgeP); gl.bindVertexArray(edgeVao); gl.drawArraysInstanced(gl.TRIANGLES, 0, 54, count); dirty = false; }
@@ -323,7 +385,14 @@ ctl('f-type', { on:A, key:'color', label:'Colour', type:'color', list:true, when
 ctl('f-type', { on:A, key:'top', label:'Top', type:'color', list:true, when:t => t.fill && t.colorMode === 'faces' }); ctl('f-type', { on:A, key:'left', label:'Left', type:'color', when:t => t.fill && t.colorMode === 'faces' }); ctl('f-type', { on:A, key:'right', label:'Right', type:'color', when:t => t.fill && t.colorMode === 'faces' });
 ctl('f-type', { on:A, key:'stroke', label:'Outline', type:'toggle' }); ctl('f-type', { on:A, key:'strokeCol', label:'Outline colour', type:'color', when:t => t.stroke }); ctl('f-type', { on:A, key:'strokeW', label:'Outline thickness', min:.25, max:8, step:.25, fmt:pxf, when:t => t.stroke });
 
-ctl('f-style', { key:'bg', label:'Background', type:'color' }); ctl('f-style2', { key:'outlines', label:'Draw outlines', type:'toggle' });
+ctl('f-motifs', { key:'motifOn', label:'Print motifs on faces', type:'toggle' });
+const mOn = s => s.motifOn;
+ctl('f-motifs', { key:'motifChance', label:'Boxes with a motif', min:0, max:1, step:.01, fmt:pct, when:mOn });
+ctl('f-motifs', { key:'motifFaces', label:'Faces', type:'select', opts:[['any','Any, at random'],['one','One face'],['top','Top only'],['sides','Sides only']], when:mOn });
+ctl('f-motifs', { key:'motifBlank', label:'Also on outline-only boxes', type:'toggle', when:mOn });
+ctl('f-style', { key:'master', label:'Master palette', type:'select', opts:[['off','Off (use each type\'s colours)']].concat(Object.keys(MASTERS).map(k => [k, k]), [['custom','Custom']]) });
+ctl('f-style', { key:'masterAll', label:'Master palette also sets background and outlines', type:'toggle', when:s => s.master !== 'off' && s.master !== 'custom' });
+ctl('f-style', { key:'bg', label:'Background', type:'color', when:s => !(master() && s.masterAll && s.master !== 'custom') }); ctl('f-style2', { key:'outlines', label:'Draw outlines', type:'toggle' });
 ctl('f-style2', { key:'strokeScale', label:'Outline scale', min:.25, max:4, step:.05, fmt:v => f2(v)+'×', city:false });
 ctl('f-style2', { key:'innerScale', label:'Inner edges', min:0, max:1.5, step:.05, fmt:v => f2(v)+'× of the outline', city:false });
 ctl('f-style2', { key:'accent', label:'Accent chance', min:0, max:.5, step:.005, fmt:v => (v*100).toFixed(1)+'%' });
@@ -344,7 +413,7 @@ ctl('f-random', { key:'rEase', label:'Easing', type:'select', opts:[['smooth','S
 
 const viewBtns = {}; for (const [k, n] of [['city','City'],['single','Single box']]){ const b = el('button'); b.textContent = n; b.onclick = () => { S.view = k; S.panX = S.panY = 0; touch(true); refresh(); }; $('views').append(b); viewBtns[k] = b; }
 const modeBtns = {}; for (const [k, n] of [['uniform','Uniform'],['mixed','Mixed']]){ const b = el('button'); b.textContent = n; b.onclick = () => { S.mode = k; touch(true); refresh(); }; $('modes').append(b); modeBtns[k] = b; }
-const swatchOf = t => !t.fill ? S.bg : t.colorMode === 'one' ? t.color : t.colorMode === 'faces' ? t.top : (t.palette[0] || '#888');
+const swatchOf = t => !t.fill ? bgHex() : t.colorMode === 'one' ? t.color : t.colorMode === 'faces' ? t.top : (t.palette[0] || '#888');
 function typeList(){ const host = $('typeList'); host.textContent = ''; const total = S.types.reduce((a, t) => a+t.weight, 0) || 1;
   S.types.forEach((t, i) => { if (S.mode === 'uniform' && i) return; const row = el('div','ty'), b = el('button','pick'), sw = el('i'), nm = el('span'), w = el('em'); sw.style.background = swatchOf(t); nm.textContent = t.name || 'Type '+(i+1); w.textContent = S.mode === 'mixed' ? Math.round(t.weight/total*100)+'%' : '';
     b.append(sw, nm, w); b.classList.toggle('on', i === (S.mode === 'uniform' ? 0 : S.act)); b.onclick = () => { S.act = i; refresh(); }; row.append(b);
@@ -355,9 +424,10 @@ function swatches(host, list, onchange){ const h = $(host); h.textContent = '';
   const add = el('button'); add.textContent = '+'; add.title = 'Add a colour'; add.onclick = () => { if (list.length < 16){ list.push(CITY[list.length%CITY.length]); onchange(); refresh(); } };
   const del = el('button'); del.textContent = '−'; del.title = 'Remove the last colour'; del.onclick = () => { if (list.length > 1){ list.pop(); onchange(); refresh(); } }; h.append(add, del); }
 function refresh(){ S.act = clamp(S.act|0, 0, S.types.length-1); for (const r of refreshers) r(); const one = single(); for (const k in viewBtns) viewBtns[k].classList.toggle('on', k === S.view);
-  $('d-single').hidden = !one; for (const id of ['d-layout','d-roads','d-types','d-rand','d-anim','cityStyle','bVideo']) $(id).hidden = one; $('bSvg').hidden = !one; $('animBody').hidden = !S.animate; for (const k in modeBtns) modeBtns[k].classList.toggle('on', k === S.mode);
+  $('d-single').hidden = !one; for (const id of ['d-layout','d-roads','d-types','d-motifs','d-rand','d-anim','cityStyle','bVideo']) $(id).hidden = one; $('bSvg').hidden = !one; $('animBody').hidden = !S.animate; for (const k in modeBtns) modeBtns[k].classList.toggle('on', k === S.mode);
   typeList(); $('typeBtns').hidden = S.mode !== 'mixed'; const t = A(), pal = t.fill && t.colorMode === 'palette'; $('palTitle').hidden = $('typePal').hidden = !pal; if (pal) swatches('typePal', t.palette, () => touch(true));
-  swatches('accPal', S.accents, () => touch(true)); swatches('roadPal', S.roadPal, () => touch(true)); $('roadBody').hidden = !S.roadOn; $('bPlay').textContent = S.playing ? 'Pause' : 'Play'; document.body.style.background = S.bg; }
+  swatches('accPal', S.accents, () => touch(true)); swatches('roadPal', S.roadPal, () => touch(true)); $('roadBody').hidden = !S.roadOn; $('bPlay').textContent = S.playing ? 'Pause' : 'Play'; document.body.style.background = bgHex();
+  swatches('motifPal', S.motifPal, () => touch(true)); $('motifBody').hidden = !S.motifOn || !!master(); const cu = S.master === 'custom'; $('customBody').hidden = !cu; if (cu) swatches('customPal', S.masterCustom, () => touch(true)); }
 $('bAddType').onclick = () => { S.types.push(newType({ name:'Type '+(S.types.length+1) })); S.act = S.types.length-1; touch(true); refresh(); };
 $('bDupType').onclick = () => { const c = JSON.parse(JSON.stringify(A())); c.name += ' copy'; S.types.splice(S.act+1, 0, c); S.act++; touch(true); refresh(); };
 $('bSeed').onclick = () => { S.seed = Math.random()*100000|0; touch(true); refresh(); };

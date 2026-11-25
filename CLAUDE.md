@@ -160,7 +160,15 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
   that project into the frame and derives everything about a box from `hash(seed, i, j, k)`,
   so panning reveals a stable endless city. Roads (`onRoad`: 2 = on a road, 1 = beside one
   and capped low so the road shows) are strips along a grid axis, one per band of `roadGap`
-  cells; `aRnd.y >= 2` marks a box the shader keeps still. Zones come from smooth `noise()`; "fill off" boxes
+  cells; `aRnd.y >= 2` marks a box the shader keeps still. Motifs: `MOTIFS` is 36 six-digit codes (one wedge of a
+  5 x 5 grid, mirrored eight ways; generated, not copied from the user's reference sheet),
+  baked by `motifAtlas()` into a 30 x 30 R8 texture; per-instance `aMotif` = (motif id, face
+  bits 1/2/4, palette row); `FS_FACE` tiles it in squares with a one-cell margin and reads
+  colours from `palTex` (64 rows x 3, rebuilt in `buildCity`). The instance colour buffer is 20
+  bytes per box. Master palettes (`MASTERS`, `master()`, `bgHex()`): when one is chosen every
+  colour asked for by types, roads, accents and motifs is remapped to it (`col()` in
+  `buildCity`), and optionally background and outline ink too. Every panel section starts with
+  a one-line `.lead` description. Zones come from smooth `noise()`; "fill off" boxes
   are painted in the background colour so they still hide what is behind them. "Boxes in the
   frame" sets the zoom. `buildSingle()` makes one instance sized in pixels (`sw`, `sd`, `sh`,
   strokes `sInner` 0.5 / `sOuter` 1.5), scaled down only to fit; Save SVG exists in that mode
