@@ -158,7 +158,9 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
   buffer orders boxes (depth = x+y+z), so there is no sorting and no per-frame CPU work.
   `buildCity()` runs only when layout, types, seed, pan or zoom change: it walks the grid cells
   that project into the frame and derives everything about a box from `hash(seed, i, j, k)`,
-  so panning reveals a stable endless city. Zones come from smooth `noise()`; "fill off" boxes
+  so panning reveals a stable endless city. Roads (`onRoad`: 2 = on a road, 1 = beside one
+  and capped low so the road shows) are strips along a grid axis, one per band of `roadGap`
+  cells; `aRnd.y >= 2` marks a box the shader keeps still. Zones come from smooth `noise()`; "fill off" boxes
   are painted in the background colour so they still hide what is behind them. "Boxes in the
   frame" sets the zoom. `buildSingle()` makes one instance sized in pixels (`sw`, `sd`, `sh`,
   strokes `sInner` 0.5 / `sOuter` 1.5), scaled down only to fit; Save SVG exists in that mode
