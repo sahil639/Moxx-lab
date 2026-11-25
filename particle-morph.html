@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="fonts.css">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Moxx Lab — Particle Morph</title>
+<style>
+  :root{ --panel-w:360px; }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{height:100%}
+  body{margin:0;overflow:hidden;background:#050506;font:12px/1.4 'GT Zirkon',system-ui,sans-serif;-webkit-text-size-adjust:100%}
+  #stage{position:fixed;left:0;top:0;bottom:0;right:var(--panel-w);display:grid;place-items:center;overflow:hidden}
+  body.ui-hidden #stage{right:0}
+  #stage.checker{background:repeating-conic-gradient(#1b1b1e 0 25%,#111113 0 50%) 0 0/24px 24px}
+  #c{display:block;touch-action:none;max-width:100%;max-height:100%}
+  #panel{position:fixed;top:0;right:0;bottom:0;width:var(--panel-w);overflow-y:auto;z-index:10;transition:transform .18s ease}
+  body.ui-hidden #panel{transform:translateX(100%)}
+  h1 small{display:block}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:2px 0 8px}
+  .row input[type=text]{flex:1;min-width:0}
+  #dropzone{border:1.5px dashed var(--u-line);border-radius:10px;padding:14px 12px;text-align:center;cursor:pointer;margin:4px 0 8px;transition:border-color .15s ease,background .15s ease}
+  #dropzone:hover,#dropzone.over{border-color:var(--u-accent);background:var(--u-tile)}
+  #dropzone b{display:block;font-weight:500;font-size:12px;margin-bottom:6px;color:var(--u-fg)}
+  #dropzone ul{list-style:none;margin:0;padding:0;font-size:10.5px;line-height:1.7;color:var(--u-dim)}
+  #thumbs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:6px 0}
+  .th{position:relative;aspect-ratio:1;border-radius:8px;background:#0b0b0d;border:1.5px solid transparent;cursor:grab;overflow:hidden}
+  .th.on{border-color:var(--u-accent)} .th.live::after{content:"";position:absolute;left:6px;bottom:6px;width:6px;height:6px;border-radius:50%;background:#fff}
+  .th.dragover{outline:2px dashed var(--u-accent);outline-offset:-4px}
+  .th img{width:100%;height:100%;object-fit:contain;display:block;pointer-events:none}
+  .th i{position:absolute;left:5px;top:4px;font-style:normal;font-size:9.5px;color:#fff;opacity:.7;font-variant-numeric:tabular-nums}
+  .th button{position:absolute;right:3px;top:3px;width:18px;height:18px;padding:0;border-radius:50%;font-size:11px;line-height:1;display:grid;place-items:center}
+  .th .own{position:absolute;right:5px;bottom:4px;font-size:9px;color:#fff;opacity:.8;letter-spacing:.08em}
+  .sub{margin:14px 2px 6px;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--u-dim)}
+  #hud{position:fixed;left:12px;bottom:10px;font-size:10px;letter-spacing:.08em;z-index:9;pointer-events:none;color:rgba(255,255,255,.5)}
+  body.ui-hidden #hud{display:none}
+  .mark{width:15px;height:15px;vertical-align:-2px;margin-right:8px}
+  #back{position:fixed;left:14px;top:14px;z-index:11;display:inline-flex;align-items:center;gap:8px;padding:8px 13px 8px 11px;
+    font:500 12px/1 'GT Zirkon',system-ui,sans-serif;letter-spacing:.06em;text-decoration:none;white-space:nowrap;
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);transition:opacity .18s ease,background .15s ease,border-color .15s ease}
+  #back img{width:13px;height:13px;display:block}
+  body.ui-hidden #back{opacity:0} body.ui-hidden #back:hover,body.ui-hidden #back:focus-visible{opacity:1}
+  #err{position:fixed;inset:0;display:none;place-items:center;text-align:center;padding:40px;z-index:20;background:var(--u-bg);color:var(--u-fg);line-height:1.7}
+</style>
+<link rel="stylesheet" href="ui.css">
+<script src="ui.js"></script>
+</head>
+<body>
+
+<div id="stage"><canvas id="c"></canvas></div>
+<a id="back" href="index.html" aria-label="Back to Moxx Lab index"><img src="logo.svg" alt="">← Moxx Lab</a>
+<div id="hud"><kbd>←</kbd> <kbd>→</kbd> previous / next · <kbd>H</kbd> panel · <kbd>R</kbd> randomise · <kbd>S</kbd> save png · <kbd>space</kbd> pause</div>
+<div id="err"><div><b>Particle Morph needs WebGL 2.</b><br>This browser or device does not offer it.<br><a href="index.html">← Back to Moxx Lab</a></div></div>
+<input type="file" id="file" hidden>
+
+<div id="panel">
+  <h1><img class="mark" src="logo.svg" alt="">Particle Morph<small>images as particles, flowing one into the next</small></h1>
+
+  <details open>
+    <summary>Presets</summary>
+    <div class="grid" id="presets"></div>
+    <div class="btns"><button id="bRand" title="Pick random settings for the morph, hover and look">Randomise</button><button id="bReset" title="Back to the Soft Drift defaults. Your images stay">Reset</button></div>
+  </details>
+
+  <details open>
+    <summary>Images</summary>
+    <div id="dropzone" title="Click to choose files, or drop them here">
+      <b>Add images: click or drop</b>
+      <ul><li>PNG, JPG, WEBP or SVG · two or more, no limit</li><li>About 800 to 1600 px on the long side is plenty</li><li>Square, or all the same proportions, works best</li><li>Transparent PNGs, or a clear subject on a plain background, give the cleanest shapes</li></ul>
+    </div>
+    <div id="thumbs"></div>
+    <div class="btns"><button id="bReplace" title="Swap the selected image for another file">Replace selected</button><button id="bClear" title="Remove every image and put the samples back">Use samples</button></div>
+    <p class="hint">Drag the thumbnails to reorder. The dot marks the image on screen.</p>
+    <div id="f-images"></div>
+    <div class="sub" id="ownTitle">This step</div>
+    <div id="f-own"></div>
+  </details>
+
+  <details open><summary>Morph</summary><div id="f-morph"></div></details>
+
+  <details open>
+    <summary>Timing</summary>
+    <div id="f-timing"></div>
+    <div class="row" title="Drag to move through the current morph by hand"><label>Scrub</label><input type="range" id="scrub" min="0" max="1" step="0.001" value="0"><span class="val" id="scrubV"></span></div>
+    <div class="btns"><button id="bPrev" title="Morph to the previous image">Previous</button><button id="bPlay" title="Pause or resume">Pause</button><button id="bNext" title="Morph to the next image">Next</button></div>
+  </details>
+
+  <details open><summary>Hover</summary><div id="f-hover"></div></details>
+  <details open><summary>Appearance</summary><div id="f-look"></div><div class="btns"><button id="bSprite" title="Use your own image as the shape of every particle">Choose a sprite</button></div></details>
+  <details><summary>Layout</summary><div id="f-layout"></div></details>
+
+  <details open>
+    <summary>Export</summary>
+    <div class="btns"><button id="bSave" title="Save the current frame">Save PNG</button><button id="bVideo" title="Record one pass through every image">Record video</button></div>
+    <div class="btns"><button id="bSnippet" title="One HTML file with the effect, your images and settings, ready to paste into a page">Embed snippet</button><button id="bCopy" title="Copy the same snippet to the clipboard">Copy snippet</button></div>
+    <div class="btns"><button id="bJson" title="Save the settings, and the images, as a JSON file">Save settings</button><button id="bLoad" title="Open a saved JSON file">Load settings</button><button id="bHide" title="Hide this panel (H)">Hide panel</button></div>
+    <p class="hint" id="stat"></p>
+  </details>
+</div>
+
+<script id="engine">
+/* ParticleMorph(canvas, { images:[src…], overrides:[…], settings:{…}, onState, onQuality }) — the whole effect, with no
+   dependency on this page, so the Export panel can ship this block as it is.
+   Parts: sampling (image → particles) → arrangement (which particle goes where) → GL → timeline → hover springs → frame. */
+function ParticleMorph(canvas, opts){
+  opts = opts || {};
+  var P = Object.assign({}, ParticleMorph.DEFAULTS, opts.settings || {});
+  var gl = canvas.getContext('webgl2', { alpha:true, premultipliedAlpha:true, antialias:false, preserveDrawingBuffer:true });
+  if (!gl) return null;
+  var clamp = function(v,a,b){ return v<a?a:v>b?b:v; }, TAU = Math.PI*2;
+  function rng(seed){ var a = seed>>>0; return function(){ a |= 0; a = a+0x6D2B79F5|0; var t = Math.imul(a^a>>>15, 1|a); t = t+Math.imul(t^t>>>7, 61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+  var hex = function(h){ h = /^#[0-9a-f]{6}$/i.test(h) ? h : '#ffffff'; return [parseInt(h.slice(1,3),16)/255, parseInt(h.slice(3,5),16)/255, parseInt(h.slice(5,7),16)/255]; };
+
+  /* ---------------- sampling: an image becomes n points with a colour each */
+  var work = document.createElement('canvas'), wg = work.getContext('2d', { willReadFrequently:true });
+  function sample(it){
+    var im = it.el, iw = im.naturalWidth || im.width || 400, ih = im.naturalHeight || im.height || 400, m = 420/Math.max(iw, ih), w = Math.max(2, Math.round(iw*m)), h = Math.max(2, Math.round(ih*m));
+    work.width = w; work.height = h; wg.clearRect(0, 0, w, h); wg.drawImage(im, 0, 0, w, h);
+    var d = wg.getImageData(0, 0, w, h).data, n = w*h, wt = new Float32Array(n), total = 0, clear = 0, i;
+    for (i = 0; i < n; i++) if (d[i*4+3] < 250) clear++;
+    var hasAlpha = clear > n*.02, cs = [0, w-1, (h-1)*w, n-1], br = 0, bg = 0, bb = 0;
+    for (i = 0; i < 4; i++){ br += d[cs[i]*4]/4; bg += d[cs[i]*4+1]/4; bb += d[cs[i]*4+2]/4; }
+    var useBg = P.bgMode === 'colour' || (P.bgMode === 'auto' && !hasAlpha), thr = P.threshold;
+    for (i = 0; i < n; i++){ var a = d[i*4+3]/255, r = d[i*4], g = d[i*4+1], b = d[i*4+2], tone;
+      if (a < Math.max(.04, hasAlpha ? thr : .04)) continue;
+      if (useBg){ tone = Math.min(1, Math.hypot(r-br, g-bg, b-bb)/300); if (tone < thr) continue; } else tone = (r*.299+g*.587+b*.114)/255;
+      if (P.invert) tone = 1-tone;
+      var wv = a*(1-P.tone + P.tone*Math.pow(tone, 1.4)); if (wv <= .004) continue; wt[i] = wv; total += wv; }
+    var count = Math.max(1, P.count|0), R = rng(it.seed), ax = w/Math.max(w, h), ay = h/Math.max(w, h), xs, ys, col, lum, k = 0, px;
+    function put(p, jx, jy){ var x = p%w, y = (p/w)|0; xs[k] = ((x+jx)/w-.5)*2*ax; ys[k] = -((y+jy)/h-.5)*2*ay; col[k*4] = d[p*4]; col[k*4+1] = d[p*4+1]; col[k*4+2] = d[p*4+2]; col[k*4+3] = 255; lum[k] = (d[p*4]*.299+d[p*4+1]*.587+d[p*4+2]*.114)/255; k++; }
+    if (!(total > 0)){ xs = new Float32Array(1); ys = new Float32Array(1); col = new Uint8Array(4); lum = new Float32Array(1); return { n:1, x:xs, y:ys, col:col, lum:lum }; }
+    if (P.sampling === 'grid'){ var valid = 0; for (i = 0; i < n; i++) if (wt[i] > 0) valid++;
+      var step = Math.max(.35, Math.sqrt(valid/count)), cap = Math.ceil(valid/(step*step)*1.3)+16; xs = new Float32Array(cap); ys = new Float32Array(cap); col = new Uint8Array(cap*4); lum = new Float32Array(cap);
+      for (var gy = step/2; gy < h; gy += step) for (var gx = step/2; gx < w; gx += step){ px = (gy|0)*w + (gx|0); if (wt[px] > 0 && k < cap) put(px, gx-(gx|0), gy-(gy|0)); } }
+    else { var cdf = new Float32Array(n), acc = 0; for (i = 0; i < n; i++){ acc += wt[i]; cdf[i] = acc; }                 /* stipple: more points where the picture is brighter */
+      xs = new Float32Array(count); ys = new Float32Array(count); col = new Uint8Array(count*4); lum = new Float32Array(count);
+      for (i = 0; i < count; i++){ var t = R()*acc, lo = 0, hi = n-1; while (lo < hi){ var mid = (lo+hi)>>1; if (cdf[mid] < t) lo = mid+1; else hi = mid; } put(lo, R(), R()); } }
+    return { n:k, x:xs.subarray(0, k), y:ys.subarray(0, k), col:col.subarray(0, k*4), lum:lum.subarray(0, k) };
+  }
+
+  /* ---------------- arrangement: lay an image's points into N slots, in an order chosen by the mapping mode */
+  function arrange(it, mode){
+    var key = mode+'|'+N+'|'+P.extras, hit = it.arr[key]; if (hit) return hit;
+    var s = it.samp, n = s.n, ord = new Uint32Array(n), kv = new Float32Array(n), i, R = rng(it.seed+17);
+    for (i = 0; i < n; i++){ ord[i] = i; var x = s.x[i], y = s.y[i];
+      if (mode === 'nearest'){ var qx = clamp((x*.5+.5)*1023|0, 0, 1023), qy = clamp((y*.5+.5)*1023|0, 0, 1023), mc = 0; for (var b = 0; b < 10; b++) mc += ((qx>>b&1) + (qy>>b&1)*2)*Math.pow(4, b); kv[i] = mc; }
+      else if (mode === 'bright') kv[i] = s.lum[i] + R()*.002; else if (mode === 'sweep') kv[i] = x; else if (mode === 'centre') kv[i] = Math.hypot(x, y); else kv[i] = R(); }
+    ord.sort(function(a, b){ return kv[a]-kv[b]; });
+    var pos = new Float32Array(N*2), col = new Uint8Array(N*4), dly = new Float32Array(N), filled = new Uint8Array(N), slot;
+    for (i = 0; i < n; i++){ slot = Math.floor(i*N/n); var p = ord[i]; pos[slot*2] = s.x[p]; pos[slot*2+1] = s.y[p]; col.set(s.col.subarray(p*4, p*4+4), slot*4); filled[slot] = 1; }
+    var lx = pos[0], ly = pos[1], lc = [col[0], col[1], col[2]];
+    for (slot = 0; slot < N; slot++){ if (filled[slot]){ lx = pos[slot*2]; ly = pos[slot*2+1]; lc = [col[slot*4], col[slot*4+1], col[slot*4+2]]; }
+      else { if (P.extras === 'scatter'){ var a = R()*TAU, rr = 2.4+R()*1.2; pos[slot*2] = Math.cos(a)*rr; pos[slot*2+1] = Math.sin(a)*rr; } else { pos[slot*2] = lx; pos[slot*2+1] = ly; }   /* spare particles: invisible here, parked on a neighbour or off-screen */
+        col[slot*4] = lc[0]; col[slot*4+1] = lc[1]; col[slot*4+2] = lc[2]; col[slot*4+3] = 0; }
+      var X = pos[slot*2], Y = pos[slot*2+1]; dly[slot] = mode === 'sweep' ? clamp(X*.5+.5, 0, 1) : mode === 'centre' ? clamp(Math.hypot(X, Y)/1.3, 0, 1) : R(); }
+    return it.arr[key] = { pos:pos, col:col, dly:dly };
+  }
+
+  /* ---------------- GL */
+  var VS = '#version 300 es\nprecision highp float;\n' +
+    'layout(location=0) in vec2 aA; layout(location=1) in vec2 aB; layout(location=2) in vec4 aCA; layout(location=3) in vec4 aCB; layout(location=4) in float aKey; layout(location=5) in vec4 aRnd; layout(location=6) in vec2 aOff;\n' +
+    'uniform float uT,uStagger,uTime,uAmp,uSize,uSizeVar,uJitter,uDpr,uOpacity,uGlow,uMagR,uMag; uniform int uStyle,uColorMode,uEase; uniform vec2 uScale,uShift,uMouse; uniform vec3 uC1,uC2; uniform vec4 uBez;\n' +
+    'float ease(float t){ if(uEase==0) return t;\n' +
+    ' if(uEase==2) return (t<=0.||t>=1.) ? t : pow(2.,-9.*t)*sin((t*8.-.75)*2.0943951)+1.;\n' +
+    ' if(uEase==3){ float u = t-1.; return 1.+2.9*u*u*u+1.9*u*u; }\n' +
+    ' if(uEase==4){ float x = t; for(int i=0;i<6;i++){ float cx = 3.*uBez.x*x*(1.-x)*(1.-x)+3.*uBez.z*x*x*(1.-x)+x*x*x-t, dx = 3.*uBez.x*(1.-x)*(1.-3.*x)+3.*uBez.z*x*(2.-3.*x)+3.*x*x; if(abs(dx)<1e-5) break; x = clamp(x-cx/dx,0.,1.); } return 3.*uBez.y*x*(1.-x)*(1.-x)+3.*uBez.w*x*x*(1.-x)+x*x*x; }\n' +
+    ' return t<.5 ? 4.*t*t*t : 1.-pow(-2.*t+2.,3.)/2.; }\n' +
+    'out vec4 vCol;\n' +
+    'vec2 flow(vec2 p,float t){ return vec2(sin(p.y*3.1+t)+.5*sin(p.y*7.3-t*1.3+p.x*2.), cos(p.x*2.7-t*.8)+.5*cos(p.x*6.1+t*1.1+p.y*3.)); }\n' +
+    'void main(){\n' +
+    ' float lin = clamp(uT*(1.+uStagger)-aKey*uStagger,0.,1.), e = ease(lin), p = clamp(e,0.,1.), bell = sin(3.14159265*lin);\n' +
+    ' vec2 pos = mix(aA,aB,e);\n' +
+    ' if(uStyle==1){ pos += normalize(aRnd.xy-.5+1e-4)*(.25+aRnd.z)*uAmp*1.3*bell; }\n' +
+    ' else if(uStyle==2){ float a = uAmp*7.*bell*(1.25-min(length(pos),1.2))*(.55+.45*aRnd.x), c = cos(a), s = sin(a); pos = mat2(c,s,-s,c)*pos*(1.-.3*bell*uAmp); }\n' +
+    ' else if(uStyle==3){ pos += flow(pos*1.6+aRnd.xy*.5,uTime*.7)*uAmp*.3*bell + (aRnd.xy-.5)*uAmp*.3*bell; }\n' +
+    ' else if(uStyle==4){ float q; if(p<.5){ q = p*2.; pos = aA+vec2((aRnd.x-.5)*.35*q, -(2.2+aRnd.y*1.6)*q*q*max(uAmp,.15)*1.4); } else { q = 1.-(p-.5)*2.; pos = aB+vec2((aRnd.z-.5)*.35*q, (2.2+aRnd.w*1.6)*q*q*max(uAmp,.15)*1.4); } }\n' +
+    ' pos += vec2(sin(uTime*(1.+aRnd.x*2.)+aRnd.y*40.), cos(uTime*(1.3+aRnd.z*2.)+aRnd.w*40.))*uJitter*.012;\n' +
+    ' pos += aOff;\n' +
+    ' float ct = uColorMode==3 ? p : smoothstep(.35,.65,p); vec4 c = mix(aCA,aCB,ct); c.a = mix(aCA.a,aCB.a,p);\n' +
+    ' if(uColorMode==1) c.rgb = uC1; else if(uColorMode==2) c.rgb = mix(uC2,uC1,clamp(pos.y*.5+.5,0.,1.));\n' +
+    ' vCol = vec4(c.rgb,c.a*uOpacity);\n' +
+    ' float mag = 1.+uMag*smoothstep(uMagR,0.,distance(pos,uMouse));\n' +
+    ' gl_Position = vec4(pos*uScale+uShift,0.,1.);\n' +
+    ' gl_PointSize = max(1., uSize*(1.+uSizeVar*(aRnd.w*2.-1.))*uDpr*mag*(1.+uGlow*2.));\n' +
+    '}';
+  var FS = '#version 300 es\nprecision highp float;\nin vec4 vCol; out vec4 o; uniform int uShape; uniform float uGlow; uniform sampler2D uSprite;\n' +
+    'void main(){ vec2 q = gl_PointCoord*2.-1.; float k = 1.+uGlow*2., d, a; vec2 s = q*k;\n' +
+    ' if(uShape==1) d = max(abs(s.x),abs(s.y)); else if(uShape==2) d = abs(s.x)+abs(s.y); else if(uShape==3){ float an = atan(s.x,-s.y), r = length(s); d = r/(.62+.38*cos(an*5.)); } else if(uShape==4) d = abs(length(s)-.7)*3.3; else d = length(s);\n' +
+    ' if(uShape==5) a = (abs(s.x)<=1. && abs(s.y)<=1.) ? texture(uSprite,s*.5+.5).a : 0.; else a = 1.-smoothstep(.82,1.,d);\n' +
+    ' a = max(a, uGlow*.55*exp(-dot(q,q)*3.2)*(1.-smoothstep(.8,1.,length(q))));\n' +
+    ' if(a<.003) discard; o = vec4(vCol.rgb*vCol.a*a, vCol.a*a); }';
+  var QV = '#version 300 es\nvoid main(){ vec2 p = vec2(float(gl_VertexID%2)*4.-1., float(gl_VertexID/2)*4.-1.); gl_Position = vec4(p,0.,1.); }';
+  var QF = '#version 300 es\nprecision highp float; uniform vec4 uC; out vec4 o; void main(){ o = uC; }';
+  function prog(v, f){ var p = gl.createProgram(); [[gl.VERTEX_SHADER, v], [gl.FRAGMENT_SHADER, f]].forEach(function(x){ var s = gl.createShader(x[0]); gl.shaderSource(s, x[1]); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(s)); gl.attachShader(p, s); }); gl.linkProgram(p); return p; }
+  var pr = prog(VS, FS), qp = prog(QV, QF), U = {}, uQC = gl.getUniformLocation(qp, 'uC');
+  ['uT','uEase','uBez','uStagger','uTime','uAmp','uSize','uSizeVar','uJitter','uDpr','uOpacity','uGlow','uMagR','uMag','uStyle','uColorMode','uScale','uShift','uMouse','uC1','uC2','uShape','uSprite'].forEach(function(n){ U[n] = gl.getUniformLocation(pr, n); });
+  var vao = gl.createVertexArray(), emptyVao = gl.createVertexArray(), buf = {}; gl.bindVertexArray(vao);
+  [['A',0,2,gl.FLOAT,false],['B',1,2,gl.FLOAT,false],['CA',2,4,gl.UNSIGNED_BYTE,true],['CB',3,4,gl.UNSIGNED_BYTE,true],['K',4,1,gl.FLOAT,false],['R',5,4,gl.FLOAT,false],['O',6,2,gl.FLOAT,false]].forEach(function(a){
+    buf[a[0]] = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf[a[0]]); gl.enableVertexAttribArray(a[1]); gl.vertexAttribPointer(a[1], a[2], a[3], a[4], 0, 0); });
+  var spriteTex = gl.createTexture(), spriteOk = false, spriteSrc = null;
+  function loadSprite(){ if (P.sprite === spriteSrc) return; spriteSrc = P.sprite; spriteOk = false; if (!P.sprite) return; var im = new Image(); im.onload = function(){ gl.bindTexture(gl.TEXTURE_2D, spriteTex); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, im); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); spriteOk = true; }; im.src = P.sprite; }
+
+  /* ---------------- state */
+  var items = [], N = 0, off = new Float32Array(0), vel = new Float32Array(0), curA = null, curB = null, curK = null, offDirty = false;
+  var cur = 0, from = 0, to = 0, dir = 1, T = 1, phase = 'hold', clock = 0, time = 0, playing = true, scrubbing = false, scrollPos = 0, done = false;
+  var mouse = { x:9, y:9, on:false, since:0 }, sc = [1,1], dead = false, visible = true, frames = 0, slow = 0, ready = false;
+  var STYLES = { direct:0, explode:1, swirl:2, flow:3, gravity:4 }, SHAPES = { circle:0, square:1, diamond:2, star:3, ring:4, custom:5 }, CMODES = { original:0, single:1, gradient:2, blend:3 };
+  function eff(k, i){ var o = items[i] && items[i].own; return o && o.on && o[k] !== undefined && o[k] !== '' ? o[k] : P[k]; }
+  function bez(x1, y1, x2, y2, x){ var t = x, i; for (i = 0; i < 6; i++){ var cx = 3*x1*t*(1-t)*(1-t)+3*x2*t*t*(1-t)+t*t*t-x, dx = 3*x1*(1-t)*(1-3*t)+3*x2*t*(2-3*t)+3*t*t; if (Math.abs(dx) < 1e-5) break; t = clamp(t-cx/dx, 0, 1); } return 3*y1*t*(1-t)*(1-t)+3*y2*t*t*(1-t)+t*t*t; }
+  var EASES = { linear:0, inout:1, elastic:2, back:3, bezier:4 };
+  function bezNums(){ var b = String(P.bezier).split(',').map(parseFloat); return b.length === 4 && b.every(isFinite) ? [clamp(b[0],0,1), b[1], clamp(b[2],0,1), b[3]] : null; }
+  function ease(t, kind){ t = clamp(t, 0, 1);
+    if (kind === 'linear') return t; if (kind === 'elastic') return t === 0 || t === 1 ? t : Math.pow(2, -9*t)*Math.sin((t*8-.75)*TAU/3)+1;
+    if (kind === 'back'){ var c = 1.9; return 1+(c+1)*Math.pow(t-1, 3)+c*Math.pow(t-1, 2); }
+    if (kind === 'bezier'){ var b = bezNums(); if (b) return bez(b[0], b[1], b[2], b[3], t); }
+    return t < .5 ? 4*t*t*t : 1-Math.pow(-2*t+2, 3)/2; }
+
+  function resample(){ if (!items.length) return; N = 0; items.forEach(function(it){ it.samp = sample(it); it.arr = {}; if (it.samp.n > N) N = it.samp.n; });
+    var R = rng(4242), rnd = new Float32Array(N*4), i; for (i = 0; i < N*4; i++) rnd[i] = R();
+    off = new Float32Array(N*2); vel = new Float32Array(N*2);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf.R); gl.bufferData(gl.ARRAY_BUFFER, rnd, gl.STATIC_DRAW); gl.bindBuffer(gl.ARRAY_BUFFER, buf.O); gl.bufferData(gl.ARRAY_BUFFER, off, gl.DYNAMIC_DRAW);
+    pair(from, to); ready = true; }
+  function rearrange(){ items.forEach(function(it){ it.arr = {}; }); if (ready) pair(from, to); }
+  function pair(a, b){ a = clamp(a, 0, items.length-1); b = clamp(b, 0, items.length-1); from = a; to = b;
+    var mode = eff('mapping', a), A = arrange(items[a], mode), B = arrange(items[b], mode);
+    [['A', A.pos], ['B', B.pos], ['CA', A.col], ['CB', B.col], ['K', B.dly]].forEach(function(x){ gl.bindBuffer(gl.ARRAY_BUFFER, buf[x[0]]); gl.bufferData(gl.ARRAY_BUFFER, x[1], gl.DYNAMIC_DRAW); });
+    curA = A.pos; curB = B.pos; curK = B.dly; }
+  function target(step){ var n = items.length, t = cur+step; if (P.playback === 'loop') return ((t%n)+n)%n; if (t < 0 || t >= n){ if (P.playback === 'pingpong'){ dir = -dir; return clamp(cur+dir, 0, n-1); } return -1; } return t; }
+  function go(j){ if (!ready || items.length < 2 || phase === 'morph' || phase === 'delay' || j < 0 || j === cur) return false; pair(cur, j); T = 0; clock = 0; phase = eff('delay', cur) > 0 ? 'delay' : 'morph'; done = false; return true; }
+  function next(){ var t = target(1); if (t < 0) t = (cur+1)%items.length; return go(t); }
+  function prev(){ var t = cur-1 < 0 ? items.length-1 : cur-1; return go(t); }
+
+  /* ---------------- pointer */
+  function toUnits(e){ var r = canvas.getBoundingClientRect(), cx = (e.clientX-r.left)/r.width*2-1, cy = -((e.clientY-r.top)/r.height*2-1); return [(cx-P.posX)/sc[0], (cy-P.posY)/sc[1]]; }
+  function pm(e){ var u = toUnits(e); mouse.x = u[0]; mouse.y = u[1]; if (!mouse.on){ mouse.on = true; mouse.since = 0; } }
+  function pl(){ mouse.on = false; mouse.x = mouse.y = 9; }
+  canvas.addEventListener('pointermove', pm); canvas.addEventListener('pointerdown', function(e){ pm(e); if (e.pointerType !== 'mouse'){ try { canvas.setPointerCapture(e.pointerId); } catch(x){} } });
+  canvas.addEventListener('pointerleave', pl); canvas.addEventListener('pointercancel', pl); canvas.addEventListener('pointerup', function(e){ if (e.pointerType !== 'mouse') pl(); });
+  canvas.addEventListener('click', function(){ if (P.trigger === 'click') next(); });
+  canvas.addEventListener('wheel', function(e){ if (P.trigger !== 'scroll' || items.length < 2) return; e.preventDefault(); var n = items.length, max = P.playback === 'loop' ? n : n-1;
+    scrollPos += e.deltaY*.0014; scrollPos = P.playback === 'loop' ? ((scrollPos%max)+max)%max : clamp(scrollPos, 0, max-.0001);
+    var a = Math.floor(scrollPos), b = (a+1)%n; if (a !== from || b !== to) pair(a, b); cur = a; T = scrollPos-a; phase = 'scroll'; }, { passive:false });
+  var io = window.IntersectionObserver ? new IntersectionObserver(function(en){ visible = en[0].isIntersecting; }) : null; if (io) io.observe(canvas);
+
+  /* ---------------- frame */
+  function layout(){ var dpr = Math.min(window.devicePixelRatio || 1, 2), w = Math.max(1, Math.round(canvas.clientWidth*dpr)), h = Math.max(1, Math.round(canvas.clientHeight*dpr));
+    if (canvas.width !== w || canvas.height !== h){ canvas.width = w; canvas.height = h; } var a = w/h, k = 1-clamp(P.padding, 0, .9), wide = a >= 1;
+    sc = P.fit === 'cover' ? (wide ? [k, k*a] : [k/a, k]) : (wide ? [k/a, k] : [k, k*a]); return canvas.height/Math.max(1, canvas.clientHeight); }
+  function hover(dt){ if (!curA) return; var f = dt*60, st = P.stagger, rest = phase === 'hold', ek = eff('easing', from), on = P.hover && mouse.on, R = P.radius, R2 = R*R, S = P.strength*.012*f, k = P.spring*f, damp = Math.pow(clamp(P.damping, 0, .995), f), mode = P.hoverMode, any = false, mx = mouse.x, my = mouse.y;
+    for (var i = 0, j = 0; i < N; i++, j += 2){ var ox = off[j], oy = off[j+1], vx = vel[j], vy = vel[j+1], near = false;
+      if (on){ var p = rest ? 1 : clamp(ease(T*(1+st)-curK[i]*st, ek), 0, 1), dx = curA[j]+(curB[j]-curA[j])*p+ox-mx, dy = curA[j+1]+(curB[j+1]-curA[j+1])*p+oy-my, d2 = dx*dx+dy*dy;
+        if (d2 < R2){ near = true; var d = Math.sqrt(d2)+1e-5, q = 1-d/R, nx = dx/d, ny = dy/d; q *= q;
+          if (mode === 'attract'){ vx -= nx*q*S*.8; vy -= ny*q*S*.8; } else if (mode === 'swirl'){ vx += -ny*q*S; vy += nx*q*S; }
+          else if (mode === 'scatter'){ vx += (Math.random()-.5)*q*S*3; vy += (Math.random()-.5)*q*S*3; } else if (mode === 'magnify'){ vx += nx*q*S*.35; vy += ny*q*S*.35; } else { vx += nx*q*S; vy += ny*q*S; } } }
+      if (!near && ox === 0 && oy === 0 && vx === 0 && vy === 0) continue;
+      vx = (vx-ox*k)*damp; vy = (vy-oy*k)*damp; ox += vx; oy += vy;
+      if (!near && Math.abs(ox)+Math.abs(oy) < 2e-4 && Math.abs(vx)+Math.abs(vy) < 2e-5){ ox = oy = vx = vy = 0; }
+      off[j] = ox; off[j+1] = oy; vel[j] = vx; vel[j+1] = vy; any = true; }
+    if (any || offDirty){ gl.bindBuffer(gl.ARRAY_BUFFER, buf.O); gl.bufferSubData(gl.ARRAY_BUFFER, 0, off); offDirty = any; } }
+  function tick(dt){ if (!ready || items.length < 2) return; if (mouse.on) mouse.since += dt;
+    if (scrubbing || !playing || phase === 'scroll') return;
+    if (phase === 'hold'){ clock += dt;
+      if (P.trigger === 'auto' && !done && clock >= eff('hold', cur)){ var t = target(dir); if (t < 0) done = true; else go(t); }
+      else if (P.trigger === 'hover' && mouse.on && mouse.since >= Math.max(.3, eff('hold', cur))){ mouse.since = 0; next(); } }
+    else if (phase === 'delay'){ clock += dt; if (clock >= eff('delay', from)) phase = 'morph'; }
+    else if (phase === 'morph'){ T += dt/Math.max(.05, eff('duration', from)); if (T >= 1){ T = 1; cur = to; phase = 'hold'; clock = 0; scrollPos = cur; } } }
+  var last = 0;
+  function frame(now){ if (dead) return; requestAnimationFrame(frame); var dt = Math.min(.05, (now-last)/1000 || 0); last = now;
+    if (!visible || document.hidden || !ready) return;                                               /* nothing is drawn while the canvas is off-screen */
+    var t0 = performance.now(), dpr = layout(); time += dt; tick(dt); hover(dt); loadSprite();
+    gl.viewport(0, 0, canvas.width, canvas.height); gl.enable(gl.BLEND); var bg = hex(P.bg), trail = P.transparent ? 0 : clamp(P.trails, 0, .98);
+    if (trail > 0){ gl.useProgram(qp); gl.bindVertexArray(emptyVao); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); gl.uniform4f(uQC, bg[0], bg[1], bg[2], 1-trail*.96); gl.drawArrays(gl.TRIANGLES, 0, 3); }
+    else { if (P.transparent) gl.clearColor(0, 0, 0, 0); else gl.clearColor(bg[0], bg[1], bg[2], 1); gl.clear(gl.COLOR_BUFFER_BIT); }
+    gl.useProgram(pr); gl.bindVertexArray(vao); if (P.glow > 0) gl.blendFunc(gl.ONE, gl.ONE); else gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    var ek2 = eff('easing', from), bz = ek2 === 'bezier' ? bezNums() : null, c1 = hex(P.color), c2 = hex(P.color2), shape = SHAPES[P.shape] || 0; if (shape === 5 && !spriteOk) shape = 0;
+    gl.uniform1f(U.uT, phase === 'hold' ? 1 : T); gl.uniform1i(U.uEase, bz ? 4 : ek2 === 'bezier' ? 1 : EASES[ek2] === undefined ? 1 : EASES[ek2]); gl.uniform4f(U.uBez, bz ? bz[0] : 0, bz ? bz[1] : 0, bz ? bz[2] : 1, bz ? bz[3] : 1); gl.uniform1f(U.uStagger, P.stagger); gl.uniform1f(U.uTime, time); gl.uniform1f(U.uAmp, eff('amp', from)); gl.uniform1f(U.uSize, P.size); gl.uniform1f(U.uSizeVar, P.sizeVar); gl.uniform1f(U.uJitter, P.jitter);
+    gl.uniform1f(U.uDpr, dpr); gl.uniform1f(U.uOpacity, P.opacity); gl.uniform1f(U.uGlow, P.glow); gl.uniform1f(U.uMagR, P.radius); gl.uniform1f(U.uMag, P.hover && P.hoverMode === 'magnify' && mouse.on ? P.strength*2.5 : 0);
+    gl.uniform1i(U.uStyle, STYLES[eff('style', from)] || 0); gl.uniform1i(U.uColorMode, CMODES[P.colorMode] || 0); gl.uniform2f(U.uScale, sc[0], sc[1]); gl.uniform2f(U.uShift, P.posX, P.posY); gl.uniform2f(U.uMouse, mouse.x, mouse.y);
+    gl.uniform3f(U.uC1, c1[0], c1[1], c1[2]); gl.uniform3f(U.uC2, c2[0], c2[1], c2[2]); gl.uniform1i(U.uShape, shape); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, spriteTex); gl.uniform1i(U.uSprite, 0);
+    gl.drawArrays(gl.POINTS, 0, N);
+    var ms = performance.now()-t0; frames++; if (frames > 40 && frames < 400 && (dt > .03 || ms > 14)) slow++;                      /* a weak device: thin the particles out, once or twice */
+    if (P.autoQuality && frames === 240 && slow > 90 && P.count > 6000){ P.count = Math.round(P.count*.55); frames = 41; slow = 0; resample(); if (opts.onQuality) opts.onQuality(P.count); }
+    if (opts.onState) opts.onState(api.state()); }
+
+  function load(src){ return new Promise(function(res){ var im = new Image(); im.onload = function(){ res(im); }; im.onerror = function(){ res(null); }; im.src = src; }); }
+  function setImages(list){ var keep = items; return Promise.all(list.map(function(x, i){ var old = keep.find(function(k){ return k.src === x.src; });
+      return old ? Promise.resolve(Object.assign(old, { own:x.own || null })) : load(x.src).then(function(el){ return el ? { src:x.src, el:el, own:x.own || null, seed:1000+Math.round(Math.random()*1e6), arr:{} } : null; }); }))
+    .then(function(arr){ items = arr.filter(Boolean); cur = clamp(cur, 0, Math.max(0, items.length-1)); from = to = cur; T = 1; phase = 'hold'; clock = 0; done = false; if (items.length) resample(); return api; }); }
+  var RESAMPLE = { count:1, sampling:1, threshold:1, bgMode:1, invert:1, tone:1 }, REARR = { extras:1 };
+  var api = { P:P,
+    set: function(k, v){ P[k] = v; if (RESAMPLE[k]) resample(); else if (REARR[k]) rearrange(); else if (k === 'mapping' && phase === 'hold' && ready) pair(cur, cur); if (k === 'trigger'){ phase = 'hold'; T = 1; clock = 0; pair(cur, cur); } if (k === 'playback') done = false; },
+    setAll: function(o){ Object.assign(P, o); if (items.length) resample(); done = false; },
+    setImages: setImages, setOwn: function(i, o){ if (items[i]) items[i].own = o || null; }, next: next, prev: prev, goto: function(i){ return go(i); }, refreshSteps: function(){ if (phase === 'hold' && ready) pair(cur, cur); },
+    play: function(v){ playing = v === undefined ? !playing : !!v; return playing; },
+    seek: function(t){ if (items.length < 2) return; if (phase === 'hold'){ var j = target(dir); if (j < 0) j = (cur+1)%items.length; pair(cur, j); } scrubbing = true; phase = 'morph'; T = clamp(t, 0, 1); },
+    release: function(){ scrubbing = false; if (T >= 1){ cur = to; phase = 'hold'; clock = 0; } else if (T <= 0){ phase = 'hold'; clock = 0; T = 1; pair(cur, cur); } },
+    state: function(){ return { index:cur, from:from, to:to, t:phase === 'hold' ? 0 : T, phase:phase, playing:playing, images:items.length, particles:N }; },
+    loopSeconds: function(){ var s = 0; items.forEach(function(_, i){ s += eff('hold', i)+eff('delay', i)+eff('duration', i); }); return s; },
+    restart: function(){ cur = 0; dir = 1; from = to = 0; T = 1; phase = 'hold'; clock = 0; done = false; if (ready) pair(0, 0); },
+    destroy: function(){ dead = true; if (io) io.disconnect(); } };
+  var weak = (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4 || /Mobi|Android/i.test(navigator.userAgent);
+  if (P.autoQuality && weak && P.count > 22000){ P.count = 22000; if (opts.onQuality) opts.onQuality(P.count); }
+  requestAnimationFrame(frame);
+  if (opts.images && opts.images.length) setImages(opts.images.map(function(s, i){ return typeof s === 'string' ? { src:s, own:(opts.overrides || [])[i] || null } : s; }));
+  return api;
+}
+ParticleMorph.DEFAULTS = { count:42000, sampling:'stipple', tone:.9, threshold:.1, bgMode:'auto', invert:false,
+  mapping:'nearest', style:'flow', amp:.55, extras:'fade', stagger:.35,
+  trigger:'auto', duration:2.4, hold:1.8, delay:0, easing:'inout', bezier:'0.7,0,0.2,1', playback:'loop',
+  hover:true, hoverMode:'repel', radius:.2, strength:.6, spring:.06, damping:.86,
+  size:1.5, sizeVar:.45, shape:'circle', sprite:'', colorMode:'original', color:'#ffffff', color2:'#4f7cff', opacity:.9, glow:0, trails:0, jitter:.25, bg:'#08080a', transparent:false,
+  canvasMode:'fill', cw:1080, ch:1080, fit:'contain', padding:.14, posX:0, posY:0, autoQuality:true };
+</script>
+
+<script>
+/* The panel: everything here is page UI around the engine above. */
+const $ = id => document.getElementById(id), el = (t, c) => { const e = document.createElement(t); if (c) e.className = c; return e; };
+const cv = $('c'), D = ParticleMorph.DEFAULTS;
+let images = [], sel = 0, PMX = null;                              // images: [{ src, own }]
+const P = () => PMX.P;
+
+/* ------------------------------------------------------------ sample images, drawn here so the page needs no files */
+function sampleImages(){ const mk = draw => { const c = el('canvas'); c.width = c.height = 512; const g = c.getContext('2d'); draw(g); return c.toDataURL('image/png'); }, out = [];
+  out.push(mk(g => { const r = g.createRadialGradient(200, 190, 10, 256, 256, 190); r.addColorStop(0, '#fff'); r.addColorStop(.55, '#8b8b8b'); r.addColorStop(1, '#161616'); g.fillStyle = r; g.beginPath(); g.arc(256, 256, 150, 0, 7); g.fill();
+    g.save(); g.translate(256, 262); g.rotate(-.35); g.scale(1, .26); g.lineWidth = 26; const l = g.createLinearGradient(-240, 0, 240, 0); l.addColorStop(0, '#444'); l.addColorStop(.5, '#fff'); l.addColorStop(1, '#555'); g.strokeStyle = l; g.beginPath(); g.arc(0, 0, 225, .12, Math.PI-.12); g.stroke(); g.restore(); }));
+  out.push(mk(g => { const f = (pts, a, b) => { const l = g.createLinearGradient(pts[0][0], pts[0][1], pts[2][0], pts[2][1]); l.addColorStop(0, a); l.addColorStop(1, b); g.fillStyle = l; g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.closePath(); g.fill(); };
+    f([[256,70],[420,160],[256,250],[92,160]], '#ffffff', '#b9b9b9'); f([[92,170],[250,258],[250,446],[92,352]], '#8a8a8a', '#2b2b2b'); f([[262,258],[420,170],[420,352],[262,446]], '#555', '#111'); }));
+  out.push(mk(g => { g.translate(256, 256); for (let k = 0; k < 6; k++){ g.rotate(Math.PI/3); const l = g.createLinearGradient(0, 0, 0, -215); l.addColorStop(0, '#222'); l.addColorStop(.6, '#bdbdbd'); l.addColorStop(1, '#fff'); g.fillStyle = l; g.beginPath(); g.moveTo(0, -14); g.quadraticCurveTo(95, -110, 0, -215); g.quadraticCurveTo(-95, -110, 0, -14); g.fill(); }
+    const r = g.createRadialGradient(-8, -8, 2, 0, 0, 38); r.addColorStop(0, '#fff'); r.addColorStop(1, '#333'); g.fillStyle = r; g.beginPath(); g.arc(0, 0, 36, 0, 7); g.fill(); }));
+  return fetch('logo.svg').then(r => r.blob()).then(b => new Promise(res => { const im = new Image(), u = URL.createObjectURL(b); im.onload = () => { out.unshift(mk(g => { g.drawImage(im, 26, 26, 460, 460); g.globalCompositeOperation = 'source-atop'; const l = g.createLinearGradient(60, 60, 440, 460); l.addColorStop(0, '#fff'); l.addColorStop(1, '#5c5c5c'); g.fillStyle = l; g.fillRect(0, 0, 512, 512); })); URL.revokeObjectURL(u); res(out); }; im.onerror = () => res(out); im.src = u; })).catch(() => out); }
+
+/* ------------------------------------------------------------ controls */
+const refreshers = [];
+function ctl(host, o){                                              // o: { on:()=>object, key, label, tip, type, min, max, step, fmt, opts, when, apply }
+  const tgt = o.on || P; let row, inp, val;
+  if (o.type === 'toggle'){ row = el('label','toggle'); inp = el('input'); inp.type = 'checkbox'; row.append(inp, ' '+o.label); }
+  else { row = el('div','row'); const lab = el('label'); lab.textContent = o.label;
+    if (o.type === 'select'){ inp = el('select'); for (const [v, n] of o.opts){ const op = el('option'); op.value = v; op.textContent = n; inp.append(op); } }
+    else { inp = el('input'); inp.type = o.type || 'range'; if (inp.type === 'range'){ inp.min = o.min; inp.max = o.max; inp.step = o.step || 1; val = el('span','val'); } }
+    row.append(lab, inp); if (val) row.append(val); }
+  row.title = o.tip || ''; const fmt = o.fmt || (v => String(v));
+  const read = () => inp.type === 'checkbox' ? inp.checked : inp.type === 'range' ? parseFloat(inp.value) : inp.value;
+  inp[inp.type === 'range' || inp.type === 'color' || inp.type === 'text' ? 'oninput' : 'onchange'] = () => { const t = tgt(); if (!t) return; const v = read();
+    if (o.on) { t[o.key] = v; if (o.apply) o.apply(v); } else PMX.set(o.key, v); if (val) val.textContent = fmt(v); if (o.then) o.then(v); if (inp.type === 'checkbox' || o.type === 'select') refresh(); stash(); };
+  refreshers.push(() => { const t = tgt(); row.hidden = !t || !!(o.when && !o.when(t)); if (row.hidden) return; const v = t[o.key] === undefined ? o.dflt : t[o.key];
+    if (inp.type === 'checkbox') inp.checked = !!v; else if (document.activeElement !== inp || inp.type === 'range') inp.value = v; if (val) val.textContent = fmt(v === undefined ? '' : v); });
+  $(host).append(row); return row;
+}
+const pct = v => Math.round(v*100)+'%', sec = v => (+v).toFixed(1)+' s', f2 = v => (+v).toFixed(2), px = v => (+v).toFixed(1)+' px';
+const STYLE_OPTS = [['direct','Direct path'],['explode','Explode, then re-form'],['swirl','Swirl'],['flow','Flow-field drift'],['gravity','Gravity drop']];
+const MAP_OPTS = [['random','Random'],['nearest','Nearest position'],['bright','By brightness'],['sweep','Sweep left to right'],['centre','Out from the centre']];
+const EASE_OPTS = [['linear','Linear'],['inout','Ease in-out'],['elastic','Elastic'],['back','Back'],['bezier','Custom bezier']];
+
+ctl('f-images', { key:'count', label:'Particles', min:2000, max:160000, step:1000, fmt:v => Math.round(v/1000)+'k', tip:'How many particles each image is made of. More is finer and heavier.' });
+ctl('f-images', { key:'sampling', label:'Sampling', type:'select', opts:[['stipple','Stipple (follows brightness)'],['grid','Even grid']], tip:'Stipple puts more particles where the image is brighter. Grid spaces them evenly.' });
+ctl('f-images', { key:'tone', label:'Brightness → density', min:0, max:1, step:.01, fmt:pct, when:p => p.sampling === 'stipple', tip:'How strongly bright areas attract particles. 0% spreads them evenly over the subject.' });
+ctl('f-images', { key:'bgMode', label:'Background', type:'select', opts:[['auto','Detect'],['alpha','Transparency only'],['colour','Corner colour']], tip:'How the background is found: by transparency, or by the colour in the corners of the image.' });
+ctl('f-images', { key:'threshold', label:'Threshold', min:0, max:.8, step:.01, fmt:pct, tip:'How different a pixel must be from the background to become a particle.' });
+ctl('f-images', { key:'invert', label:'Dark areas get the particles', type:'toggle', tip:'Turn on for dark drawings on a light background.' });
+
+const own = () => { const it = images[sel]; if (!it) return null; if (!it.own) it.own = { on:false }; return it.own; }, ownOn = o => o.on, pushOwn = () => { PMX.setOwn(sel, images[sel].own); PMX.refreshSteps(); thumbs(); };
+ctl('f-own', { on:own, key:'on', label:'Give this step its own settings', type:'toggle', apply:pushOwn, tip:'Override how this image morphs into the next one.' });
+ctl('f-own', { on:own, key:'style', dflt:'flow', label:'Transition', type:'select', opts:STYLE_OPTS, when:ownOn, apply:pushOwn, tip:'The path particles take when leaving this image.' });
+ctl('f-own', { on:own, key:'mapping', dflt:'nearest', label:'Mapping', type:'select', opts:MAP_OPTS, when:ownOn, apply:pushOwn, tip:'How particles are matched to places in the next image.' });
+ctl('f-own', { on:own, key:'easing', dflt:'inout', label:'Easing', type:'select', opts:EASE_OPTS, when:ownOn, apply:pushOwn, tip:'The speed curve of this morph.' });
+ctl('f-own', { on:own, key:'duration', dflt:2.4, label:'Duration', min:.2, max:10, step:.1, fmt:sec, when:ownOn, apply:pushOwn, tip:'How long this morph takes.' });
+ctl('f-own', { on:own, key:'hold', dflt:1.8, label:'Hold', min:0, max:10, step:.1, fmt:sec, when:ownOn, apply:pushOwn, tip:'How long this image stays before it morphs.' });
+ctl('f-own', { on:own, key:'amp', dflt:.55, label:'Intensity', min:0, max:2, step:.01, fmt:pct, when:ownOn, apply:pushOwn, tip:'How far particles stray from the straight path in this morph.' });
+
+ctl('f-morph', { key:'style', label:'Transition', type:'select', opts:STYLE_OPTS, tip:'The path particles take between two images.' });
+ctl('f-morph', { key:'amp', label:'Intensity', min:0, max:2, step:.01, fmt:pct, tip:'How far particles stray from the straight path.' });
+ctl('f-morph', { key:'mapping', label:'Mapping', type:'select', opts:MAP_OPTS, tip:'How particles in one image are matched to places in the next.' });
+ctl('f-morph', { key:'stagger', label:'Stagger', min:0, max:1.5, step:.01, fmt:pct, tip:'How spread out the departures are. With Sweep or Centre mapping this makes a visible wave.' });
+ctl('f-morph', { key:'extras', label:'Spare particles', type:'select', opts:[['fade','Fade in place'],['scatter','Fly in from off-screen']], tip:'What happens to particles one image has and the other does not.' });
+
+ctl('f-timing', { key:'trigger', label:'Start a morph', type:'select', opts:[['auto','Autoplay'],['click','On click'],['scroll','On scroll'],['hover','Hover and hold'],['manual','Buttons only']], tip:'What starts the next morph. Previous and Next always work.' });
+ctl('f-timing', { key:'playback', label:'Playback', type:'select', opts:[['loop','Loop'],['pingpong','Ping-pong'],['once','Play once']], tip:'Loop goes round, ping-pong runs forward then back, once stops at the last image.' });
+ctl('f-timing', { key:'duration', label:'Duration', min:.2, max:10, step:.1, fmt:sec, tip:'How long a morph takes.' });
+ctl('f-timing', { key:'hold', label:'Hold', min:0, max:10, step:.1, fmt:sec, tip:'How long each image stays before the next morph. Also the wait for Hover and hold.' });
+ctl('f-timing', { key:'delay', label:'Delay', min:0, max:5, step:.1, fmt:sec, tip:'A pause between the trigger and the start of the morph.' });
+ctl('f-timing', { key:'easing', label:'Easing', type:'select', opts:EASE_OPTS, tip:'The speed curve of the morph.' });
+ctl('f-timing', { key:'bezier', label:'Bezier', type:'text', when:p => p.easing === 'bezier', tip:'Four numbers, as in CSS cubic-bezier: x1, y1, x2, y2.' });
+
+ctl('f-hover', { key:'hover', label:'Particles react to the pointer', type:'toggle', tip:'Turn the hover effect on or off. Dragging a finger works the same way.' });
+ctl('f-hover', { key:'hoverMode', label:'Mode', type:'select', opts:[['repel','Repel'],['attract','Attract'],['swirl','Swirl'],['scatter','Scatter'],['magnify','Magnify']], tip:'What particles near the pointer do.' });
+ctl('f-hover', { key:'radius', label:'Radius', min:.03, max:.8, step:.01, fmt:f2, tip:'How far from the pointer particles are affected.' });
+ctl('f-hover', { key:'strength', label:'Strength', min:0, max:3, step:.01, fmt:pct, tip:'How hard particles are pushed.' });
+ctl('f-hover', { key:'spring', label:'Return speed', min:.005, max:.4, step:.005, fmt:f2, tip:'Spring stiffness: how quickly particles go back to their place.' });
+ctl('f-hover', { key:'damping', label:'Damping', min:.5, max:.99, step:.01, fmt:f2, tip:'Lower settles at once, higher keeps wobbling.' });
+
+ctl('f-look', { key:'size', label:'Size', min:.5, max:12, step:.1, fmt:px, tip:'Particle diameter.' });
+ctl('f-look', { key:'sizeVar', label:'Size variation', min:0, max:1, step:.01, fmt:pct, tip:'How much particle sizes differ from each other.' });
+ctl('f-look', { key:'shape', label:'Shape', type:'select', opts:[['circle','Circle'],['square','Square'],['diamond','Diamond'],['star','Star'],['ring','Ring'],['custom','Custom sprite']], tip:'The shape of each particle. Custom uses an image you choose below.' });
+ctl('f-look', { key:'colorMode', label:'Colour', type:'select', opts:[['original','Image colours'],['single','One colour'],['gradient','Gradient'],['blend','Blend the two images']], tip:'Image colours switch mid-morph; Blend mixes them gradually the whole way.' });
+ctl('f-look', { key:'color', label:'Colour A', type:'color', when:p => p.colorMode === 'single' || p.colorMode === 'gradient', tip:'The single colour, or the top of the gradient.' });
+ctl('f-look', { key:'color2', label:'Colour B', type:'color', when:p => p.colorMode === 'gradient', tip:'The bottom of the gradient.' });
+ctl('f-look', { key:'opacity', label:'Opacity', min:.05, max:1, step:.01, fmt:pct, tip:'How solid each particle is.' });
+ctl('f-look', { key:'glow', label:'Glow', min:0, max:1, step:.01, fmt:pct, tip:'A soft halo around each particle; overlapping particles add up to light.' });
+ctl('f-look', { key:'trails', label:'Motion trails', min:0, max:.98, step:.01, fmt:pct, when:p => !p.transparent, tip:'Leaves a fading streak behind moving particles.' });
+ctl('f-look', { key:'jitter', label:'Idle shimmer', min:0, max:2, step:.01, fmt:pct, tip:'A small constant movement so the image is never frozen.' });
+ctl('f-look', { key:'bg', label:'Background', type:'color', when:p => !p.transparent, tip:'Canvas colour.' });
+ctl('f-look', { key:'transparent', label:'Transparent background', type:'toggle', then:layoutCanvas, tip:'No background at all; PNG and embeds keep the transparency.' });
+
+ctl('f-layout', { key:'canvasMode', label:'Canvas', type:'select', opts:[['fill','Fill the window'],['square','Square'],['wide','16 : 9'],['tall','9 : 16'],['custom','Custom size']], then:layoutCanvas, tip:'The shape of the canvas.' });
+ctl('f-layout', { key:'cw', label:'Width', min:200, max:3840, step:10, fmt:v => v+' px', when:p => p.canvasMode === 'custom', then:layoutCanvas, tip:'Canvas width for a custom size.' });
+ctl('f-layout', { key:'ch', label:'Height', min:200, max:3840, step:10, fmt:v => v+' px', when:p => p.canvasMode === 'custom', then:layoutCanvas, tip:'Canvas height for a custom size.' });
+ctl('f-layout', { key:'fit', label:'Fit', type:'select', opts:[['contain','Contain'],['cover','Cover']], tip:'Contain shows the whole image; cover fills the canvas and crops.' });
+ctl('f-layout', { key:'padding', label:'Padding', min:0, max:.8, step:.01, fmt:pct, tip:'Empty space around the image.' });
+ctl('f-layout', { key:'posX', label:'Position X', min:-1, max:1, step:.01, fmt:f2, tip:'Move the image left or right.' });
+ctl('f-layout', { key:'posY', label:'Position Y', min:-1, max:1, step:.01, fmt:f2, tip:'Move the image up or down.' });
+ctl('f-layout', { key:'autoQuality', label:'Lower the particle count on slow devices', type:'toggle', tip:'If frames take too long, the count is reduced automatically.' });
+
+function layoutCanvas(){ const p = P(), st = $('stage'), W = st.clientWidth, H = st.clientHeight, m = p.canvasMode; let w = W, h = H;
+  const a = m === 'square' ? 1 : m === 'wide' ? 16/9 : m === 'tall' ? 9/16 : m === 'custom' ? p.cw/p.ch : 0;
+  if (a){ const pad = 24; w = Math.min(W-pad, (H-pad)*a); h = w/a; }
+  cv.style.width = Math.round(w)+'px'; cv.style.height = Math.round(h)+'px'; st.classList.toggle('checker', !!p.transparent); }
+
+/* ------------------------------------------------------------ images */
+function thumbs(){ const host = $('thumbs'), st = PMX.state(); host.textContent = '';
+  images.forEach((it, i) => { const t = el('div','th'); t.draggable = true; t.classList.toggle('on', i === sel); t.classList.toggle('live', i === st.index); t.title = 'Image '+(i+1)+': click to select, drag to reorder';
+    const im = el('img'); im.src = it.src; im.alt = ''; const n = el('i'); n.textContent = String(i+1).padStart(2,'0'); const x = el('button'); x.textContent = '×'; x.title = 'Remove this image';
+    x.onclick = e => { e.stopPropagation(); if (images.length <= 2){ note('Keep at least two images'); return; } images.splice(i, 1); sel = Math.min(sel, images.length-1); pushImages(); };
+    t.onclick = () => { sel = i; refresh(); PMX.goto(i); };
+    t.ondragstart = e => { e.dataTransfer.setData('text/plain', String(i)); e.dataTransfer.effectAllowed = 'move'; };
+    t.ondragover = e => { e.preventDefault(); t.classList.add('dragover'); }; t.ondragleave = () => t.classList.remove('dragover');
+    t.ondrop = e => { e.preventDefault(); e.stopPropagation(); t.classList.remove('dragover'); if (e.dataTransfer.files.length){ addFiles(e.dataTransfer.files); return; } const a = parseInt(e.dataTransfer.getData('text/plain'), 10); if (isNaN(a) || a === i) return;
+      const [m] = images.splice(a, 1); images.splice(i, 0, m); sel = i; pushImages(); };
+    t.append(im, n, x); if (it.own && it.own.on){ const o = el('span','own'); o.textContent = 'OWN'; t.append(o); } host.append(t); });
+  $('ownTitle').textContent = images.length ? 'Step '+(sel+1)+' → '+((sel+1)%images.length+1) : 'This step'; }
+function pushImages(){ return PMX.setImages(images).then(() => { refresh(); stash(); }); }
+function fileToSrc(file){ return new Promise((res, rej) => { const im = new Image(), u = URL.createObjectURL(file); im.onload = () => { const iw = im.naturalWidth || 800, ih = im.naturalHeight || 800, big = Math.max(iw, ih), m = big > 640 || big < 320 ? 640/big : 1, c = el('canvas');
+    c.width = Math.max(1, Math.round(iw*m)); c.height = Math.max(1, Math.round(ih*m)); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(u); res(c.toDataURL('image/png')); };
+  im.onerror = () => { URL.revokeObjectURL(u); rej(); }; im.src = u; }); }
+async function addFiles(files, replaceAt){ let added = 0; for (const f of files){ if (!/\.(png|jpe?g|webp|svg)$/i.test(f.name) && !/^image\/(png|jpeg|webp|svg\+xml)$/.test(f.type)){ note(f.name+': not a PNG, JPG, WEBP or SVG'); continue; }
+    try { const src = await fileToSrc(f); if (replaceAt !== undefined && !added){ images[replaceAt] = { src, own:images[replaceAt].own }; } else images.push({ src, own:null }); added++; } catch(e){ note(f.name+' could not be read'); } }
+  if (added){ if (replaceAt === undefined) sel = images.length-1; pushImages(); } }
+let want = 'add';
+const pick = (kind, accept, multiple) => { want = kind; const f = $('file'); f.accept = accept; f.multiple = !!multiple; f.value = ''; f.click(); };
+$('file').onchange = async e => { const fs = [...e.target.files]; if (!fs.length) return;
+  if (want === 'add') addFiles(fs); else if (want === 'replace') addFiles(fs, sel);
+  else if (want === 'sprite'){ try { PMX.set('sprite', await fileToSrc(fs[0])); PMX.set('shape', 'custom'); refresh(); stash(); } catch(x){ note('That image could not be read'); } }
+  else if (want === 'json'){ try { applySaved(JSON.parse(await fs[0].text())); } catch(x){ note('That file is not a saved setup'); } } };
+const dz = $('dropzone'); dz.onclick = () => pick('add', '.png,.jpg,.jpeg,.webp,.svg,image/png,image/jpeg,image/webp,image/svg+xml', true);
+['dragenter','dragover'].forEach(n => addEventListener(n, e => { e.preventDefault(); dz.classList.add('over'); })); ['dragleave','drop'].forEach(n => addEventListener(n, e => { e.preventDefault(); dz.classList.remove('over'); }));
+addEventListener('drop', e => { if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files); });
+$('bReplace').onclick = () => pick('replace', 'image/*'); $('bSprite').onclick = () => pick('sprite', 'image/*'); $('bLoad').onclick = () => pick('json', '.json,application/json');
+$('bClear').onclick = async () => { images = (await sampleImages()).map(src => ({ src, own:null })); sel = 0; pushImages(); };
+
+/* ------------------------------------------------------------ presets, storage */
+const PRESETS = {
+  'Soft Drift': {},
+  Explosive: { style:'explode', amp:1.1, mapping:'random', easing:'back', duration:1.6, hold:1.2, stagger:.2, hoverMode:'scatter', strength:1.2, glow:.25, jitter:.4 },
+  Liquid: { style:'swirl', amp:.7, mapping:'centre', stagger:.9, easing:'inout', duration:3.2, hoverMode:'swirl', radius:.3, spring:.03, damping:.93, trails:.6, size:1.8 },
+  Magnetic: { style:'direct', mapping:'sweep', stagger:1.1, easing:'elastic', duration:2.2, hoverMode:'attract', strength:1.4, radius:.28, spring:.1, damping:.8, colorMode:'gradient', color:'#ffffff', color2:'#4f7cff' },
+};
+const presetBtns = {}; let preset = 'Soft Drift';
+for (const k in PRESETS){ const b = el('button'); b.textContent = k; b.title = 'Load the '+k+' look'; b.onclick = () => { preset = k; PMX.setAll(Object.assign({}, D, PRESETS[k], { count:P().count, canvasMode:P().canvasMode })); layoutCanvas(); refresh(); stash(); }; $('presets').append(b); presetBtns[k] = b; }
+$('bReset').onclick = () => presetBtns['Soft Drift'].click();
+$('bRand').onclick = () => { const R = Math.random, pk = a => a[R()*a.length|0]; preset = null;
+  PMX.setAll({ style:pk(['direct','explode','swirl','flow','gravity']), amp:.3+R()*1, mapping:pk(['random','nearest','bright','sweep','centre']), stagger:R()*1.2, easing:pk(['inout','inout','back','elastic','linear']), duration:1.2+R()*2.5, hold:.8+R()*1.6,
+    hoverMode:pk(['repel','attract','swirl','scatter','magnify']), radius:.12+R()*.3, strength:.4+R()*1.2, spring:.02+R()*.12, damping:.78+R()*.17, size:1+R()*2.2, sizeVar:R()*.8, shape:pk(['circle','circle','square','diamond','star','ring']),
+    colorMode:pk(['original','original','single','gradient']), color:'#'+(R()*0xffffff|0).toString(16).padStart(6,'0'), color2:'#'+(R()*0xffffff|0).toString(16).padStart(6,'0'), glow:R() < .4 ? R()*.6 : 0, trails:R() < .35 ? R()*.8 : 0, jitter:R()*.8 }); refresh(); stash(); };
+const KEY = 'moxx-particle-morph'; let stashT = 0;
+const snapshot = withImages => ({ v:1, settings:Object.assign({}, P()), overrides:images.map(i => i.own && i.own.on ? i.own : null), images:withImages ? images.map(i => i.src) : undefined });
+function stash(){ clearTimeout(stashT); stashT = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(snapshot(false))); } catch(e){} }, 400); }
+function applySaved(o){ if (!o || !o.settings) throw 0; preset = null; if (o.images && o.images.length > 1){ images = o.images.map((src, i) => ({ src, own:(o.overrides || [])[i] || null })); sel = 0; }
+  else if (o.overrides) images.forEach((it, i) => { it.own = o.overrides[i] || null; });
+  Object.assign(P(), D, o.settings); PMX.setImages(images).then(() => { PMX.setAll({}); layoutCanvas(); refresh(); stash(); }); }
+
+function refresh(){ for (const r of refreshers) r(); for (const k in presetBtns) presetBtns[k].classList.toggle('on', k === preset); thumbs(); $('bSprite').hidden = P().shape !== 'custom'; }
+function note(msg){ const h = $('hud'); if (!h.dataset.was) h.dataset.was = h.innerHTML; h.textContent = msg; clearTimeout(note.t); note.t = setTimeout(() => { h.innerHTML = h.dataset.was; }, 2600); }
+
+/* ------------------------------------------------------------ transport, export */
+const scrub = $('scrub'); let scrubbing = false, lastIndex = -1;
+scrub.oninput = () => { scrubbing = true; PMX.seek(parseFloat(scrub.value)); }; const letGo = () => { if (scrubbing){ scrubbing = false; PMX.release(); } }; scrub.onchange = letGo; scrub.onpointerup = letGo;
+function onState(s){ if (!scrubbing) scrub.value = s.t; $('scrubV').textContent = (s.from+1)+' → '+(s.to+1)+' · '+Math.round(s.t*100)+'%';
+  if (s.index !== lastIndex){ lastIndex = s.index; document.querySelectorAll('#thumbs .th').forEach((t, i) => t.classList.toggle('live', i === s.index)); }
+  $('stat').textContent = s.particles.toLocaleString()+' particles · '+s.images+' images'; }
+$('bNext').onclick = () => PMX.next(); $('bPrev').onclick = () => PMX.prev(); $('bPlay').onclick = () => { $('bPlay').textContent = PMX.play() ? 'Pause' : 'Play'; };
+$('bHide').onclick = () => { document.body.classList.toggle('ui-hidden'); layoutCanvas(); };
+const download = (blob, name) => { const a = el('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
+$('bSave').onclick = () => cv.toBlob(b => download(b, 'particle-morph.png'));
+$('bJson').onclick = () => download(new Blob([JSON.stringify(snapshot(true))], { type:'application/json' }), 'particle-morph.json');
+function snippet(){ const p = P(), a = p.canvasMode === 'square' ? '1 / 1' : p.canvasMode === 'tall' ? '9 / 16' : p.canvasMode === 'custom' ? p.cw+' / '+p.ch : '16 / 9', s = Object.assign({}, p); delete s.canvasMode; delete s.cw; delete s.ch;
+  return '<!-- Particle Morph, made with Moxx Lab. Paste this where the effect should appear. -->\n<canvas style="display:block;width:100%;aspect-ratio:'+a+';touch-action:pan-y"></canvas>\n<scr'+'ipt>\n(function(){ var canvas = document.currentScript.previousElementSibling;\n'+
+    $('engine').textContent.trim()+'\nParticleMorph(canvas, '+JSON.stringify({ images:images.map(i => i.src), overrides:images.map(i => i.own && i.own.on ? i.own : null), settings:s })+');\n})();\n</scr'+'ipt>\n'; }
+$('bSnippet').onclick = () => { const s = snippet(); download(new Blob(['<!doctype html><meta charset="utf-8"><title>Particle Morph</title><body style="margin:0;background:'+(P().transparent ? '#111' : P().bg)+'">\n'+s], { type:'text/html' }), 'particle-morph-embed.html'); note('Snippet saved · '+Math.round(s.length/1024)+' kB'); };
+$('bCopy').onclick = async () => { const s = snippet(); try { await navigator.clipboard.writeText(s); note('Snippet copied · '+Math.round(s.length/1024)+' kB'); } catch(e){ note('Copy was blocked; use Embed snippet'); } };
+$('bVideo').onclick = () => { const b = $('bVideo'); if (b.disabled) return; if (!window.MediaRecorder || !cv.captureStream){ note('This browser cannot record the canvas'); return; }
+  const type = ['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(t => MediaRecorder.isTypeSupported(t)) || '', was = P().trigger, secs = Math.min(60, Math.max(3, PMX.loopSeconds()));
+  const rec = new MediaRecorder(cv.captureStream(60), { mimeType:type, videoBitsPerSecond:18e6 }), chunks = []; let left = Math.ceil(secs);
+  PMX.set('trigger', 'auto'); PMX.restart(); PMX.play(true); $('bPlay').textContent = 'Pause'; b.disabled = true; b.textContent = 'Recording '+left;
+  const tick = setInterval(() => { left--; b.textContent = 'Recording '+Math.max(0, left); }, 1000);
+  rec.ondataavailable = e => e.data.size && chunks.push(e.data);
+  rec.onstop = () => { clearInterval(tick); b.disabled = false; b.textContent = 'Record video'; PMX.set('trigger', was); refresh(); download(new Blob(chunks, { type:type || 'video/webm' }), 'particle-morph'+(type.includes('mp4') ? '.mp4' : '.webm')); };
+  rec.start(); setTimeout(() => rec.stop(), secs*1000); };
+
+addEventListener('keydown', e => { if (/^(TEXTAREA|SELECT)$/.test(e.target.tagName) || (e.target.tagName === 'INPUT' && e.target.type === 'text') || e.metaKey || e.ctrlKey || e.altKey) return; const k = e.key.toLowerCase();
+  if (k === 'h') $('bHide').click(); else if (k === 'r') $('bRand').click(); else if (k === 's') $('bSave').click(); else if (e.key === 'ArrowRight') PMX.next(); else if (e.key === 'ArrowLeft') PMX.prev();
+  else if (e.key === ' '){ e.preventDefault(); $('bPlay').click(); } });
+addEventListener('resize', layoutCanvas);
+
+/* ------------------------------------------------------------ go */
+(async () => {
+  let saved = null; try { saved = JSON.parse(localStorage.getItem(KEY)); } catch(e){}
+  PMX = ParticleMorph(cv, { settings:saved && saved.settings ? Object.assign({}, D, saved.settings) : {}, onState, onQuality:n => { note('Particle count lowered to '+Math.round(n/1000)+'k for this device'); refresh(); } });
+  if (!PMX){ $('err').style.display = 'grid'; return; }
+  if (saved && saved.settings) preset = null;
+  layoutCanvas(); images = (await sampleImages()).map(src => ({ src, own:null })); await PMX.setImages(images); refresh();
+  window.PMX = PMX; window.PMUI = { get images(){ return images; }, snippet, refresh };
+})();
+</script>
+</body>
+</html>
