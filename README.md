@@ -211,8 +211,10 @@ instanced). Flat colour on the top, left and right faces, optional crisp outline
 lighting. Layout: how many boxes fit the frame, the gap between them, and clustering into
 zones of a chosen size. Roads: strips of low, flush, coloured boxes running diagonally through
 the city, with direction, distance apart, width, low buildings beside them, wander, ragged
-edges, height and their own colours. Motifs: 36 small pixel patterns printed on random faces
-(any face, one face, top only or sides only), in their own colours. A master palette (Pastel,
+edges, height and their own colours. Motifs: 36 small pixel patterns and 10 ornate tiles printed on
+random faces (any face, one face, top only or sides only), in their own colours, with a
+pattern scale, an option to wrap the pattern around the box, and their own seed. Road boxes
+can be cut into smaller blocks. A master palette (Pastel,
 Mono, Night, Sunset, Ocean, Forest, Candy, Riso or a custom one) can recolour the whole scene
 over the per-type colours. Types: Uniform or Mixed; each type has a spawn weight, least and most
 width, depth and height, face colours (one colour, three faces, or a palette), outline colour

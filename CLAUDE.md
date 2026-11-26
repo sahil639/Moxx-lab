@@ -165,7 +165,14 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
   baked by `motifAtlas()` into a 30 x 30 R8 texture; per-instance `aMotif` = (motif id, face
   bits 1/2/4, palette row); `FS_FACE` tiles it in squares with a one-cell margin and reads
   colours from `palTex` (64 rows x 3, rebuilt in `buildCity`). The instance colour buffer is 20
-  bytes per box. Master palettes (`MASTERS`, `master()`, `bgHex()`): when one is chosen every
+  bytes per box. Motif ids 36+ are
+  the ten ornate tiles: `TILES` (original designs drawn from circles, petals, stars and
+  diamonds; the user's reference sheet was stock tile artwork and was not copied), baked by
+  `ornateAtlas()` into a 640 x 64 R8 texture (`uAtlas2`); `palTex` is 64 rows x 4 colours. Motif
+  choices use `S.motifSeed`, not the city seed. `uMScale` scales the tile and `uMWrap` makes the
+  left and right faces share one strip of UV (top joins the left). `FS_FACE` takes four taps
+  per pixel. `roadBlock` cuts each road cell into K x K instances, so `buildCity` grows its
+  buffers with `room()`. Master palettes (`MASTERS`, `master()`, `bgHex()`): when one is chosen every
   colour asked for by types, roads, accents and motifs is remapped to it (`col()` in
   `buildCity`), and optionally background and outline ink too. Every panel section starts with
   a one-line `.lead` description. Zones come from smooth `noise()`; "fill off" boxes
