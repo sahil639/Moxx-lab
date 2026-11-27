@@ -241,7 +241,8 @@ colours. Choose, drop or paste an image. Saves a PNG up to 8× the screen size.
 Keys: H panel, R reshuffle, S save PNG.
 
 **`glow-cells.html` — Glow Cells.** A generative colony of glowing cells on black: wobbling
-neon membranes drawn as several thin loops, bright cores, curling threads and beads, in four
+neon membranes drawn as many thin loops and coiled scribbles, bodies filled with looping
+scrawls, bright cores, curling threads and beads, in four
 kinds (rings, tangles, bright cores, jellies). The cells drift, pull together and push each
 other apart, and can be dragged. Around them flow thousands of specks and streaks, gathered
 into clumps with dark voids. Controls for the number and size of cells, overlap, drift, the

@@ -203,10 +203,12 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
   (`newColony` from the seed; `outline()` = circle pushed by sliding sine waves, one phase per
   loop; `physics`: flow drift, pull to the middle, soft repulsion, drag) → `plankton` (specks
   moved by a flow field, faded by a clump mask and near cells) → `drawCell` (kinds `ring`,
-  `tangle`, `core`, `jelly`) → `draw`: everything is painted additively into an offscreen
+  `tangle`, `core`, `jelly`; besides loops and threads each cell gets `scribble` coils — a
+  spring wound along the membrane — and `inside` scrawls, long looping paths that fill the
+  body) → `draw`: everything is painted additively into an offscreen
   `scene` canvas (which keeps the trails), then copied to the visible canvas with two shrunken
   copies laid over it as bloom, so the bloom never feeds back into the trails. Settings in
-  localStorage `moxx-glow-cells`. R = new colony. Exposed as `window.GC`. About 2 ms a frame
+  localStorage `moxx-glow-cells`. R = new colony. Exposed as `window.GC`. About 5 ms a frame
   at the defaults. Not checked: motion at full frame rate, dragging by hand, video.
 
 ## Status (last work)

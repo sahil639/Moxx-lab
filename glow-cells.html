@@ -105,11 +105,11 @@ const PALETTES = {
   Acid:     ['#c8ff1a','#19ffb0','#f7ff3d','#ff3df2','#19f0ff','#8bff3d'],
 };
 const KINDS = { ring:'Rings', tangle:'Tangles', core:'Bright cores', jelly:'Jellies' };
-const DEFAULTS = { seed:4711, count:10, sizeMin:.05, sizeMax:.13, crowd:.55, gather:.5, drift:.5,
-  kinds:{ ring:true, tangle:true, core:true, jelly:true }, wobble:.32, lobes:5, wobbleSpeed:.5, loops:5, weight:1.3, filaments:26, core:.8, beads:.4,
+const DEFAULTS = { seed:4711, count:10, sizeMin:.06, sizeMax:.15, crowd:.3, gather:.4, drift:.5,
+  kinds:{ ring:true, tangle:true, core:true, jelly:true }, wobble:.32, lobes:5, wobbleSpeed:.5, loops:8, weight:1.1, filaments:30, scribble:.75, inside:.75, core:.8, beads:.4,
   palette:PALETTES.Neon.slice(), sat:1,
   specks:7000, speckSize:1.5, streaks:.08, flow:.45, flowScale:2.2, clump:.7, fringe:true, specPal:['#9aa0a8','#7fe7ff','#ff5a5a','#ffffff','#6b7078','#ff9a3c','#7a5cff','#8a8f98'],
-  glow:.6, trails:.3, bg:'#000000', speed:1, playing:true };
+  glow:.5, trails:.3, bg:'#000000', speed:1, playing:true };
 let S = JSON.parse(JSON.stringify(DEFAULTS));
 const cv = $('c'), out = cv.getContext('2d'), scene = el('canvas'), g = scene.getContext('2d'), b1 = el('canvas'), g1 = b1.getContext('2d'), b2 = el('canvas'), g2 = b2.getContext('2d');
 let W = 1, H = 1, dpr = 1, time = 0, cells = [], P = null;
@@ -163,11 +163,11 @@ function plankton(dt){ if (!P || P.n !== (S.specks|0)) newPlankton(); const m = 
 /* ------------------------------------------------------------ drawing a cell */
 const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`; };
 function drawCell(c, t){ const R = radiusOf(c), pal = S.palette, col = pal[c.ci%pal.length] || '#fff', col2 = pal[(c.ci+1+c.cj%Math.max(1, pal.length-1))%pal.length] || col, rot = t*c.spin, N = 96, tw = t*S.wobbleSpeed*2;
-  const pt = (th, loop, k) => { const r = R*outline(c, th, loop, tw)*k; return [c.x+Math.cos(th+rot)*r, c.y+Math.sin(th+rot)*r]; };
+  const pt = (th, loop, k) => { const r = R*outline(c, th, loop, tw)*k*(1 + S.scribble*(.04*Math.sin(th*17+loop*2.1+c.seed) + .025*Math.sin(th*31-loop*1.3+tw*.8)));   /* a shaky hand */ return [c.x+Math.cos(th+rot)*r, c.y+Math.sin(th+rot)*r]; };
   const path = (loop, k) => { g.beginPath(); for (let i = 0; i <= N; i++){ const p = pt(i/N*TAU, loop, k); i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]); } g.closePath(); };
   g.lineJoin = 'round'; g.lineCap = 'round';
   if (S.core > 0 && c.kind !== 'ring'){ const cr = R*(c.kind === 'core' ? .75 : c.kind === 'jelly' ? 1 : .55), gr = g.createRadialGradient(c.x, c.y, 0, c.x, c.y, cr);                 /* the glowing middle */
-    const k = c.kind === 'jelly' ? .45 : 1; gr.addColorStop(0, rgba(c.kind === 'core' ? '#fff6c8' : col2, .9*S.core*k)); gr.addColorStop(.35, rgba(col2, .5*S.core*k)); gr.addColorStop(1, rgba(col2, 0)); g.fillStyle = gr; g.beginPath(); g.arc(c.x, c.y, cr, 0, TAU); g.fill(); }
+    const k = c.kind === 'jelly' ? .45 : 1; gr.addColorStop(0, rgba(c.kind === 'core' ? '#fff6c8' : col2, .6*S.core*k)); gr.addColorStop(.3, rgba(col2, .3*S.core*k)); gr.addColorStop(1, rgba(col2, 0)); g.fillStyle = gr; g.beginPath(); g.arc(c.x, c.y, cr, 0, TAU); g.fill(); }
   if (c.kind === 'jelly'){ path(0, .62); g.fillStyle = rgba(col, .7); g.fill(); }
   const fils = Math.round(S.filaments*(c.kind === 'tangle' ? 1.6 : c.kind === 'ring' ? .45 : c.kind === 'jelly' ? .5 : 1)), reach = c.kind === 'jelly' ? 1.55 : c.kind === 'core' ? .8 : .92;
   for (let f = 0; f < Math.min(fils, c.fil.length); f++){ const F = c.fil[f], M = 14; g.beginPath();                                                                 /* threads that curl out from the middle */
@@ -176,6 +176,16 @@ function drawCell(c, t){ const R = radiusOf(c), pal = S.palette, col = pal[c.ci%
     g.strokeStyle = rgba(f%4 === 0 ? col2 : col, c.kind === 'tangle' ? .5 : .38); g.lineWidth = S.weight*F.w*.8; g.stroke(); }
   if (c.kind !== 'jelly' || S.loops > 3){ const loops = c.kind === 'jelly' ? 2 : Math.max(1, Math.round(S.loops));                                                     /* the membrane: several thin loops, slightly out of step */
     for (let l = 0; l < loops; l++){ path(l, c.kind === 'jelly' ? .7 : 1); g.strokeStyle = rgba(col, l === 0 ? .95 : .5); g.lineWidth = S.weight*(l === 0 ? 1.5 : .8); g.stroke(); } }
+  const coils = c.kind === 'jelly' ? Math.round(S.scribble) : Math.round(S.scribble*3.4);                                                                          /* a spring wound along the membrane */
+  for (let q = 0; q < coils; q++){ const M = 440, m = 36+q*11+c.lob*3, dir = q%2 ? 1 : -1; g.beginPath();
+    for (let i = 0; i <= M; i++){ const th = i/M*TAU, p = pt(th, q, (c.kind === 'jelly' ? .7 : 1)-q*.045), amp = R*(.035+.06*S.scribble)*(.55+.45*Math.sin(th*3+c.seed+q*1.7)), a = m*th+c.seed+tw*.6*dir;
+      const x = p[0]+Math.cos(a)*amp, y = p[1]+Math.sin(a)*amp; i ? g.lineTo(x, y) : g.moveTo(x, y); }
+    g.closePath(); g.strokeStyle = rgba(q === 1 ? col2 : col, .5); g.lineWidth = S.weight*.7; g.stroke(); }
+  const inside = Math.round(S.inside*(c.kind === 'tangle' ? 10 : c.kind === 'core' ? 5 : c.kind === 'ring' ? 3 : 2));                                              /* long looping scrawls that fill the body */
+  for (let j = 0; j < inside; j++){ const F = c.fil[(j*7+3)%c.fil.length], K = 200, turns = 2+j%3, wide = c.kind === 'ring' ? 1 : .86; g.beginPath();
+    for (let i = 0; i <= K; i++){ const u = i/K, th = F.a + u*TAU*turns + Math.sin(u*7+F.ph)*.8, rho = .16+.66*(.5+.5*Math.sin(u*TAU*(1.5+j*.37)+F.ph*2+tw*.3*F.sp)), r = R*outline(c, th, 0, tw)*rho*wide, a = 23*u*TAU+F.ph, amp = R*.05*S.scribble;
+      const x = c.x+Math.cos(th+rot)*r+Math.cos(a)*amp, y = c.y+Math.sin(th+rot)*r+Math.sin(a)*amp; i ? g.lineTo(x, y) : g.moveTo(x, y); }
+    g.strokeStyle = rgba(j%3 === 1 ? col2 : col, .42); g.lineWidth = S.weight*.6; g.stroke(); }
   if (S.beads > 0 && c.kind !== 'jelly'){ const nb = Math.round(S.beads*40); g.fillStyle = rgba(col, .9); for (let i = 0; i < nb; i++){ const th = (i/nb)*TAU + Math.sin(t*.3+c.seed+i)*.1, p = pt(th, 0, .86+.1*Math.sin(i*2.3+c.seed)); g.beginPath(); g.arc(p[0], p[1], S.weight*(.5+((i*7)%5)*.22), 0, TAU); g.fill(); } }
 }
 
@@ -208,7 +218,8 @@ ctl('f-colony', 'count', 'Cells', { min:1, max:40, colony:true }); ctl('f-colony
 ctl('f-colony', 'crowd', 'Overlap', { min:0, max:1, step:.01, fmt:pct }); ctl('f-colony', 'gather', 'Pull to the middle', { min:0, max:2, step:.01, fmt:pct }); ctl('f-colony', 'drift', 'Drift', { min:0, max:2, step:.01, fmt:pct });
 ctl('f-colony', 'seed', 'Seed', { type:'text', num:true, colony:true });
 ctl('f-shape', 'wobble', 'Wobble', { min:0, max:1, step:.01, fmt:pct }); ctl('f-shape', 'lobes', 'Lobes', { min:2, max:10 }); ctl('f-shape', 'wobbleSpeed', 'Wobble speed', { min:0, max:3, step:.01, fmt:f2 });
-ctl('f-shape', 'loops', 'Outline loops', { min:1, max:10 }); ctl('f-shape', 'weight', 'Line weight', { min:.3, max:5, step:.05, fmt:v => f2(v)+' px' }); ctl('f-shape', 'filaments', 'Threads inside', { min:0, max:40 });
+ctl('f-shape', 'scribble', 'Scribble on the edge', { min:0, max:1, step:.01, fmt:pct }); ctl('f-shape', 'inside', 'Scrawl inside', { min:0, max:1.5, step:.01, fmt:pct });
+ctl('f-shape', 'loops', 'Outline loops', { min:1, max:14 }); ctl('f-shape', 'weight', 'Line weight', { min:.3, max:5, step:.05, fmt:v => f2(v)+' px' }); ctl('f-shape', 'filaments', 'Threads inside', { min:0, max:40 });
 ctl('f-shape', 'core', 'Core glow', { min:0, max:1, step:.01, fmt:pct }); ctl('f-shape', 'beads', 'Beads on the edge', { min:0, max:1, step:.01, fmt:pct });
 ctl('f-plankton', 'specks', 'Specks', { min:0, max:16000, step:100 }); ctl('f-plankton', 'speckSize', 'Size', { min:.5, max:5, step:.05, fmt:f2 }); ctl('f-plankton', 'streaks', 'Share of streaks', { min:0, max:1, step:.01, fmt:pct });
 ctl('f-plankton', 'flow', 'Flow speed', { min:0, max:3, step:.01, fmt:f2 }); ctl('f-plankton', 'flowScale', 'Swirl size', { min:.5, max:8, step:.05, fmt:f2 }); ctl('f-plankton', 'clump', 'Clumps and voids', { min:0, max:1, step:.01, fmt:pct });
