@@ -5,14 +5,21 @@ Static multi-page site of mockup animations. Live at https://sahil639.github.io/
 No build step, no dependencies: each page is one HTML file plus the shared `ui.css` / `ui.js`.
 
 ## Files
-- `index.html` — directory page: chrome logo, list of effects, credit footer. No dividers
-  (spacing only); rows are number + large name + description. Hovering a row shows a blank
-  16:10 `.thumb` beside it (hover-capable screens ≥1100px only); real previews are still to be
-  added. New effect = new `<li>`. The logo is an inline WebGL1 script (no library): `logo.svg`
-  is baked into a texture (shape + two blurs for bevel/dome), drawn as 18 masked slices with a
-  procedural reflection; drag rotates, flick spins, hold pulls it along, springs bring it back.
-  It is 250px square (170px on phones). It only draws while moving; `<img>` remains the fallback. Exposed as `window.MoxxLogo`.
-  The footer link (`#portfolio`) still has `href="#"` — the user has not given the URL.
+- `index.html` — directory page, laid out after a reference the user supplied (a developer-blog
+  index): dark navy ground, the chrome logo top-left with a count beside it, a left "/ FILTERS"
+  column of topic checkboxes, and a "/ NO. / NAME" list with a blue square, a mono number, a
+  large name and a "+" per row, separated by thin lines. The name is the link; "+" opens the
+  description. New effect = new `<li data-tags="...">` in `#list` (topics are listed in `NAMES`
+  in the filter script; counts are worked out from the rows). Ticking several topics shows rows
+  with any of them. Its own tokens are `--ix-*`; it still loads `ui.css` for the theme toggle,
+  so the block at the end of its `<style>` undoes the panel styling of `summary`, `button` and
+  inputs — keep that block last. Small labels and numbers use the system monospace; everything
+  else is Helvetica Neue. No hover thumbnails any more. The logo is an inline WebGL1 script
+  (no library): `logo.svg` is baked into a texture (shape + two blurs for bevel/dome), drawn
+  as 18 masked slices with a procedural reflection; drag rotates, flick spins, hold pulls it
+  along, springs bring it back. It is 250px square (170px on phones) and only draws while
+  moving; `<img>` remains the fallback. Exposed as `window.MoxxLogo`. The footer link
+  (`#portfolio`) still has `href="#"` — the user has not given the URL.
 - `terminal-type.html` (01), `dither-lab.html` (02), `line-relief.html` (03),
   `glyph-matrix.html` (04), `prism-core.html` (05), `compass-mark.html` (06),
   `brand-engine.html` (07), `jelly-pitch.html` (08),
@@ -216,7 +223,8 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
 All work is committed; see `git log`.
 
 ## Open / not yet verified
-- Index hover thumbnails are blank placeholders.
+- The new index was looked at at desktop width in dark, and at a narrow width in dark and light;
+  not on a phone, and the topic assigned to each effect is my own guess.
 - Not checked by eye: phone-width index, Safari/touch, effect pages after the font change
   (other than Prism Core), Prism Core drag/motion modes, Save PNG, front/side/top views,
   gradient backgrounds, cylinder/sphere/pyramid after later changes.

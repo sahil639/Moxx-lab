@@ -3,97 +3,101 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#000000">
+<meta name="theme-color" content="#04162a">
 <title>Moxx Lab</title>
 <meta name="description" content="Moxx Lab — mockup animations. Each one is a single self-contained page, built to be tuned in the browser and screen-recorded.">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <style>
   :root{
-    --bg:#000; --fg:#f4f4f5; --dim:#868690; --faint:#4a4a52; --line:#1b1b1f; --line2:#3a3a42;
-    --accent:#fff; --thumb:#0a0a0c; --thumb-line:#232328; --chrome-hi:#fff;
-    --mono:"Helvetica Neue",Helvetica,Arial,sans-serif;
+    --ix-bg:#04162a; --ix-fg:#d5dbe6; --ix-dim:#7f93ad; --ix-faint:#4d6078; --ix-line:#20344b; --ix-accent:#4f8cff; --ix-count:#e8c36a;
+    --ix-sans:"Helvetica Neue",Helvetica,Arial,sans-serif; --ix-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
   }
+  html[data-theme=light]{ --ix-bg:#f3f4f6; --ix-fg:#0b1b2e; --ix-dim:#586a80; --ix-faint:#97a3b3; --ix-line:#d3d9e1; --ix-accent:#1f5fe0; --ix-count:#9a6a12; }
+  html:root[data-theme]{--u-bg:var(--ix-bg);--u-fg:var(--ix-fg)}
   *{box-sizing:border-box}
+  [hidden]{display:none!important}
   html{-webkit-text-size-adjust:100%}
-  body{
-    margin:0;background:var(--bg);color:var(--fg);
-    font:400 14px/1.65 var(--mono);letter-spacing:.01em;
-    -webkit-font-smoothing:antialiased;
-  }
+  body{margin:0;background:var(--ix-bg);color:var(--ix-fg);font:400 15px/1.5 var(--ix-sans);-webkit-font-smoothing:antialiased;transition:background-color .25s ease,color .25s ease}
   a{color:inherit;text-decoration:none}
-
-  /* leaves room on the right for the hover preview */
-  .wrap{width:min(600px,100% - 56px);margin-left:max(28px,calc(50% - 420px));padding:56px 0 96px}
+  .wrap{padding:0 24px 72px}
 
   /* the mark: an <img> until WebGL takes over, then a chrome object you can grab */
-  .logo{position:relative;width:250px;height:250px;margin:-34px 0 40px -38px;cursor:grab;touch-action:none;
+  .head{display:flex;align-items:flex-start;padding:6px 0 4px}
+  .logo{position:relative;width:250px;height:250px;margin:-34px 0 -10px -38px;cursor:grab;touch-action:none;
     user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
   .logo.held{cursor:grabbing}
   .logo img{display:block;width:100%;height:100%;pointer-events:none;-webkit-user-drag:none}
   .logo canvas{position:absolute;left:50%;top:50%;width:300%;height:300%;margin:-150% 0 0 -150%;pointer-events:none;will-change:transform}
   .logo.live img{visibility:hidden}
-
-  ul{list-style:none;margin:0;padding:0}
-  li{position:relative}
-  li + li{margin-top:14px}
-
-  a.item{display:block;padding:14px 0;transition:opacity .2s ease}
-  a.item:focus-visible{outline:1px solid var(--accent);outline-offset:6px}
-
-  .top{display:flex;align-items:baseline;gap:0}
-  .no{flex:0 0 44px;color:var(--faint);font-size:12px;font-variant-numeric:tabular-nums;letter-spacing:.04em;transition:color .15s ease}
-  .name{font-size:25px;line-height:1.2;font-weight:400;letter-spacing:-.012em;color:var(--fg);transition:color .15s ease,transform .25s cubic-bezier(.2,.7,.2,1)}
-  .desc{margin:8px 0 0 44px;color:var(--dim);font-size:13.5px;line-height:1.55;max-width:54ch}
-
-  a.item:hover .name,a.item:focus-visible .name{color:var(--accent);transform:translateX(4px)}
-  a.item:hover .no,a.item:focus-visible .no{color:var(--fg)}
-  @media (hover:hover){ ul:has(a.item:hover) a.item:not(:hover){opacity:.38} }
-
-  /* credit */
-  .credit{margin:104px 0 0 44px;display:flex;flex-direction:column;align-items:flex-start;gap:10px}
-  .credit small{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);font-variant-numeric:tabular-nums}
-  .credit small i{display:inline-block;width:22px;height:1px;margin:0 10px;background:currentColor;vertical-align:middle;font-style:normal}
-  .credit a{display:inline-flex;align-items:baseline;gap:.22em;font-size:44px;line-height:1.05;font-weight:300;letter-spacing:-.03em;
-    color:var(--fg);-webkit-text-fill-color:transparent;-webkit-background-clip:text;background-clip:text;
-    background-image:linear-gradient(100deg,var(--fg) 0%,var(--dim) 18%,var(--fg) 30%,var(--chrome-hi) 42%,var(--faint) 50%,var(--fg) 58%,var(--dim) 76%,var(--fg) 100%);
-    background-size:260% 100%;background-position:100% 0;transition:background-position 1.1s cubic-bezier(.2,.7,.2,1)}
-  .credit a:hover,.credit a:focus-visible{background-position:0 0}
-  .credit a:focus-visible{outline:1px solid var(--accent);outline-offset:6px}
-  .credit .arr{font-size:.5em;font-weight:400;transform:translateY(-.55em);transition:transform .35s cubic-bezier(.2,.7,.2,1)}
-  .credit a:hover .arr,.credit a:focus-visible .arr{transform:translate(.25em,-.8em)}
-
-  /* hover preview — a blank frame for now */
-  .thumb{
-    position:absolute;left:calc(100% + 32px);top:50%;width:300px;aspect-ratio:16/10;
-    transform:translateY(-50%) translateX(-6px);
-    background:var(--thumb);border:1px solid var(--thumb-line);
-    opacity:0;visibility:hidden;pointer-events:none;
-    transition:opacity .15s ease,transform .15s ease,visibility 0s linear .15s;
-  }
-  @media (hover:hover) and (min-width:1100px){
-    li:hover .thumb,li:focus-within .thumb{
-      opacity:1;visibility:visible;transform:translateY(-50%);
-      transition:opacity .15s ease,transform .15s ease;
-    }
-  }
-  @media (prefers-reduced-motion:reduce){.thumb,a.item,a.item *,.credit a,.credit .arr{transition:none}}
-
-  @media (max-width:520px){
-    .wrap{padding:40px 0 80px}
-    .logo{width:170px;height:170px;margin:-22px 0 28px -26px}
-    .no{flex-basis:34px}
-    .name{font-size:22px}
-    .desc{margin-left:34px}
-    .credit{margin:72px 0 0 34px}
-    .credit a{font-size:36px}
-  }
-  html[data-theme=light]{
-    --bg:#f3f3f0; --fg:#1b1b1a; --dim:#6f6f69; --faint:#a9a9a3; --line:#dfdfda; --line2:#b9b9b3;
-    --accent:#000; --thumb:#fff; --thumb-line:#dfdfda; --chrome-hi:#000;
-  }
-  html:root[data-theme]{--u-bg:var(--bg);--u-fg:var(--fg)}
   html[data-theme=light] .logo img{filter:invert(1)}
-  body{transition:background-color .25s ease,color .25s ease}
+  .count{margin:34px 0 0 -30px;font-size:22px;letter-spacing:-.01em;color:var(--ix-count);font-variant-numeric:tabular-nums}
+
+  .cols{display:grid;grid-template-columns:326px minmax(0,1fr);column-gap:82px;align-items:start}
+  .label{margin:0;padding:0 0 9px 1px;border-bottom:1px solid var(--ix-line);font:400 13px/1.3 var(--ix-mono);letter-spacing:.04em;text-transform:uppercase;color:var(--ix-dim)}
+
+  /* filters */
+  .group{padding-top:20px}
+  .group summary{display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none;font-size:17px;color:var(--ix-fg);user-select:none;-webkit-user-select:none}
+  .group summary::-webkit-details-marker{display:none}
+  .group summary:focus-visible{outline:1px solid var(--ix-accent);outline-offset:4px}
+  .group svg{width:22px;height:22px;flex:none;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+  .group .chev{width:14px;height:14px;transition:transform .15s ease}
+  .group:not([open]) .chev{transform:rotate(-90deg)}
+  #filters{list-style:none;margin:14px 0 0 9px;padding:0 0 0 17px;border-left:1px solid var(--ix-line)}
+  #filters label{display:flex;align-items:center;gap:13px;padding:3px 0;font-size:16.5px;color:var(--ix-dim);cursor:pointer;transition:color .12s ease}
+  #filters label:hover,#filters input:checked ~ span{color:var(--ix-fg)}
+  #filters input{appearance:none;-webkit-appearance:none;flex:none;width:17px;height:15px;margin:0;border:1.5px solid var(--ix-faint);border-radius:3px;background:none;cursor:pointer;transition:background .12s ease,border-color .12s ease}
+  #filters input:checked{background:var(--ix-accent);border-color:var(--ix-accent)}
+  #filters input:focus-visible{outline:1px solid var(--ix-accent);outline-offset:3px}
+  #clear{margin:16px 0 0 26px;padding:0;border:0;background:none;color:var(--ix-accent);font:inherit;font-size:14px;cursor:pointer}
+
+  /* the list */
+  .labels{display:grid;grid-template-columns:166px 1fr}
+  .labels .label{border:0}
+  .list{list-style:none;margin:0;padding:0;border-top:1px solid var(--ix-line)}
+  .list li{border-bottom:1px solid var(--ix-line)}
+  .entry{display:grid;grid-template-columns:22px 144px minmax(0,1fr) 40px;align-items:center;min-height:63px}
+  .sq{width:10px;height:10px;background:var(--ix-accent)}
+  .no{font:400 15.5px/1 var(--ix-mono);letter-spacing:.02em;color:var(--ix-accent);font-variant-numeric:tabular-nums}
+  .name{padding:11px 0 12px;font-size:clamp(23px,2.25vw,33px);line-height:1.18;letter-spacing:-.022em;color:var(--ix-fg);transition:color .12s ease,transform .25s cubic-bezier(.2,.7,.2,1)}
+  .name:hover,.name:focus-visible{color:var(--ix-accent);outline:none;transform:translateX(4px)}
+  .more{justify-self:end;width:40px;height:40px;padding:0;border:0;background:none;color:var(--ix-dim);font:300 26px/1 var(--ix-sans);cursor:pointer;transition:color .12s ease}
+  .more span{display:block;transition:transform .2s ease}
+  .more:hover,.more:focus-visible{color:var(--ix-fg);outline:none}
+  .more[aria-expanded=true] span{transform:rotate(45deg)}
+  .desc{margin:-2px 0 0;padding:0 56px 20px 166px;max-width:980px;font-size:16px;line-height:1.55;color:var(--ix-dim)}
+  .desc a{color:var(--ix-accent);white-space:nowrap}
+  .desc a:hover{text-decoration:underline}
+  #none{padding:22px 0 0 166px;color:var(--ix-dim)}
+
+  .credit{margin:56px 0 0;padding-left:408px;font:400 13px/1.4 var(--ix-mono);letter-spacing:.04em;text-transform:uppercase;color:var(--ix-dim)}
+  .credit a{color:var(--ix-fg)}
+  .credit a:hover,.credit a:focus-visible{color:var(--ix-accent);outline:none}
+
+  @media (max-width:980px){
+    .cols{grid-template-columns:1fr;row-gap:30px}
+    #filters{display:flex;flex-wrap:wrap;gap:2px 22px;margin-left:0;padding-left:0;border-left:0}
+    .credit{padding-left:0}
+  }
+  @media (max-width:620px){
+    .wrap{padding:0 16px 56px}
+    .logo{width:170px;height:170px;margin:-22px 0 -6px -26px}
+    .count{margin:24px 0 0 -18px;font-size:18px}
+    .labels{grid-template-columns:74px 1fr}
+    .entry{grid-template-columns:18px 56px minmax(0,1fr) 36px;min-height:56px}
+    .desc{padding:0 8px 18px 74px} #none{padding-left:74px}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+  /* ui.css is written for the effect panels and restyles every summary, button and details; put the index's own back */
+  html[data-theme] .group{border:0;padding:20px 0 0}
+  html[data-theme] .group summary{display:flex;align-items:center;justify-content:flex-start;gap:10px;margin:0;padding:0;border-radius:0;font-size:17px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--ix-fg)}
+  html[data-theme] .group summary::after{display:none}
+  html[data-theme] .more{justify-self:end;width:40px;height:40px;padding:0;border:0;border-radius:0;background:none;color:var(--ix-dim);font:300 26px/1 var(--ix-sans);letter-spacing:0;transform:none}
+  html[data-theme] .more:hover,html[data-theme] .more:focus-visible{background:none;color:var(--ix-fg)}
+  html[data-theme] #clear{margin:16px 0 0 26px;padding:0;border:0;border-radius:0;background:none;color:var(--ix-accent);font-size:14px;letter-spacing:0;transform:none}
+  html[data-theme] #filters input{width:17px;height:15px;padding:0;border:1.5px solid var(--ix-faint);border-radius:3px;background:none}
+  html[data-theme] #filters input:checked{background:var(--ix-accent);border-color:var(--ix-accent)}
 </style>
 <link rel="stylesheet" href="ui.css">
 <script src="ui.js"></script>
@@ -101,220 +105,110 @@
 <body>
 <div class="wrap">
 
-  <div class="logo" id="logo" title="Drag me"><img src="logo.svg" alt="Moxx Lab" draggable="false"></div>
+  <header class="head">
+    <div class="logo" id="logo" title="Drag me"><img src="logo.svg" alt="Moxx Lab" draggable="false"></div>
+    <span class="count" id="count" aria-label="16 effects">(16)</span>
+  </header>
 
-  <ul>
-    <li>
-      <a class="item" href="terminal-type.html">
-        <span class="top">
-          <span class="no">01</span>
-          <span class="name">Terminal Type</span>
-        </span>
-        <p class="desc">Portrait terminal text that types itself in, a scramble of
-          glyphs decoding just ahead of the write head, over scanlines and flicker.
-          Drop in any font file to see it set in that face.</p>
-      </a>
-      <div class="thumb" aria-hidden="true"></div>
-    </li>
-    <li>
-      <a class="item" href="dither-lab.html">
-        <span class="top">
-          <span class="no">02</span>
-          <span class="name">Dither Lab</span>
-        </span>
-        <p class="desc">Drop an image or a video and it is dithered live on the GPU —
-          Bayer, noise or halftone, down to a few tones and a three-colour palette,
-          with a lens that sharpens wherever the cursor rests.</p>
-      </a>
-      <div class="thumb" aria-hidden="true"></div>
-    </li>
-    <li>
-      <a class="item" href="line-relief.html">
-        <span class="top">
-          <span class="no">03</span>
-          <span class="name">Line Relief</span>
-        </span>
-        <p class="desc">A field of parallel lines pushed sideways by an image's
-          brightness, so the picture exists only as deformation — bunching into dense
-          bands where it steepens, thinning into dots where it spreads.</p>
-      </a>
-      <div class="thumb" aria-hidden="true"></div>
-    </li>
-    <li>
-      <a class="item" href="glyph-matrix.html">
-        <span class="top">
-          <span class="no">04</span>
-          <span class="name">Glyph Matrix</span>
-        </span>
-        <p class="desc">A grid of small marks that reads a picture or a video and
-          redraws it in its own alphabet — rings, bars, crosses, characters — one
-          glyph and colour per tonal band, with a wave running through the lattice.</p>
-      </a>
-      <div class="thumb" aria-hidden="true"></div>
-    </li>
-    <li>
-      <a class="item" href="prism-core.html">
-        <span class="top">
-          <span class="no">05</span>
-          <span class="name">Prism Core</span>
-        </span>
-        <p class="desc">A soft, rounded block that glows from the inside — orbs,
-          translucent layers and drifting motes moving through it. Turn it by hand,
-          change its shape, view and arrangement, and build the gradient from as
-          many colours as you like.</p>
-      </a>
-      <div class="thumb" aria-hidden="true"></div>
-    </li>
-    <li>
-      <a class="item" href="compass-mark.html">
-        <span class="top">
-          <span class="no">06</span>
-          <span class="name">Compass Mark</span>
-        </span>
-        <p class="desc">A logo drawn with nothing but circles — lobes around a ring,
-          fillets rolled into the notches, thin spiral channels cut through — with the
-          construction lines left showing. Save versions, check it at icon sizes,
-          export PNG or SVG.</p>
-      </a>
-      <div class="thumb" aria-hidden="true"></div>
-    </li>
-    <li>
-      <a class="item" href="brand-engine.html">
-        <span class="top">
-          <span class="no">07</span>
-          <span class="name">Brand Engine</span>
-        </span>
-        <p class="desc">A seeded brand system: one number and one fixed palette make
-          every visual for a brand — diagrams, avatars, layouts, sub-brand logos — and
-          the same seed always gives the same picture. Riso print modes, PNG, SVG and
-          video export.</p>
-      </a>
-      <div class="thumb" aria-hidden="true"></div>
-    </li>
-    <li>
-      <a class="item" href="jelly-pitch.html">
-        <span class="top">
-          <span class="no">08</span>
-          <span class="name">Jelly Pitch</span>
-        </span>
-        <p class="desc">A tennis ball, a football and a basketball made of wobbly,
-          translucent jelly on turf that bends under them. Pull them about, cut them
-          with a knife, and print your own face into the jelly. Needs WebGPU.</p>
-      </a>
-      <div class="thumb" aria-hidden="true"></div>
-    </li>
-    <li>
-      <a class="item" href="pretext-play.html">
-        <span class="top">
-          <span class="no">09</span>
-          <span class="name">Pretext Play</span>
-        </span>
-        <p class="desc">A playground for the pretext library: paragraphs measured
-          and wrapped in plain JavaScript, with no DOM. Drag a column's width, shrink
-          chat bubbles to their text, pour words around a moving circle, and see how
-          the text is cut into pieces.</p>
-      </a>
-      <div class="thumb" aria-hidden="true"></div>
-    </li>
-    <li>
-      <a class="item" href="tape-deck.html">
-        <span class="top">
-          <span class="no">10</span>
-          <span class="name">Tape Deck</span>
-        </span>
-        <p class="desc">A drum of cassettes, one per project, turning under a hot
-          light. Hover a tape and a tracker reads out its name, its numbers and a
-          few panels of noise; click and it opens. Saves itself as one offline file.</p>
-      </a>
-      <div class="thumb" aria-hidden="true"></div>
-    </li>
-    <li>
-      <a class="item" href="grain-stack.html">
-        <span class="top">
-          <span class="no">11</span>
-          <span class="name">Grain Stack</span>
-        </span>
-        <p class="desc">Shapes stacked like cut paper, each one filled with grains
-          that are born on its bottom edge, rise, and darken until they vanish at the
-          top. Dunes, nested hexagons, blobs, or a shape you draw yourself, with soft
-          shadows between the layers.</p>
-      </a>
-      <div class="thumb" aria-hidden="true"></div>
-    </li>
-    <li>
-      <a class="item" href="pattern-maker.html">
-        <span class="top">
-          <span class="no">12</span>
-          <span class="name">Pattern Maker</span>
-        </span>
-        <p class="desc">Seamless repeat patterns built in layers. Use the built-in
-          shapes, type your own characters, drop in an image, paste an SVG or draw a
-          motif by hand, then lay it out as a grid, brick, hex, scatter or mandala and
-          bend it with fields. Exports a tile as PNG, SVG or CSS.</p>
-      </a>
-      <div class="thumb" aria-hidden="true"></div>
-    </li>
-    <li>
-      <a class="item" href="particle-morph.html">
-        <span class="top">
-          <span class="no">13</span>
-          <span class="name">Particle Morph</span>
-        </span>
-        <p class="desc">Images drawn as tens of thousands of particles that flow from
-          one picture into the next and scatter under the cursor. Add your own
-          images, choose how particles are matched and how they travel, and export
-          a video or an embed for your site.</p>
-      </a>
-      <div class="thumb" aria-hidden="true"></div>
-    </li>
-    <li>
-      <a class="item" href="isocuboid.html">
-        <span class="top">
-          <span class="no">14</span>
-          <span class="name">Isocuboid</span>
-        </span>
-        <p class="desc">An endless isometric city: thousands of flat-coloured boxes
-          packed on a grid, grouped into districts, still or rising and falling in
-          waves. Define your own box types, colours and outlines, reroll with a seed,
-          and drag to wander. Or draw just one box, in line, and save it as SVG.</p>
-      </a>
-      <div class="thumb" aria-hidden="true"></div>
-    </li>
-    <li>
-      <a class="item" href="tone-tiles.html">
-        <span class="top">
-          <span class="no">15</span>
-          <span class="name">Tone Tiles</span>
-        </span>
-        <p class="desc">A black and white picture rebuilt as a mosaic of patterns:
-          dots, zigzags, checks, rings and stripes, each drawn as dense as its tile
-          is dark, with small tiles where the picture has detail and big ones where
-          it is calm.</p>
-      </a>
-      <div class="thumb" aria-hidden="true"></div>
-    </li>
-    <li>
-      <a class="item" href="glow-cells.html">
-        <span class="top">
-          <span class="no">16</span>
-          <span class="name">Glow Cells</span>
-        </span>
-        <p class="desc">A colony of cells generated from a seed, every one built from
-          hundreds of tiny circles in neighbouring hues, edged with chains of dots,
-          drifting and jostling through loose specks in the dark. Drag a cell to
-          move it.</p>
-      </a>
-      <div class="thumb" aria-hidden="true"></div>
-    </li>
-  </ul>
+  <div class="cols">
+    <aside>
+      <p class="label">/ Filters</p>
+      <details class="group" open>
+        <summary><svg class="chev" viewBox="0 0 14 14" aria-hidden="true"><path d="M2.5 5 7 9.5 11.5 5"/></svg><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M2.5 6.5v10a1.5 1.5 0 0 0 1.5 1.5h13.2a1.5 1.5 0 0 0 1.4-1l1.6-5.5a1 1 0 0 0-1-1.3H7.4a1.5 1.5 0 0 0-1.4 1L4 17"/><path d="M2.5 6.5V5A1.5 1.5 0 0 1 4 3.5h4l2 2.2h6.5A1.5 1.5 0 0 1 18 7.2v3"/></svg>Topic</summary>
+        <ul id="filters"></ul>
+        <button id="clear" type="button" hidden>Clear filters</button>
+      </details>
+    </aside>
 
-  <footer class="credit">
-    <small>&copy; <span id="yr">2026</span><i></i>Made by</small>
-    <!-- TODO: portfolio URL -->
-    <a href="#" id="portfolio" rel="noopener">Sahil<span class="arr" aria-hidden="true">&#8599;</span></a>
-  </footer>
+    <main>
+      <div class="labels"><p class="label">/ No.</p><p class="label">/ Name</p></div>
+      <ul class="list" id="list">
+      <li data-tags="type">
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">01</span><a class="name" href="terminal-type.html">Terminal Type</a><button class="more" type="button" aria-expanded="false" aria-label="About Terminal Type"><span aria-hidden="true">+</span></button></div>
+        <p class="desc" hidden>Portrait terminal text that types itself in, a scramble of glyphs decoding just ahead of the write head, over scanlines and flicker. Drop in any font file to see it set in that face. <a href="terminal-type.html">Open Terminal Type →</a></p>
+      </li>
+      <li data-tags="image">
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">02</span><a class="name" href="dither-lab.html">Dither Lab</a><button class="more" type="button" aria-expanded="false" aria-label="About Dither Lab"><span aria-hidden="true">+</span></button></div>
+        <p class="desc" hidden>Drop an image or a video and it is dithered live on the GPU — Bayer, noise or halftone, down to a few tones and a three-colour palette, with a lens that sharpens wherever the cursor rests. <a href="dither-lab.html">Open Dither Lab →</a></p>
+      </li>
+      <li data-tags="image">
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">03</span><a class="name" href="line-relief.html">Line Relief</a><button class="more" type="button" aria-expanded="false" aria-label="About Line Relief"><span aria-hidden="true">+</span></button></div>
+        <p class="desc" hidden>A field of parallel lines pushed sideways by an image's brightness, so the picture exists only as deformation — bunching into dense bands where it steepens, thinning into dots where it spreads. <a href="line-relief.html">Open Line Relief →</a></p>
+      </li>
+      <li data-tags="image type">
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">04</span><a class="name" href="glyph-matrix.html">Glyph Matrix</a><button class="more" type="button" aria-expanded="false" aria-label="About Glyph Matrix"><span aria-hidden="true">+</span></button></div>
+        <p class="desc" hidden>A grid of small marks that reads a picture or a video and redraws it in its own alphabet — rings, bars, crosses, characters — one glyph and colour per tonal band, with a wave running through the lattice. <a href="glyph-matrix.html">Open Glyph Matrix →</a></p>
+      </li>
+      <li data-tags="3d">
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">05</span><a class="name" href="prism-core.html">Prism Core</a><button class="more" type="button" aria-expanded="false" aria-label="About Prism Core"><span aria-hidden="true">+</span></button></div>
+        <p class="desc" hidden>A soft, rounded block that glows from the inside — orbs, translucent layers and drifting motes moving through it. Turn it by hand, change its shape, view and arrangement, and build the gradient from as many colours as you like. <a href="prism-core.html">Open Prism Core →</a></p>
+      </li>
+      <li data-tags="logo">
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">06</span><a class="name" href="compass-mark.html">Compass Mark</a><button class="more" type="button" aria-expanded="false" aria-label="About Compass Mark"><span aria-hidden="true">+</span></button></div>
+        <p class="desc" hidden>A logo drawn with nothing but circles — lobes around a ring, fillets rolled into the notches, thin spiral channels cut through — with the construction lines left showing. Save versions, check it at icon sizes, export PNG or SVG. <a href="compass-mark.html">Open Compass Mark →</a></p>
+      </li>
+      <li data-tags="logo generative">
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">07</span><a class="name" href="brand-engine.html">Brand Engine</a><button class="more" type="button" aria-expanded="false" aria-label="About Brand Engine"><span aria-hidden="true">+</span></button></div>
+        <p class="desc" hidden>A seeded brand system: one number and one fixed palette make every visual for a brand — diagrams, avatars, layouts, sub-brand logos — and the same seed always gives the same picture. Riso print modes, PNG, SVG and video export. <a href="brand-engine.html">Open Brand Engine →</a></p>
+      </li>
+      <li data-tags="3d physics">
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">08</span><a class="name" href="jelly-pitch.html">Jelly Pitch</a><button class="more" type="button" aria-expanded="false" aria-label="About Jelly Pitch"><span aria-hidden="true">+</span></button></div>
+        <p class="desc" hidden>A tennis ball, a football and a basketball made of wobbly, translucent jelly on turf that bends under them. Pull them about, cut them with a knife, and print your own face into the jelly. Needs WebGPU. <a href="jelly-pitch.html">Open Jelly Pitch →</a></p>
+      </li>
+      <li data-tags="type">
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">09</span><a class="name" href="pretext-play.html">Pretext Play</a><button class="more" type="button" aria-expanded="false" aria-label="About Pretext Play"><span aria-hidden="true">+</span></button></div>
+        <p class="desc" hidden>A playground for the pretext library: paragraphs measured and wrapped in plain JavaScript, with no DOM. Drag a column's width, shrink chat bubbles to their text, pour words around a moving circle, and see how the text is cut into pieces. <a href="pretext-play.html">Open Pretext Play →</a></p>
+      </li>
+      <li data-tags="3d">
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">10</span><a class="name" href="tape-deck.html">Tape Deck</a><button class="more" type="button" aria-expanded="false" aria-label="About Tape Deck"><span aria-hidden="true">+</span></button></div>
+        <p class="desc" hidden>A drum of cassettes, one per project, turning under a hot light. Hover a tape and a tracker reads out its name, its numbers and a few panels of noise; click and it opens. Saves itself as one offline file. <a href="tape-deck.html">Open Tape Deck →</a></p>
+      </li>
+      <li data-tags="particles generative">
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">11</span><a class="name" href="grain-stack.html">Grain Stack</a><button class="more" type="button" aria-expanded="false" aria-label="About Grain Stack"><span aria-hidden="true">+</span></button></div>
+        <p class="desc" hidden>Shapes stacked like cut paper, each one filled with grains that are born on its bottom edge, rise, and darken until they vanish at the top. Dunes, nested hexagons, blobs, or a shape you draw yourself, with soft shadows between the layers. <a href="grain-stack.html">Open Grain Stack →</a></p>
+      </li>
+      <li data-tags="pattern generative">
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">12</span><a class="name" href="pattern-maker.html">Pattern Maker</a><button class="more" type="button" aria-expanded="false" aria-label="About Pattern Maker"><span aria-hidden="true">+</span></button></div>
+        <p class="desc" hidden>Seamless repeat patterns built in layers. Use the built-in shapes, type your own characters, drop in an image, paste an SVG or draw a motif by hand, then lay it out as a grid, brick, hex, scatter or mandala and bend it with fields. Exports a tile as PNG, SVG or CSS. <a href="pattern-maker.html">Open Pattern Maker →</a></p>
+      </li>
+      <li data-tags="particles image">
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">13</span><a class="name" href="particle-morph.html">Particle Morph</a><button class="more" type="button" aria-expanded="false" aria-label="About Particle Morph"><span aria-hidden="true">+</span></button></div>
+        <p class="desc" hidden>Images drawn as tens of thousands of particles that flow from one picture into the next and scatter under the cursor. Add your own images, choose how particles are matched and how they travel, and export a video or an embed for your site. <a href="particle-morph.html">Open Particle Morph →</a></p>
+      </li>
+      <li data-tags="3d generative pattern">
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">14</span><a class="name" href="isocuboid.html">Isocuboid</a><button class="more" type="button" aria-expanded="false" aria-label="About Isocuboid"><span aria-hidden="true">+</span></button></div>
+        <p class="desc" hidden>An endless isometric city: thousands of flat-coloured boxes packed on a grid, grouped into districts, still or rising and falling in waves. Define your own box types, colours and outlines, reroll with a seed, and drag to wander. Or draw just one box, in line, and save it as SVG. <a href="isocuboid.html">Open Isocuboid →</a></p>
+      </li>
+      <li data-tags="image pattern">
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">15</span><a class="name" href="tone-tiles.html">Tone Tiles</a><button class="more" type="button" aria-expanded="false" aria-label="About Tone Tiles"><span aria-hidden="true">+</span></button></div>
+        <p class="desc" hidden>A black and white picture rebuilt as a mosaic of patterns: dots, zigzags, checks, rings and stripes, each drawn as dense as its tile is dark, with small tiles where the picture has detail and big ones where it is calm. <a href="tone-tiles.html">Open Tone Tiles →</a></p>
+      </li>
+      <li data-tags="particles generative">
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">16</span><a class="name" href="glow-cells.html">Glow Cells</a><button class="more" type="button" aria-expanded="false" aria-label="About Glow Cells"><span aria-hidden="true">+</span></button></div>
+        <p class="desc" hidden>A colony of cells generated from a seed, every one built from hundreds of tiny circles in neighbouring hues, edged with chains of dots, drifting and jostling through loose specks in the dark. Drag a cell to move it. <a href="glow-cells.html">Open Glow Cells →</a></p>
+      </li>
+      </ul>
+      <p id="none" hidden>Nothing matches those filters.</p>
+    </main>
+  </div>
+
+  <footer class="credit">&copy; <span id="yr">2026</span> / Made by <!-- TODO: portfolio URL --><a href="#" id="portfolio" rel="noopener">Sahil ↗</a></footer>
 
 </div>
+<script>
+/* Filters and the + buttons. A row's topics are in data-tags; ticking several topics shows rows that have any of them. */
+(() => {
+  const NAMES = { image:'Your image', generative:'Generative', particles:'Particles', pattern:'Pattern', type:'Type', '3d':'3D', logo:'Logo and brand', physics:'Physics' };
+  const rows = [...document.querySelectorAll('#list li')], host = document.getElementById('filters'), clear = document.getElementById('clear'), on = new Set();
+  const apply = () => { let n = 0; for (const li of rows){ const show = !on.size || li.dataset.tags.split(' ').some(t => on.has(t)); li.hidden = !show; if (show) n++; }
+    document.getElementById('count').textContent = '('+n+')'; document.getElementById('none').hidden = n > 0; clear.hidden = !on.size; };
+  for (const k in NAMES){ const n = rows.filter(li => li.dataset.tags.split(' ').includes(k)).length; if (!n) continue;
+    const li = document.createElement('li'), lab = document.createElement('label'), cb = document.createElement('input'), tx = document.createElement('span');
+    cb.type = 'checkbox'; tx.textContent = NAMES[k]+' ('+n+')'; cb.onchange = () => { cb.checked ? on.add(k) : on.delete(k); apply(); }; lab.append(cb, tx); li.append(lab); host.append(li); }
+  clear.onclick = () => { on.clear(); host.querySelectorAll('input').forEach(c => { c.checked = false; }); apply(); };
+  for (const b of document.querySelectorAll('.more')) b.onclick = () => { const open = b.getAttribute('aria-expanded') !== 'true'; b.setAttribute('aria-expanded', open); b.closest('li').querySelector('.desc').hidden = !open; };
+})();
+</script>
 <script>
 document.getElementById('yr').textContent = new Date().getFullYear();
 

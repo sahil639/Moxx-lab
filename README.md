@@ -4,7 +4,8 @@ Mockup animations. Each one is a single self-contained HTML page — no build st
 no dependencies. Open one in a browser and it runs. The interface is set in Helvetica Neue, a system font,
 falling back to Helvetica or Arial; no font is downloaded.
 
-`index.html` is the directory; add a new row to its list when a new animation lands.
+`index.html` is the directory: a list of the effects with topic filters on the left. Add a
+new row to its list, with its topics, when a new animation lands.
 Its logo is a small chrome object: drag to turn it, flick to spin it, let go and it settles back.
 `logo.svg` is the Moxx Lab mark (white on transparent) and `favicon.svg` the same on black;
 every page uses them for the tab icon, the panel header and the back link.
