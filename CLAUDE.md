@@ -197,20 +197,20 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
   matte. Settings in localStorage `moxx-tone-tiles`. R = reshuffle. Exposed as `window.TT`.
   Not checked: uploading an image, drop and paste, Save PNG. No SVG export.
 
-- **Glow Cells** (16): generative neon cell colony, Canvas 2D, shared `ui.css`/`ui.js`, from a
-  reference video (black ground, wobbling glowing membranes in magenta/orange/cyan, bright
-  cores, scribbly threads, bands of drifting specks). File order: state → `noise` → colony
-  (`newColony` from the seed; `shapeTable()` works out each cell's radii once a frame from smooth
-  noise read around a ring plus a stretch along one axis, one row per loop, and `outline()`
-  only looks them up; `physics`: flow drift, pull to the middle, soft repulsion, drag) → `plankton` (specks
-  moved by a flow field, faded by a clump mask and near cells) → `drawCell` (kinds `ring`,
-  `tangle`, `core`, `jelly`; besides loops and threads each cell gets `scribble` coils — a
-  spring wound along the membrane — and `inside` scrawls, long looping paths that fill the
-  body) → `draw`: everything is painted additively into an offscreen
-  `scene` canvas (which keeps the trails), then copied to the visible canvas with two shrunken
-  copies laid over it as bloom, so the bloom never feeds back into the trails. Settings in
-  localStorage `moxx-glow-cells`. R = new colony. Exposed as `window.GC`. About 5 ms a frame
-  at the defaults. Not checked: motion at full frame rate, dragging by hand, video.
+- **Glow Cells** (16): a flat 2D colony in which every mark is a tiny filled circle, Canvas 2D,
+  shared `ui.css`/`ui.js`, from a reference video. The first version drew cells as glowing line
+  scribbles; the user said that reading was wrong (everything is circles of similar hues) and
+  it was rewritten — do not bring strokes back. File order: state → noise and colour (`shades`:
+  six hues near the cell's colour plus two accents) → colony (`newColony`: each cell gets `d`,
+  its dots as polar homes `rho`/`th` chosen patchily per kind — `hollow`, `full`, `core`,
+  `cloud` — bucketed by shade in `d.by`; `shapeTable`/`outline` = noise-shaped blob; `physics`:
+  drift, pull to the middle, soft repulsion, drag, 160 settling steps at creation) → `drawCell`
+  (body dots one path per shade, optional ringed dots, membrane = chains of dots along the
+  outline, the last chain meandering) → `plankton` (loose circles, ringed ones, streaks as
+  short dot chains) → `draw` into an offscreen `scene`, then to the visible canvas with a light
+  halo. Not additive: plain `source-over`. Settings carry `v:2`; older saved settings are
+  ignored. localStorage `moxx-glow-cells`. R = new colony. Exposed as `window.GC`. About 5 ms
+  a frame. Not checked: motion at full frame rate, dragging by hand, video.
 
 ## Status (last work)
 All work is committed; see `git log`.

@@ -43,7 +43,7 @@
 <div id="hud">drag a cell to move it · <kbd>H</kbd> panel · <kbd>R</kbd> new colony · <kbd>S</kbd> save png · <kbd>space</kbd> pause</div>
 
 <div id="panel">
-  <h1><img class="mark" src="logo.svg" alt="">Glow Cells<small>a generative colony of glowing, drifting cells</small></h1>
+  <h1><img class="mark" src="logo.svg" alt="">Glow Cells<small>a colony of cells, every one built from tiny circles</small></h1>
 
   <details open>
     <summary>Colony</summary>
@@ -53,15 +53,21 @@
   </details>
 
   <details open>
-    <summary>Cell shape</summary>
-    <p class="hint lead">The wobbling outline of each cell and what is drawn inside it.</p>
+    <summary>Cells</summary>
+    <p class="hint lead">Each cell is a blob of tiny circles; these set its shape and how full it is.</p>
     <div class="grid" id="kinds"></div>
     <div id="f-shape"></div>
   </details>
 
   <details open>
+    <summary>Membrane</summary>
+    <p class="hint lead">The chains of dots that trace the edge of each cell.</p>
+    <div id="f-membrane"></div>
+  </details>
+
+  <details open>
     <summary>Colour</summary>
-    <p class="hint lead">The colours the cells are drawn in. Each cell takes one, with a second for its core.</p>
+    <p class="hint lead">Each cell takes one colour; its circles vary a little around that hue.</p>
     <div class="grid" id="palettes"></div>
     <div class="sw" id="cellPal"></div>
     <div id="f-colour"></div>
@@ -69,7 +75,7 @@
 
   <details open>
     <summary>Plankton</summary>
-    <p class="hint lead">The specks and streaks that flow through the dark around the cells.</p>
+    <p class="hint lead">The loose circles and dotted streaks that flow through the dark.</p>
     <div id="f-plankton"></div>
     <div class="sw" id="specPal"></div>
   </details>
@@ -89,119 +95,117 @@
 </div>
 
 <script>
-/* Glow Cells — a colony of soft glowing cells drifting through flowing specks, all generated from a seed.
-   File order: state → noise → colony (cells: shape, physics) → plankton → drawing → frame → UI → export. */
+/* Glow Cells — a flat, 2D colony in which everything is a tiny filled circle: cell bodies are clusters of circles in
+   closely related hues, membranes are chains of dots along the cell's edge, and the dark around them is loose circles.
+   File order: state → noise and colour → colony (cells and their dots, shape, physics) → plankton → drawing → frame → UI → export. */
 const $ = id => document.getElementById(id), el = (t, c) => { const e = document.createElement(t); if (c) e.className = c; return e; };
 const clamp = (v,a,b) => v<a?a:v>b?b:v, lerp = (a,b,t) => a+(b-a)*t, TAU = Math.PI*2;
 function makeRng(seed){ let a = seed>>>0; return () => { a |= 0; a = a+0x6D2B79F5|0; let t = Math.imul(a^a>>>15, 1|a); t = t+Math.imul(t^t>>>7, 61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
 
 /* ------------------------------------------------------------ state */
 const PALETTES = {
-  Neon:     ['#ff3df2','#ff7a1a','#19f0ff','#f7ff3d','#b06bff','#ff3d8b'],
-  'Deep sea': ['#19f0ff','#2a8bff','#7dffd4','#b8f7ff','#5a6bff','#00ffa8'],
-  Ember:    ['#ff7a1a','#ff3d3d','#ffd23d','#ff5d8f','#ff9a5a','#ffe9a8'],
-  Orchid:   ['#ff3df2','#b06bff','#ff8bd1','#7a5cff','#ffc2f5','#19f0ff'],
-  Bone:     ['#ffffff','#d8d8d8','#a8b4c4','#f4e9d8','#8fa3b8','#ffe9a8'],
-  Acid:     ['#c8ff1a','#19ffb0','#f7ff3d','#ff3df2','#19f0ff','#8bff3d'],
+  Neon:     ['#ff2fd6','#ff5a1f','#19e6ff','#d8f23a','#a45bff','#ff3d7a'],
+  'Deep sea': ['#19e6ff','#2a8bff','#52f2c2','#8fdcff','#5a6bff','#00e69a'],
+  Ember:    ['#ff5a1f','#ff2f4a','#ffc21f','#ff5d8f','#ff8a3d','#ffd98a'],
+  Orchid:   ['#ff2fd6','#a45bff','#ff7ac8','#6f4dff','#ffa8ee','#19e6ff'],
+  Bone:     ['#f2f2f2','#c8c8c8','#9aa8ba','#e8dcc8','#7f93a8','#f2d98a'],
+  Acid:     ['#b8f21a','#19f2a4','#eef23a','#ff2fd6','#19e6ff','#7af23a'],
 };
-const KINDS = { ring:'Rings', tangle:'Tangles', core:'Bright cores', jelly:'Jellies' };
-const DEFAULTS = { seed:4711, count:10, sizeMin:.06, sizeMax:.15, crowd:.3, gather:.4, drift:.5,
-  kinds:{ ring:true, tangle:true, core:true, jelly:true }, wobble:.45, blob:.75, lobes:5, wobbleSpeed:.5, loops:8, weight:1.1, filaments:30, scribble:.75, inside:.75, core:.8, beads:.4,
-  palette:PALETTES.Neon.slice(), sat:1,
-  specks:7000, speckSize:1.5, streaks:.08, flow:.45, flowScale:2.2, clump:.7, fringe:true, specPal:['#9aa0a8','#7fe7ff','#ff5a5a','#ffffff','#6b7078','#ff9a3c','#7a5cff','#8a8f98'],
-  glow:.5, trails:.3, bg:'#000000', speed:1, playing:true };
+const KINDS = { hollow:'Hollow', full:'Full', core:'Bright core', cloud:'Cloud' };
+const DEFAULTS = { v:2, seed:4711, count:10, sizeMin:.06, sizeMax:.15, crowd:.15, gather:.25, drift:.5,
+  kinds:{ hollow:true, full:true, core:true, cloud:true }, wobble:.34, blob:.6, lobes:5, wobbleSpeed:.5,
+  dots:900, dot:1.5, dotVar:.6, patch:.6, swirl:.35, ringed:.05,
+  rings:2, ringGap:.06, chain:1.5, meander:.5,
+  palette:PALETTES.Neon.slice(), hueVar:22, lightVar:.22, accent:.1,
+  specks:5200, speckSize:1.6, streaks:.06, flow:.45, flowScale:2.2, clump:.7, specPal:['#ff5a7a','#35d6c8','#8a8f98','#ff8fb4','#4fa8ff','#f2f2f2','#ff9a3c','#7a5cff'],
+  glow:.22, trails:.12, bg:'#000000', speed:1, playing:true };
 let S = JSON.parse(JSON.stringify(DEFAULTS));
 const cv = $('c'), out = cv.getContext('2d'), scene = el('canvas'), g = scene.getContext('2d'), b1 = el('canvas'), g1 = b1.getContext('2d'), b2 = el('canvas'), g2 = b2.getContext('2d');
-let W = 1, H = 1, dpr = 1, time = 0, cells = [], P = null;
+let W = 1, H = 1, dpr = 1, time = 0, cells = [], P = null, held = null, grab = [0, 0];
 
-/* ------------------------------------------------------------ noise: smooth, 0..1, with a slow third axis for time */
+/* ------------------------------------------------------------ noise (smooth, 0..1, third axis for time) and colour */
 const h3 = (x, y, z) => { let n = Math.imul(x|0, 374761393) ^ Math.imul(y|0, 668265263) ^ Math.imul(z|0, 1274126177) ^ Math.imul(S.seed|0, 2246822519); n = Math.imul(n ^ n>>>15, 2246822519); n = Math.imul(n ^ n>>>13, 3266489917); return ((n ^ n>>>16)>>>0)/4294967296; };
 const sm = t => t*t*(3-2*t);
 function noise(x, y, z){ const x0 = Math.floor(x), y0 = Math.floor(y), z0 = Math.floor(z), fx = sm(x-x0), fy = sm(y-y0), fz = z-z0;
   const sl = k => lerp(lerp(h3(x0,y0,k), h3(x0+1,y0,k), fx), lerp(h3(x0,y0+1,k), h3(x0+1,y0+1,k), fx), fy); return lerp(sl(z0), sl(z0+1), fz); }
+function hsl(hex){ const n = parseInt(hex.slice(1), 16), r = (n>>16&255)/255, gg = (n>>8&255)/255, b = (n&255)/255, mx = Math.max(r, gg, b), mn = Math.min(r, gg, b), l = (mx+mn)/2, d = mx-mn; let h = 0;
+  if (d){ h = mx === r ? ((gg-b)/d)%6 : mx === gg ? (b-r)/d+2 : (r-gg)/d+4; h *= 60; } return [(h+360)%360, d ? d/(1-Math.abs(2*l-1)) : 0, l]; }
+const css = (h, s, l) => `hsl(${((h%360)+360)%360|0} ${clamp(s*100, 0, 100)|0}% ${clamp(l*100, 4, 96)|0}%)`;
+const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`; };
+/* eight shades for a cell: six close to its own colour, two taken from another palette colour as accents */
+const NS = 8;
+function shades(c){ const pal = S.palette, a = hsl(pal[c.ci%pal.length] || '#ffffff'), b = hsl(pal[(c.ci+1+c.cj%Math.max(1, pal.length-1))%pal.length] || '#ffffff'), o = [];
+  for (let k = 0; k < 6; k++){ const u = k/5-.5; o.push(css(a[0]+u*2*S.hueVar*c.hd, a[1], a[2]+(c.ls[k]-.5)*2*S.lightVar)); } o.push(css(b[0], b[1], b[2]), css(b[0]+12, b[1], Math.min(.9, b[2]+.2))); return o; }
 
 /* ------------------------------------------------------------ colony */
-function newColony(){ const r = makeRng(S.seed), kinds = Object.keys(KINDS).filter(k => S.kinds[k]); cells = [];
-  for (let i = 0; i < S.count; i++){ const kind = kinds.length ? kinds[Math.floor(r()*kinds.length)] : 'ring', a = r()*TAU, d = Math.sqrt(r())*.34, big = kind === 'jelly' ? .55 : 1;
-    cells.push({ kind, x:W/2+Math.cos(a)*d*W*.8, y:H/2+Math.sin(a)*d*H*.8, vx:0, vy:0, size:lerp(S.sizeMin, S.sizeMax, r())*big, ci:Math.floor(r()*64), cj:Math.floor(r()*64), seed:r()*1000, spin:(r()-.5)*.3, lob:Math.floor(r()*4)-2, el:.1+r()*.3, ea:r()*TAU,
-      harm:[1,2,3,4].map(k => ({ amp:(.4+r()*.6)/k, ph:r()*TAU, sp:(r()-.5)*1.6 })),
-      fil:Array.from({ length:64 }, () => ({ a:r()*TAU, len:.25+r()*.75, curl:(r()-.5)*5, sp:.3+r()*1.2, ph:r()*TAU, w:.4+r()*.8 })) }); }
-}
-const radiusOf = (c) => c.size*Math.min(W, H);
-/* the outline: a circle pushed in and out by smooth noise read around a ring, so every cell is its own irregular blob,
-   stretched a little along one axis. Each loop reads the noise slightly further on, so the loops wander apart and cross.
-   shapeTable() works the radii out once per cell per frame; outline() only looks them up. */
-const TN = 128;
-function shapeTable(c, t){ const L = Math.max(4, Math.round(S.loops)), f = .55+S.lobes*.2, k1 = S.wobble*(1.5+1.9*S.blob), k2 = S.wobble*(.6+.8*S.blob), el = c.el*S.blob, mid = (S.loops-1)/2;
-  if (!c.tab || c.tab.length !== L*(TN+1)) c.tab = new Float32Array(L*(TN+1)); c.tabL = L;
-  for (let l = 0; l < L; l++) for (let i = 0; i <= TN; i++){ const th = i/TN*TAU, x = Math.cos(th), y = Math.sin(th);
-    const n1 = noise(c.seed+x*f, c.seed*1.7+y*f, t*.12+l*.06)-.5, n2 = noise(c.seed*3.1+x*f*2.4, 9+y*f*2.4, t*.2+l*.1)-.5, n3 = noise(40+x*f*5, c.seed+y*f*5, t*.3+l*.2)-.5;
-    c.tab[l*(TN+1)+i] = Math.max(.25, 1 + k1*n1 + k2*n2 + S.wobble*.25*n3 + el*Math.cos(2*(th-c.ea)) + (l-mid)*.02); } }
-function outline(c, th, loop){ let u = th/TAU; u = (u-Math.floor(u))*TN; const i = u|0, l = Math.min(c.tabL-1, loop|0)*(TN+1); return c.tab[l+i] + (c.tab[l+i+1]-c.tab[l+i])*(u-i); }
+function newColony(){ const r = makeRng(S.seed), kinds = Object.keys(KINDS).filter(k => S.kinds[k]), m = Math.min(W, H); cells = [];
+  for (let i = 0; i < S.count; i++){ const kind = kinds.length ? kinds[Math.floor(r()*kinds.length)] : 'full', a = r()*TAU, d = Math.sqrt(r())*.34, size = lerp(S.sizeMin, S.sizeMax, r());
+    const c = { kind, x:W/2+Math.cos(a)*d*W*.8, y:H/2+Math.sin(a)*d*H*.8, vx:0, vy:0, size, ci:Math.floor(r()*64), cj:Math.floor(r()*64), seed:r()*1000, spin:(r()-.5)*.25, el:.1+r()*.3, ea:r()*TAU, hd:r() < .5 ? 1 : -1, ls:Array.from({ length:6 }, () => r()) };
+    const n = Math.round(S.dots*Math.pow(size/.1, 2)*(kind === 'hollow' ? .45 : kind === 'cloud' ? 1.2 : 1)), D = c.d = { n, rho:new Float32Array(n), th:new Float32Array(n), sz:new Float32Array(n), w:new Float32Array(n), ph:new Float32Array(n), ring:new Uint8Array(n), by:Array.from({ length:NS }, () => []) };
+    for (let k = 0; k < n; k++){ let rho, th, tries = 0;                                               /* where a dot lives inside its cell: patchy, and denser where the kind wants it */
+      do { th = r()*TAU; const u = r(); rho = kind === 'hollow' ? .55+.45*Math.pow(u, .5) : kind === 'core' ? (r() < .5 ? .32*Math.pow(u, .7) : Math.sqrt(u)) : kind === 'cloud' ? Math.sqrt(u)*1.12 : Math.sqrt(u); tries++; }
+      while (tries < 8 && noise(c.seed+Math.cos(th)*rho*3.2, c.seed*2+Math.sin(th)*rho*3.2, 7) < .28+S.patch*.3);
+      D.rho[k] = rho; D.th[k] = th; D.sz[k] = 1+(r()*2-1)*S.dotVar*.8+(r() < .06 ? S.dotVar*2 : 0); D.w[k] = (r()-.5)*2; D.ph[k] = r()*TAU; D.ring[k] = r() < S.ringed ? 1 : 0;
+      const bright = kind === 'core' && rho < .3; D.by[r() < S.accent || bright ? 6+(r() < .5 ? 0 : 1) : Math.floor(r()*6)].push(k); }
+    cells.push(c); }
+  for (let k = 0; k < 160; k++) physics(1/30); for (const c of cells) c.vx = c.vy = 0; void m; }                    /* let them push apart before the first frame */
+const radiusOf = c => c.size*Math.min(W, H);
+/* shape: a circle pushed in and out by smooth noise read around a ring and stretched along one axis, so each cell is an
+   irregular blob. shapeTable() works the radii out once per cell per frame (one row per membrane ring); outline() looks them up. */
+const TN = 128, TL = 5;
+function shapeTable(c, t){ const f = .55+S.lobes*.2, k1 = S.wobble*(1.5+1.9*S.blob), k2 = S.wobble*(.6+.8*S.blob), elo = c.el*S.blob; if (!c.tab) c.tab = new Float32Array(TL*(TN+1));
+  for (let l = 0; l < TL; l++) for (let i = 0; i <= TN; i++){ const th = i/TN*TAU, x = Math.cos(th), y = Math.sin(th);
+    const n1 = noise(c.seed+x*f, c.seed*1.7+y*f, t*.12+l*.05)-.5, n2 = noise(c.seed*3.1+x*f*2.4, 9+y*f*2.4, t*.2+l*.08)-.5, n3 = noise(40+x*f*5, c.seed+y*f*5, t*.3+l*.15)-.5;
+    c.tab[l*(TN+1)+i] = Math.max(.25, 1 + k1*n1 + k2*n2 + S.wobble*.25*n3 + elo*Math.cos(2*(th-c.ea))); } }
+function outline(c, th, l){ let u = th/TAU; u = (u-Math.floor(u))*TN; const i = u|0, o = Math.min(TL-1, l|0)*(TN+1); return c.tab[o+i] + (c.tab[o+i+1]-c.tab[o+i])*(u-i); }
 function physics(dt){ const m = Math.min(W, H), n = cells.length;
   for (let i = 0; i < n; i++){ const c = cells[i], a = noise(c.x/m*1.3, c.y/m*1.3, time*.05+c.seed)*TAU*2, R = radiusOf(c);
-    c.vx += Math.cos(a)*S.drift*14*dt; c.vy += Math.sin(a)*S.drift*14*dt;
-    c.vx += (W/2-c.x)*S.gather*.05*dt; c.vy += (H/2-c.y)*S.gather*.09*dt;                         /* a weak pull to the middle keeps the colony together */
-    for (let j = i+1; j < n; j++){ const o = cells[j], dx = o.x-c.x, dy = o.y-c.y, d = Math.hypot(dx, dy)+1e-3, want = (R+radiusOf(o))*(1.02-S.crowd*.4);
+    c.vx += Math.cos(a)*S.drift*14*dt; c.vy += Math.sin(a)*S.drift*14*dt; c.vx += (W/2-c.x)*S.gather*.05*dt; c.vy += (H/2-c.y)*S.gather*.09*dt;
+    for (let j = i+1; j < n; j++){ const o = cells[j], dx = o.x-c.x, dy = o.y-c.y, d = Math.hypot(dx, dy)+1e-3, want = (R+radiusOf(o))*(1.12-S.crowd*.5);
       if (d < want){ const f = (want-d)/want*90*dt, ux = dx/d, uy = dy/d; c.vx -= ux*f; c.vy -= uy*f; o.vx += ux*f; o.vy += uy*f; } }
     if (c.x < R*.6) c.vx += 30*dt; if (c.x > W-R*.6) c.vx -= 30*dt; if (c.y < R*.6) c.vy += 30*dt; if (c.y > H-R*.6) c.vy -= 30*dt; }
   for (const c of cells){ if (c === held) continue; const damp = Math.pow(.2, dt); c.vx *= damp; c.vy *= damp; c.x += c.vx*dt; c.y += c.vy*dt; } }
 
-/* ------------------------------------------------------------ plankton: specks carried by a flow field */
-function newPlankton(){ const n = S.specks|0, r = makeRng(S.seed+99); P = { n, x:new Float32Array(n), y:new Float32Array(n), s:new Float32Array(n), c:new Uint8Array(n), k:new Uint8Array(n), px:new Float32Array(n), py:new Float32Array(n) };
-  for (let i = 0; i < n; i++){ P.x[i] = P.px[i] = r()*W; P.y[i] = P.py[i] = r()*H; P.s[i] = .5+r()*r()*2.2; P.c[i] = Math.floor(r()*250); P.k[i] = r() < S.streaks ? 1 : 0; } }
-function plankton(dt){ if (!P || P.n !== (S.specks|0)) newPlankton(); const m = Math.min(W, H), fs = S.flowScale/m, sp = S.flow*46*dt, pal = S.specPal, np = pal.length || 1, t = time*.04, cl = S.clump;
-  g.lineCap = 'round';
-  for (let i = 0; i < P.n; i++){ let x = P.x[i], y = P.y[i]; const a = noise(x*fs, y*fs, t)*TAU*2.2, streak = P.k[i] === 1, v = sp*(streak ? 3.2 : 1)*(.5+P.s[i]*.4);
-    P.px[i] = x; P.py[i] = y; x += Math.cos(a)*v; y += Math.sin(a)*v;
-    if (x < -8){ x = W+8; P.px[i] = x; } else if (x > W+8){ x = -8; P.px[i] = x; } if (y < -8){ y = H+8; P.py[i] = y; } else if (y > H+8){ y = -8; P.py[i] = y; } P.x[i] = x; P.y[i] = y;
-    let al = cl > 0 ? clamp((noise(x*fs*1.7+31, y*fs*1.7-17, t*.6)-(.5-.12+cl*.12))*(2+cl*9), 0, 1) : 1; if (al <= .02) continue;           /* clumps and voids */
-    for (const c of cells){ const R = radiusOf(c)*1.25, dx = x-c.x, dy = y-c.y, d2 = dx*dx+dy*dy; if (d2 < R*R){ al *= clamp((Math.sqrt(d2)/R-.7)/.3, 0, 1); if (al <= .02) break; } }
-    if (al <= .02) continue; const col = pal[P.c[i]%np], sz = P.s[i]*S.speckSize;
-    if (streak){ const ca = Math.cos(a), sa = Math.sin(a), L = 6+sz*9; g.globalAlpha = al*.85; g.strokeStyle = col; g.lineWidth = Math.max(.6, sz*.7); g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x-ca*L*.5+sa*L*.18, y-sa*L*.5-ca*L*.18, x-ca*L, y-sa*L); g.stroke(); }
-    else { if (S.fringe && sz > 1.1){ g.globalAlpha = al*.5; g.fillStyle = '#ff3b3b'; g.fillRect(x-sz*.5-1, y-sz*.5, sz, sz); g.fillStyle = '#35e8ff'; g.fillRect(x-sz*.5+1, y-sz*.5, sz, sz); }
-      g.globalAlpha = al*(.45+.5*(P.c[i]%7)/6); g.fillStyle = col; g.fillRect(x-sz*.5, y-sz*.5, sz, sz); } }
-  g.globalAlpha = 1; }
-
-/* ------------------------------------------------------------ drawing a cell */
-const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`; };
-function drawCell(c, t){ shapeTable(c, t*S.wobbleSpeed*2); const R = radiusOf(c), pal = S.palette, col = pal[c.ci%pal.length] || '#fff', col2 = pal[(c.ci+1+c.cj%Math.max(1, pal.length-1))%pal.length] || col, rot = t*c.spin, N = 96, tw = t*S.wobbleSpeed*2;
-  const pt = (th, loop, k) => { const r = R*outline(c, th, loop, tw)*k*(1 + S.scribble*(.04*Math.sin(th*17+loop*2.1+c.seed) + .025*Math.sin(th*31-loop*1.3+tw*.8)));   /* a shaky hand */ return [c.x+Math.cos(th+rot)*r, c.y+Math.sin(th+rot)*r]; };
-  const path = (loop, k) => { g.beginPath(); for (let i = 0; i <= N; i++){ const p = pt(i/N*TAU, loop, k); i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]); } g.closePath(); };
-  g.lineJoin = 'round'; g.lineCap = 'round';
-  if (S.core > 0 && c.kind !== 'ring'){ const cr = R*(c.kind === 'core' ? .75 : c.kind === 'jelly' ? 1 : .55), gr = g.createRadialGradient(c.x, c.y, 0, c.x, c.y, cr);                 /* the glowing middle */
-    const k = c.kind === 'jelly' ? .45 : 1; gr.addColorStop(0, rgba(c.kind === 'core' ? '#fff6c8' : col2, .6*S.core*k)); gr.addColorStop(.3, rgba(col2, .3*S.core*k)); gr.addColorStop(1, rgba(col2, 0)); g.fillStyle = gr; g.beginPath(); g.arc(c.x, c.y, cr, 0, TAU); g.fill(); }
-  if (c.kind === 'jelly'){ path(0, .62); g.fillStyle = rgba(col, .7); g.fill(); }
-  const fils = Math.round(S.filaments*(c.kind === 'tangle' ? 1.6 : c.kind === 'ring' ? .45 : c.kind === 'jelly' ? .5 : 1)), reach = c.kind === 'jelly' ? 1.55 : c.kind === 'core' ? .8 : .92;
-  for (let f = 0; f < Math.min(fils, c.fil.length); f++){ const F = c.fil[f], M = 14; g.beginPath();                                                                 /* threads that curl out from the middle */
-    for (let j = 0; j <= M; j++){ const u = j/M, th = F.a + Math.sin(u*3.1+t*F.sp+F.ph)*F.curl*.22*u + (c.kind === 'tangle' ? Math.sin(u*9+F.ph*3+t*F.sp*.7)*.5 : 0), r = R*outline(c, th, 0, tw)*u*F.len*reach*(c.kind === 'tangle' ? .5+.5*Math.sin(u*6+F.ph) : 1);
-      const x = c.x+Math.cos(th+rot)*r, y = c.y+Math.sin(th+rot)*r; j ? g.lineTo(x, y) : g.moveTo(x, y); }
-    g.strokeStyle = rgba(f%4 === 0 ? col2 : col, c.kind === 'tangle' ? .5 : .38); g.lineWidth = S.weight*F.w*.8; g.stroke(); }
-  if (c.kind !== 'jelly' || S.loops > 3){ const loops = c.kind === 'jelly' ? 2 : Math.max(1, Math.round(S.loops));                                                     /* the membrane: several thin loops, slightly out of step */
-    for (let l = 0; l < loops; l++){ path(l, c.kind === 'jelly' ? .7 : 1); g.strokeStyle = rgba(col, l === 0 ? .95 : .5); g.lineWidth = S.weight*(l === 0 ? 1.5 : .8); g.stroke(); } }
-  const coils = c.kind === 'jelly' ? Math.round(S.scribble) : Math.round(S.scribble*3.4);                                                                          /* a spring wound along the membrane */
-  for (let q = 0; q < coils; q++){ const M = 440, m = 36+q*11+c.lob*3, dir = q%2 ? 1 : -1; g.beginPath();
-    for (let i = 0; i <= M; i++){ const th = i/M*TAU, p = pt(th, q, (c.kind === 'jelly' ? .7 : 1)-q*.045), amp = R*(.035+.06*S.scribble)*(.55+.45*Math.sin(th*3+c.seed+q*1.7)), a = m*th+c.seed+tw*.6*dir;
-      const x = p[0]+Math.cos(a)*amp, y = p[1]+Math.sin(a)*amp; i ? g.lineTo(x, y) : g.moveTo(x, y); }
-    g.closePath(); g.strokeStyle = rgba(q === 1 ? col2 : col, .5); g.lineWidth = S.weight*.7; g.stroke(); }
-  const inside = Math.round(S.inside*(c.kind === 'tangle' ? 10 : c.kind === 'core' ? 5 : c.kind === 'ring' ? 3 : 2));                                              /* long looping scrawls that fill the body */
-  for (let j = 0; j < inside; j++){ const F = c.fil[(j*7+3)%c.fil.length], K = 200, turns = 2+j%3, wide = c.kind === 'ring' ? 1 : .86; g.beginPath();
-    for (let i = 0; i <= K; i++){ const u = i/K, th = F.a + u*TAU*turns + Math.sin(u*7+F.ph)*.8, rho = .16+.66*(.5+.5*Math.sin(u*TAU*(1.5+j*.37)+F.ph*2+tw*.3*F.sp)), r = R*outline(c, th, 0, tw)*rho*wide, a = 23*u*TAU+F.ph, amp = R*.05*S.scribble;
-      const x = c.x+Math.cos(th+rot)*r+Math.cos(a)*amp, y = c.y+Math.sin(th+rot)*r+Math.sin(a)*amp; i ? g.lineTo(x, y) : g.moveTo(x, y); }
-    g.strokeStyle = rgba(j%3 === 1 ? col2 : col, .42); g.lineWidth = S.weight*.6; g.stroke(); }
-  if (S.beads > 0 && c.kind !== 'jelly'){ const nb = Math.round(S.beads*40); g.fillStyle = rgba(col, .9); for (let i = 0; i < nb; i++){ const th = (i/nb)*TAU + Math.sin(t*.3+c.seed+i)*.1, p = pt(th, 0, .86+.1*Math.sin(i*2.3+c.seed)); g.beginPath(); g.arc(p[0], p[1], S.weight*(.5+((i*7)%5)*.22), 0, TAU); g.fill(); } }
+/* ------------------------------------------------------------ drawing: every mark is a filled circle */
+const dotAt = (x, y, r) => { g.moveTo(x+r, y); g.arc(x, y, r, 0, TAU); };
+function drawCell(c, t){ shapeTable(c, t*S.wobbleSpeed*2); const R = radiusOf(c), D = c.d, sh = shades(c), rot = t*c.spin, sw = S.swirl, base = S.dot;
+  for (let s = 0; s < NS; s++){ const list = D.by[s]; if (!list.length) continue; g.fillStyle = sh[s]; g.beginPath();                                   /* the body: one pass per shade */
+    for (let q = 0; q < list.length; q++){ const k = list[q], rho = D.rho[k], th = D.th[k] + t*sw*D.w[k]*(1.2-rho) + Math.sin(t*.6+D.ph[k])*.08, r = R*outline(c, th, 0)*rho*.94 + Math.sin(t*1.3*D.w[k]+D.ph[k])*base*1.5;
+      dotAt(c.x+Math.cos(th+rot)*r, c.y+Math.sin(th+rot)*r, Math.max(.4, base*D.sz[k]*(s >= 6 ? 1.15 : 1))); }
+    g.fill(); }
+  if (S.ringed > 0){ g.strokeStyle = sh[7]; g.lineWidth = Math.max(.5, base*.45); g.beginPath();                                                        /* a few circles wear a ring */
+    for (let k = 0; k < D.n; k++) if (D.ring[k]){ const rho = D.rho[k], th = D.th[k] + t*sw*D.w[k]*(1.2-rho) + Math.sin(t*.6+D.ph[k])*.08, r = R*outline(c, th, 0)*rho*.94 + Math.sin(t*1.3*D.w[k]+D.ph[k])*base*1.5, x = c.x+Math.cos(th+rot)*r, y = c.y+Math.sin(th+rot)*r, rr = base*D.sz[k]*2.1; g.moveTo(x+rr, y); g.arc(x, y, rr, 0, TAU); }
+    g.stroke(); }
+  if (c.kind !== 'cloud'){ const rings = Math.round(S.rings), step = Math.max(1.2, S.chain*base*.9), dr = Math.max(.5, base*.72);                             /* the membrane: chains of dots, one of them meandering */
+    for (let l = 0; l < rings; l++){ const k = 1+l*S.ringGap, K = Math.max(24, Math.round(TAU*R*k/step)), wav = l === rings-1 ? S.meander : 0, mf = Math.round(R*k*.55), dir = l%2 ? -1 : 1; g.fillStyle = sh[l === 0 ? 2 : l%2 ? 4 : 0]; g.beginPath();
+      for (let i = 0; i < K; i++){ const th = i/K*TAU + t*.05*dir, mask = wav ? clamp((noise(c.seed*5+Math.cos(th)*1.6, 3+Math.sin(th)*1.6, t*.08)-.42)*5, 0, 1) : 0, r = R*outline(c, th, l)*k + (wav ? Math.sin(th*mf)*R*.045*wav*mask : 0);
+        dotAt(c.x+Math.cos(th+rot)*r, c.y+Math.sin(th+rot)*r, dr*(mask ? 1.15 : 1)); }
+      g.fill(); } }
 }
 
+/* ------------------------------------------------------------ plankton: loose circles carried by a flow field */
+function newPlankton(){ const n = S.specks|0, r = makeRng(S.seed+99); P = { n, x:new Float32Array(n), y:new Float32Array(n), s:new Float32Array(n), c:new Uint8Array(n), k:new Uint8Array(n) };
+  for (let i = 0; i < n; i++){ P.x[i] = r()*W; P.y[i] = r()*H; P.s[i] = .5+r()*r()*2.4; P.c[i] = Math.floor(r()*250); P.k[i] = r() < S.streaks ? 1 : r() < .12 ? 2 : 0; } }
+function plankton(dt){ if (!P || P.n !== (S.specks|0)) newPlankton(); const m = Math.min(W, H), fs = S.flowScale/m, sp = S.flow*46*dt, pal = S.specPal, np = pal.length || 1, t = time*.04, cl = S.clump;
+  for (let i = 0; i < P.n; i++){ let x = P.x[i], y = P.y[i]; const a = noise(x*fs, y*fs, t)*TAU*2.2, kind = P.k[i], v = sp*(kind === 1 ? 3 : 1)*(.5+P.s[i]*.4);
+    x += Math.cos(a)*v; y += Math.sin(a)*v; if (x < -8) x = W+8; else if (x > W+8) x = -8; if (y < -8) y = H+8; else if (y > H+8) y = -8; P.x[i] = x; P.y[i] = y;
+    let al = cl > 0 ? clamp((noise(x*fs*1.7+31, y*fs*1.7-17, t*.6)-(.38+cl*.12))*(2+cl*9), 0, 1) : 1; if (al <= .03) continue;                          /* clumps and voids */
+    for (const c of cells){ const R = radiusOf(c)*1.3, dx = x-c.x, dy = y-c.y, d2 = dx*dx+dy*dy; if (d2 < R*R){ al *= clamp((Math.sqrt(d2)/R-.72)/.28, 0, 1); if (al <= .03) break; } }
+    if (al <= .03) continue; const col = pal[P.c[i]%np], sz = P.s[i]*S.speckSize; g.globalAlpha = al*(.55+.45*(P.c[i]%7)/6); g.fillStyle = col; g.beginPath();
+    if (kind === 1){ const ca = Math.cos(a), sa = Math.sin(a), nd = 7; for (let q = 0; q < nd; q++){ const u = q/(nd-1); dotAt(x-ca*u*(8+sz*7)+sa*Math.sin(u*3)*2, y-sa*u*(8+sz*7)-ca*Math.sin(u*3)*2, Math.max(.4, sz*.55*(1-u*.6))); } g.fill(); }    /* a streak is a short chain of dots */
+    else { dotAt(x, y, Math.max(.4, sz*.62)); g.fill(); if (kind === 2){ g.strokeStyle = pal[(P.c[i]+3)%np]; g.lineWidth = Math.max(.5, sz*.3); g.beginPath(); g.arc(x, y, sz*1.5, 0, TAU); g.stroke(); } } }
+  g.globalAlpha = 1; }
+
 /* ------------------------------------------------------------ frame */
-function resize(){ const hidden = document.body.classList.contains('ui-hidden'); W = Math.max(1, innerWidth-(hidden || innerWidth < 720 ? 0 : 340)); H = Math.max(1, innerHeight); dpr = Math.min(devicePixelRatio || 1, 1.5);
+function resize(){ const hidden = document.body.classList.contains('ui-hidden'); W = Math.max(1, innerWidth-(hidden || innerWidth < 720 ? 0 : 340)); H = Math.max(1, innerHeight); dpr = Math.min(devicePixelRatio || 1, 2);
   for (const [c, k] of [[cv, 1], [scene, 1], [b1, .25], [b2, .09]]){ c.width = Math.max(2, Math.round(W*dpr*k)); c.height = Math.max(2, Math.round(H*dpr*k)); }
   cv.style.width = W+'px'; cv.style.height = H+'px'; g.fillStyle = S.bg; g.fillRect(0, 0, scene.width, scene.height); if (!cells.length) newColony(); P = null; }
 function draw(dt){
   g.setTransform(dpr, 0, 0, dpr, 0, 0); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; g.fillStyle = rgba(S.bg, dt > 0 ? 1-clamp(S.trails, 0, .97)*.92 : 1); if (dt > 0 || !S.trails) g.fillRect(0, 0, W, H);
-  g.globalCompositeOperation = 'lighter'; if (dt > 0) physics(dt); plankton(dt); for (const c of cells) drawCell(c, time); g.globalCompositeOperation = 'source-over';
+  if (dt > 0) physics(dt); plankton(dt); for (const c of cells) drawCell(c, time);
   out.setTransform(1, 0, 0, 1, 0, 0); out.globalCompositeOperation = 'source-over'; out.globalAlpha = 1; out.drawImage(scene, 0, 0);
-  if (S.glow > 0){ g1.globalCompositeOperation = 'copy'; g1.drawImage(scene, 0, 0, b1.width, b1.height); g2.globalCompositeOperation = 'copy'; g2.imageSmoothingQuality = 'high'; g2.drawImage(b1, 0, 0, b2.width, b2.height);      /* bloom: the picture, shrunk and laid back over itself */
-    out.globalCompositeOperation = 'lighter'; out.imageSmoothingEnabled = true; out.imageSmoothingQuality = 'high'; out.globalAlpha = S.glow*.55; out.drawImage(b1, 0, 0, cv.width, cv.height); out.globalAlpha = S.glow*.9; out.drawImage(b2, 0, 0, cv.width, cv.height); out.globalAlpha = 1; }
+  if (S.glow > 0){ g1.globalCompositeOperation = 'copy'; g1.drawImage(scene, 0, 0, b1.width, b1.height); g2.globalCompositeOperation = 'copy'; g2.imageSmoothingQuality = 'high'; g2.drawImage(b1, 0, 0, b2.width, b2.height);      /* a soft halo: the picture, shrunk and laid back over itself */
+    out.globalCompositeOperation = 'lighter'; out.imageSmoothingEnabled = true; out.imageSmoothingQuality = 'high'; out.globalAlpha = S.glow*.5; out.drawImage(b1, 0, 0, cv.width, cv.height); out.globalAlpha = S.glow*.8; out.drawImage(b2, 0, 0, cv.width, cv.height); out.globalAlpha = 1; }
 }
 let last = 0;
 function frame(now){ requestAnimationFrame(frame); const dt = Math.min(.05, (now-last)/1000 || 0); last = now; if (document.hidden) return; const d = S.playing ? dt*S.speed : 0; time += d; draw(d); }
@@ -220,13 +224,13 @@ const pct = v => Math.round(v*100)+'%', f2 = v => (+v).toFixed(2);
 ctl('f-colony', 'count', 'Cells', { min:1, max:40, colony:true }); ctl('f-colony', 'sizeMin', 'Smallest', { min:.02, max:.25, step:.005, fmt:pct, colony:true }); ctl('f-colony', 'sizeMax', 'Largest', { min:.03, max:.4, step:.005, fmt:pct, colony:true });
 ctl('f-colony', 'crowd', 'Overlap', { min:0, max:1, step:.01, fmt:pct }); ctl('f-colony', 'gather', 'Pull to the middle', { min:0, max:2, step:.01, fmt:pct }); ctl('f-colony', 'drift', 'Drift', { min:0, max:2, step:.01, fmt:pct });
 ctl('f-colony', 'seed', 'Seed', { type:'text', num:true, colony:true });
+ctl('f-shape', 'dots', 'Circles per cell', { min:50, max:4000, step:50, colony:true }); ctl('f-shape', 'dot', 'Circle size', { min:.5, max:5, step:.05, fmt:v => f2(v)+' px' }); ctl('f-shape', 'dotVar', 'Size variation', { min:0, max:1, step:.01, fmt:pct, colony:true });
+ctl('f-shape', 'patch', 'Patchiness', { min:0, max:1, step:.01, fmt:pct, colony:true }); ctl('f-shape', 'swirl', 'Swirl inside', { min:0, max:2, step:.01, fmt:f2 }); ctl('f-shape', 'ringed', 'Circles with a ring', { min:0, max:.4, step:.005, fmt:pct, colony:true });
 ctl('f-shape', 'wobble', 'Wobble', { min:0, max:1, step:.01, fmt:pct }); ctl('f-shape', 'blob', 'Irregular, blobby', { min:0, max:1.5, step:.01, fmt:pct }); ctl('f-shape', 'lobes', 'Bumps', { min:1, max:10 }); ctl('f-shape', 'wobbleSpeed', 'Wobble speed', { min:0, max:3, step:.01, fmt:f2 });
-ctl('f-shape', 'scribble', 'Scribble on the edge', { min:0, max:1, step:.01, fmt:pct }); ctl('f-shape', 'inside', 'Scrawl inside', { min:0, max:1.5, step:.01, fmt:pct });
-ctl('f-shape', 'loops', 'Outline loops', { min:1, max:14 }); ctl('f-shape', 'weight', 'Line weight', { min:.3, max:5, step:.05, fmt:v => f2(v)+' px' }); ctl('f-shape', 'filaments', 'Threads inside', { min:0, max:40 });
-ctl('f-shape', 'core', 'Core glow', { min:0, max:1, step:.01, fmt:pct }); ctl('f-shape', 'beads', 'Beads on the edge', { min:0, max:1, step:.01, fmt:pct });
-ctl('f-plankton', 'specks', 'Specks', { min:0, max:16000, step:100 }); ctl('f-plankton', 'speckSize', 'Size', { min:.5, max:5, step:.05, fmt:f2 }); ctl('f-plankton', 'streaks', 'Share of streaks', { min:0, max:1, step:.01, fmt:pct });
-ctl('f-plankton', 'flow', 'Flow speed', { min:0, max:3, step:.01, fmt:f2 }); ctl('f-plankton', 'flowScale', 'Swirl size', { min:.5, max:8, step:.05, fmt:f2 }); ctl('f-plankton', 'clump', 'Clumps and voids', { min:0, max:1, step:.01, fmt:pct });
-ctl('f-plankton', 'fringe', 'Red and cyan fringes on the specks', { type:'toggle' });
+ctl('f-membrane', 'rings', 'Chains', { min:0, max:5 }); ctl('f-membrane', 'ringGap', 'Space between chains', { min:.02, max:.25, step:.005, fmt:pct }); ctl('f-membrane', 'chain', 'Dot spacing', { min:1, max:8, step:.1, fmt:f2 }); ctl('f-membrane', 'meander', 'Meander', { min:0, max:1.5, step:.01, fmt:pct });
+ctl('f-colour', 'hueVar', 'Hue variation', { min:0, max:90, fmt:v => '±'+v+'°' }); ctl('f-colour', 'lightVar', 'Light and dark variation', { min:0, max:.5, step:.01, fmt:pct }); ctl('f-colour', 'accent', 'Accent circles', { min:0, max:.6, step:.01, fmt:pct, colony:true });
+ctl('f-plankton', 'specks', 'Circles', { min:0, max:16000, step:100 }); ctl('f-plankton', 'speckSize', 'Size', { min:.5, max:5, step:.05, fmt:f2 }); ctl('f-plankton', 'flow', 'Flow speed', { min:0, max:3, step:.01, fmt:f2 });
+ctl('f-plankton', 'flowScale', 'Swirl size', { min:.5, max:8, step:.05, fmt:f2 }); ctl('f-plankton', 'clump', 'Clumps and voids', { min:0, max:1, step:.01, fmt:pct });
 ctl('f-look', 'glow', 'Glow', { min:0, max:1.5, step:.01, fmt:pct }); ctl('f-look', 'trails', 'Trails', { min:0, max:.97, step:.01, fmt:pct }); ctl('f-look', 'speed', 'Speed', { min:0, max:4, step:.05, fmt:v => f2(v)+'×' }); ctl('f-look', 'bg', 'Background', { type:'color' });
 const kindBtns = {}; for (const k in KINDS){ const b = el('button'); b.textContent = KINDS[k]; b.onclick = () => { S.kinds[k] = !S.kinds[k]; touch(true); sync(); }; $('kinds').append(b); kindBtns[k] = b; }
 for (const k in PALETTES){ const b = el('button'); b.textContent = k; b.onclick = () => { S.palette = PALETTES[k].slice(); touch(); sync(); }; $('palettes').append(b); }
@@ -238,7 +242,6 @@ $('bReset').onclick = () => { S = JSON.parse(JSON.stringify(DEFAULTS)); touch(tr
 $('bPlay').onclick = () => { S.playing = !S.playing; touch(); sync(); };
 $('bHide').onclick = () => { document.body.classList.toggle('ui-hidden'); resize(); };
 
-let held = null, grab = [0, 0];
 cv.addEventListener('pointerdown', e => { const r = cv.getBoundingClientRect(), x = e.clientX-r.left, y = e.clientY-r.top; let best = null, bd = 1e9; for (const c of cells){ const d = Math.hypot(c.x-x, c.y-y)/radiusOf(c); if (d < 1.2 && d < bd){ bd = d; best = c; } }
   if (best){ held = best; grab = [best.x-x, best.y-y]; cv.setPointerCapture(e.pointerId); } });
 cv.addEventListener('pointermove', e => { if (!held) return; const r = cv.getBoundingClientRect(), nx = e.clientX-r.left+grab[0], ny = e.clientY-r.top+grab[1]; held.vx = (nx-held.x)*8; held.vy = (ny-held.y)*8; held.x = nx; held.y = ny; });
@@ -257,7 +260,8 @@ addEventListener('keydown', e => { if (/^(TEXTAREA|SELECT)$/.test(e.target.tagNa
   if (k === 'h') $('bHide').click(); else if (k === 'r') $('bNew').click(); else if (k === 's') $('bSave').click(); else if (e.key === ' '){ e.preventDefault(); $('bPlay').click(); } });
 addEventListener('resize', () => { const w = W, h = H; resize(); for (const c of cells){ c.x *= W/w; c.y *= H/h; } });
 
-try { const o = JSON.parse(localStorage.getItem(KEY)); if (o && typeof o === 'object') S = Object.assign(JSON.parse(JSON.stringify(DEFAULTS)), o, { kinds:Object.assign({}, DEFAULTS.kinds, o.kinds || {}) }); } catch(e){}
+/* settings saved by the first, line-drawn version of this page are not carried over */
+try { const o = JSON.parse(localStorage.getItem(KEY)); if (o && o.v === 2) S = Object.assign(JSON.parse(JSON.stringify(DEFAULTS)), o, { kinds:Object.assign({}, DEFAULTS.kinds, o.kinds || {}) }); } catch(e){}
 resize(); sync(); requestAnimationFrame(frame);
 window.GC = { get S(){ return S; }, get cells(){ return cells; }, newColony, draw };
 </script>

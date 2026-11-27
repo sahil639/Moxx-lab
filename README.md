@@ -240,15 +240,15 @@ share of flat grey, how much pattern stays in pure white and black, and a seed; 
 colours. Choose, drop or paste an image. Saves a PNG up to 8× the screen size.
 Keys: H panel, R reshuffle, S save PNG.
 
-**`glow-cells.html` — Glow Cells.** A generative colony of glowing cells on black: wobbling
-neon membranes drawn as many thin loops and coiled scribbles, bodies filled with looping
-scrawls, bright cores, curling threads and beads, in four
-kinds (rings, tangles, bright cores, jellies). The cells drift, pull together and push each
-other apart, and can be dragged. Around them flow thousands of specks and streaks, gathered
-into clumps with dark voids. Controls for the number and size of cells, overlap, drift, the
-outline (wobble, lobes, speed, loops, line weight), threads, core glow and beads; six
-palettes with editable colours; speck count, size, streaks, flow and clumping; glow, trails,
-speed and background; and a seed. Saves a PNG or an 8-second video.
+**`glow-cells.html` — Glow Cells.** A flat, generative colony of cells on black in which
+every mark is a tiny circle. Each cell is an irregular blob filled with hundreds of circles in
+closely related hues, with a few accent circles and ringed ones, and its edge is traced by
+chains of dots, one of them meandering. Four kinds: hollow, full, bright core and cloud. The
+cells drift, push each other apart and can be dragged; around them flow loose circles, ringed
+circles and dotted streaks, gathered into clumps with dark voids. Controls for the colony,
+the circles per cell and their size, patchiness and swirl, the blob shape, the membrane
+chains, six palettes with hue and lightness variation, the plankton, glow, trails and speed,
+and a seed. Saves a PNG or an 8-second video.
 Keys: H panel, R new colony, S save PNG, space pause.
 
 ## Interface
