@@ -6,9 +6,11 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
 
 ## Files
 - `index.html` — directory page, laid out after a reference the user supplied (a developer-blog
-  index): dark navy ground, the chrome logo top-left with a count beside it, a left "/ FILTERS"
-  column of topic checkboxes, and a "/ NO. / NAME" list with a blue square, a mono number, a
-  large name and a "+" per row, separated by thin lines. The name is the link; "+" opens the
+  index): black ground with a neon green accent (`--ix-accent`), the chrome logo top-left with a count
+  beside it and a short description of Moxx Lab top-right (`.intro`), a left "/ FILTERS" column
+  of topic checkboxes, and a "/ DATE / NAME" list, newest first: a green square, the date the
+  page was first committed (from `git log --diff-filter=A`, written `2026.11.27`), a long
+  descriptive title ("Name: what it does") and a "+" per row, separated by thin lines. The name is the link; "+" opens the
   description. New effect = new `<li data-tags="...">` in `#list` (topics are listed in `NAMES`
   in the filter script; counts are worked out from the rows). Ticking several topics shows rows
   with any of them. Its own tokens are `--ix-*`; it still loads `ui.css` for the theme toggle,

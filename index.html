@@ -3,16 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#04162a">
+<meta name="theme-color" content="#000000">
 <title>Moxx Lab</title>
 <meta name="description" content="Moxx Lab — mockup animations. Each one is a single self-contained page, built to be tuned in the browser and screen-recorded.">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <style>
   :root{
-    --ix-bg:#04162a; --ix-fg:#d5dbe6; --ix-dim:#7f93ad; --ix-faint:#4d6078; --ix-line:#20344b; --ix-accent:#4f8cff; --ix-count:#e8c36a;
+    --ix-bg:#000000; --ix-fg:#e9ebe6; --ix-dim:#8b9088; --ix-faint:#4f534d; --ix-line:#232622; --ix-accent:#39ff14; --ix-count:#39ff14;
     --ix-sans:"Helvetica Neue",Helvetica,Arial,sans-serif; --ix-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
   }
-  html[data-theme=light]{ --ix-bg:#f3f4f6; --ix-fg:#0b1b2e; --ix-dim:#586a80; --ix-faint:#97a3b3; --ix-line:#d3d9e1; --ix-accent:#1f5fe0; --ix-count:#9a6a12; }
+  html[data-theme=light]{ --ix-bg:#f4f4f1; --ix-fg:#0c0d0b; --ix-dim:#62665f; --ix-faint:#a3a79f; --ix-line:#d8dbd4; --ix-accent:#0e9a00; --ix-count:#0e9a00; }
   html:root[data-theme]{--u-bg:var(--ix-bg);--u-fg:var(--ix-fg)}
   *{box-sizing:border-box}
   [hidden]{display:none!important}
@@ -22,29 +22,31 @@
   .wrap{padding:0 24px 72px}
 
   /* the mark: an <img> until WebGL takes over, then a chrome object you can grab */
-  .head{display:flex;align-items:flex-start;padding:6px 0 4px}
-  .logo{position:relative;width:250px;height:250px;margin:-34px 0 -10px -38px;cursor:grab;touch-action:none;
+  .head{display:flex;align-items:flex-start;gap:0;padding:22px 0 6px 14px}
+  .logo{position:relative;width:250px;height:250px;margin:0 0 -6px 0;cursor:grab;touch-action:none;
     user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
   .logo.held{cursor:grabbing}
   .logo img{display:block;width:100%;height:100%;pointer-events:none;-webkit-user-drag:none}
   .logo canvas{position:absolute;left:50%;top:50%;width:300%;height:300%;margin:-150% 0 0 -150%;pointer-events:none;will-change:transform}
   .logo.live img{visibility:hidden}
   html[data-theme=light] .logo img{filter:invert(1)}
-  .count{margin:34px 0 0 -30px;font-size:22px;letter-spacing:-.01em;color:var(--ix-count);font-variant-numeric:tabular-nums}
+  .count{margin:50px 0 0 -14px;font-size:17px;letter-spacing:-.01em;color:var(--ix-count);font-variant-numeric:tabular-nums}
 
-  .cols{display:grid;grid-template-columns:326px minmax(0,1fr);column-gap:82px;align-items:start}
-  .label{margin:0;padding:0 0 9px 1px;border-bottom:1px solid var(--ix-line);font:400 13px/1.3 var(--ix-mono);letter-spacing:.04em;text-transform:uppercase;color:var(--ix-dim)}
+  .intro{margin:58px 6px 0 auto;max-width:400px;font-size:14.5px;line-height:1.5;color:var(--ix-dim)}
+  .intro b{display:block;margin-bottom:6px;font-weight:500;color:var(--ix-fg)}
+  .cols{display:grid;grid-template-columns:236px minmax(0,1fr);column-gap:58px;align-items:start}
+  .label{margin:0;padding:0 0 7px 1px;border-bottom:1px solid var(--ix-line);font:400 11px/1.3 var(--ix-mono);letter-spacing:.05em;text-transform:uppercase;color:var(--ix-dim)}
 
   /* filters */
   .group{padding-top:20px}
   .group summary{display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none;font-size:17px;color:var(--ix-fg);user-select:none;-webkit-user-select:none}
   .group summary::-webkit-details-marker{display:none}
   .group summary:focus-visible{outline:1px solid var(--ix-accent);outline-offset:4px}
-  .group svg{width:22px;height:22px;flex:none;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
-  .group .chev{width:14px;height:14px;transition:transform .15s ease}
+  .group svg{width:17px;height:17px;flex:none;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+  .group .chev{width:11px;height:11px;transition:transform .15s ease}
   .group:not([open]) .chev{transform:rotate(-90deg)}
-  #filters{list-style:none;margin:14px 0 0 9px;padding:0 0 0 17px;border-left:1px solid var(--ix-line)}
-  #filters label{display:flex;align-items:center;gap:13px;padding:3px 0;font-size:16.5px;color:var(--ix-dim);cursor:pointer;transition:color .12s ease}
+  #filters{list-style:none;margin:9px 0 0 6px;padding:0 0 0 13px;border-left:1px solid var(--ix-line)}
+  #filters label{display:flex;align-items:center;gap:10px;padding:1.5px 0;font-size:13.5px;color:var(--ix-dim);cursor:pointer;transition:color .12s ease}
   #filters label:hover,#filters input:checked ~ span{color:var(--ix-fg)}
   #filters input{appearance:none;-webkit-appearance:none;flex:none;width:17px;height:15px;margin:0;border:1.5px solid var(--ix-faint);border-radius:3px;background:none;cursor:pointer;transition:background .12s ease,border-color .12s ease}
   #filters input:checked{background:var(--ix-accent);border-color:var(--ix-accent)}
@@ -52,25 +54,25 @@
   #clear{margin:16px 0 0 26px;padding:0;border:0;background:none;color:var(--ix-accent);font:inherit;font-size:14px;cursor:pointer}
 
   /* the list */
-  .labels{display:grid;grid-template-columns:166px 1fr}
+  .labels{display:grid;grid-template-columns:122px 1fr}
   .labels .label{border:0}
   .list{list-style:none;margin:0;padding:0;border-top:1px solid var(--ix-line)}
   .list li{border-bottom:1px solid var(--ix-line)}
-  .entry{display:grid;grid-template-columns:22px 144px minmax(0,1fr) 40px;align-items:center;min-height:63px}
-  .sq{width:10px;height:10px;background:var(--ix-accent)}
-  .no{font:400 15.5px/1 var(--ix-mono);letter-spacing:.02em;color:var(--ix-accent);font-variant-numeric:tabular-nums}
-  .name{padding:11px 0 12px;font-size:clamp(23px,2.25vw,33px);line-height:1.18;letter-spacing:-.022em;color:var(--ix-fg);transition:color .12s ease,transform .25s cubic-bezier(.2,.7,.2,1)}
+  .entry{display:grid;grid-template-columns:17px 105px minmax(0,1fr) 30px;align-items:center;min-height:45px}
+  .sq{width:7px;height:7px;background:var(--ix-accent)}
+  .no{font:400 12px/1 var(--ix-mono);letter-spacing:.02em;color:var(--ix-accent);font-variant-numeric:tabular-nums}
+  .name{padding:8px 0 9px;font-size:clamp(17px,1.62vw,23.5px);line-height:1.2;letter-spacing:-.02em;color:var(--ix-fg);transition:color .12s ease,transform .25s cubic-bezier(.2,.7,.2,1)}
   .name:hover,.name:focus-visible{color:var(--ix-accent);outline:none;transform:translateX(4px)}
   .more{justify-self:end;width:40px;height:40px;padding:0;border:0;background:none;color:var(--ix-dim);font:300 26px/1 var(--ix-sans);cursor:pointer;transition:color .12s ease}
   .more span{display:block;transition:transform .2s ease}
   .more:hover,.more:focus-visible{color:var(--ix-fg);outline:none}
   .more[aria-expanded=true] span{transform:rotate(45deg)}
-  .desc{margin:-2px 0 0;padding:0 56px 20px 166px;max-width:980px;font-size:16px;line-height:1.55;color:var(--ix-dim)}
+  .desc{margin:-2px 0 0;padding:0 44px 14px 122px;max-width:860px;font-size:13.5px;line-height:1.55;color:var(--ix-dim)}
   .desc a{color:var(--ix-accent);white-space:nowrap}
   .desc a:hover{text-decoration:underline}
-  #none{padding:22px 0 0 166px;color:var(--ix-dim)}
+  #none{padding:16px 0 0 122px;color:var(--ix-dim);font-size:13.5px}
 
-  .credit{margin:56px 0 0;padding-left:408px;font:400 13px/1.4 var(--ix-mono);letter-spacing:.04em;text-transform:uppercase;color:var(--ix-dim)}
+  .credit{margin:40px 0 0;padding-left:294px;font:400 11px/1.4 var(--ix-mono);letter-spacing:.05em;text-transform:uppercase;color:var(--ix-dim)}
   .credit a{color:var(--ix-fg)}
   .credit a:hover,.credit a:focus-visible{color:var(--ix-accent);outline:none}
 
@@ -78,25 +80,28 @@
     .cols{grid-template-columns:1fr;row-gap:30px}
     #filters{display:flex;flex-wrap:wrap;gap:2px 22px;margin-left:0;padding-left:0;border-left:0}
     .credit{padding-left:0}
+    .intro{margin-top:40px;max-width:340px}
   }
   @media (max-width:620px){
     .wrap{padding:0 16px 56px}
-    .logo{width:170px;height:170px;margin:-22px 0 -6px -26px}
-    .count{margin:24px 0 0 -18px;font-size:18px}
-    .labels{grid-template-columns:74px 1fr}
-    .entry{grid-template-columns:18px 56px minmax(0,1fr) 36px;min-height:56px}
-    .desc{padding:0 8px 18px 74px} #none{padding-left:74px}
+    .head{padding:14px 0 4px 4px;flex-wrap:wrap}
+    .logo{width:170px;height:170px;margin:0 0 -4px 0}
+    .count{margin:34px 0 0 -10px;font-size:15px}
+    .intro{margin:6px 0 18px;max-width:none;flex:0 0 100%}
+    .labels{grid-template-columns:96px 1fr}
+    .entry{grid-template-columns:14px 82px minmax(0,1fr) 30px;min-height:44px}
+    .desc{padding:0 8px 14px 96px} #none{padding-left:96px}
   }
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
   /* ui.css is written for the effect panels and restyles every summary, button and details; put the index's own back */
-  html[data-theme] .group{border:0;padding:20px 0 0}
-  html[data-theme] .group summary{display:flex;align-items:center;justify-content:flex-start;gap:10px;margin:0;padding:0;border-radius:0;font-size:17px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--ix-fg)}
+  html[data-theme] .group{border:0;padding:14px 0 0}
+  html[data-theme] .group summary{display:flex;align-items:center;justify-content:flex-start;gap:8px;margin:0;padding:0;border-radius:0;font-size:14px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--ix-fg)}
   html[data-theme] .group summary::after{display:none}
-  html[data-theme] .more{justify-self:end;width:40px;height:40px;padding:0;border:0;border-radius:0;background:none;color:var(--ix-dim);font:300 26px/1 var(--ix-sans);letter-spacing:0;transform:none}
+  html[data-theme] .more{justify-self:end;width:30px;height:30px;padding:0;border:0;border-radius:0;background:none;color:var(--ix-dim);font:300 20px/1 var(--ix-sans);letter-spacing:0;transform:none}
   html[data-theme] .more:hover,html[data-theme] .more:focus-visible{background:none;color:var(--ix-fg)}
-  html[data-theme] #clear{margin:16px 0 0 26px;padding:0;border:0;border-radius:0;background:none;color:var(--ix-accent);font-size:14px;letter-spacing:0;transform:none}
-  html[data-theme] #filters input{width:17px;height:15px;padding:0;border:1.5px solid var(--ix-faint);border-radius:3px;background:none}
+  html[data-theme] #clear{margin:12px 0 0 20px;padding:0;border:0;border-radius:0;background:none;color:var(--ix-accent);font-size:12.5px;letter-spacing:0;transform:none}
+  html[data-theme] #filters input{width:14px;height:12px;padding:0;border:1.5px solid var(--ix-faint);border-radius:2.5px;background:none}
   html[data-theme] #filters input:checked{background:var(--ix-accent);border-color:var(--ix-accent)}
 </style>
 <link rel="stylesheet" href="ui.css">
@@ -108,6 +113,7 @@
   <header class="head">
     <div class="logo" id="logo" title="Drag me"><img src="logo.svg" alt="Moxx Lab" draggable="false"></div>
     <span class="count" id="count" aria-label="16 effects">(16)</span>
+    <p class="intro"><b>Moxx Lab</b>A growing set of small browser tools for making motion graphics, generative images and brand visuals. Each one is a single page: open it, shape it with the panel, then save a still or record the result.</p>
   </header>
 
   <div class="cols">
@@ -121,71 +127,71 @@
     </aside>
 
     <main>
-      <div class="labels"><p class="label">/ No.</p><p class="label">/ Name</p></div>
+      <div class="labels"><p class="label">/ Date</p><p class="label">/ Name</p></div>
       <ul class="list" id="list">
-      <li data-tags="type">
-        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">01</span><a class="name" href="terminal-type.html">Terminal Type</a><button class="more" type="button" aria-expanded="false" aria-label="About Terminal Type"><span aria-hidden="true">+</span></button></div>
-        <p class="desc" hidden>Portrait terminal text that types itself in, a scramble of glyphs decoding just ahead of the write head, over scanlines and flicker. Drop in any font file to see it set in that face. <a href="terminal-type.html">Open Terminal Type →</a></p>
-      </li>
-      <li data-tags="image">
-        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">02</span><a class="name" href="dither-lab.html">Dither Lab</a><button class="more" type="button" aria-expanded="false" aria-label="About Dither Lab"><span aria-hidden="true">+</span></button></div>
-        <p class="desc" hidden>Drop an image or a video and it is dithered live on the GPU — Bayer, noise or halftone, down to a few tones and a three-colour palette, with a lens that sharpens wherever the cursor rests. <a href="dither-lab.html">Open Dither Lab →</a></p>
-      </li>
-      <li data-tags="image">
-        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">03</span><a class="name" href="line-relief.html">Line Relief</a><button class="more" type="button" aria-expanded="false" aria-label="About Line Relief"><span aria-hidden="true">+</span></button></div>
-        <p class="desc" hidden>A field of parallel lines pushed sideways by an image's brightness, so the picture exists only as deformation — bunching into dense bands where it steepens, thinning into dots where it spreads. <a href="line-relief.html">Open Line Relief →</a></p>
-      </li>
-      <li data-tags="image type">
-        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">04</span><a class="name" href="glyph-matrix.html">Glyph Matrix</a><button class="more" type="button" aria-expanded="false" aria-label="About Glyph Matrix"><span aria-hidden="true">+</span></button></div>
-        <p class="desc" hidden>A grid of small marks that reads a picture or a video and redraws it in its own alphabet — rings, bars, crosses, characters — one glyph and colour per tonal band, with a wave running through the lattice. <a href="glyph-matrix.html">Open Glyph Matrix →</a></p>
-      </li>
-      <li data-tags="3d">
-        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">05</span><a class="name" href="prism-core.html">Prism Core</a><button class="more" type="button" aria-expanded="false" aria-label="About Prism Core"><span aria-hidden="true">+</span></button></div>
-        <p class="desc" hidden>A soft, rounded block that glows from the inside — orbs, translucent layers and drifting motes moving through it. Turn it by hand, change its shape, view and arrangement, and build the gradient from as many colours as you like. <a href="prism-core.html">Open Prism Core →</a></p>
-      </li>
-      <li data-tags="logo">
-        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">06</span><a class="name" href="compass-mark.html">Compass Mark</a><button class="more" type="button" aria-expanded="false" aria-label="About Compass Mark"><span aria-hidden="true">+</span></button></div>
-        <p class="desc" hidden>A logo drawn with nothing but circles — lobes around a ring, fillets rolled into the notches, thin spiral channels cut through — with the construction lines left showing. Save versions, check it at icon sizes, export PNG or SVG. <a href="compass-mark.html">Open Compass Mark →</a></p>
-      </li>
-      <li data-tags="logo generative">
-        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">07</span><a class="name" href="brand-engine.html">Brand Engine</a><button class="more" type="button" aria-expanded="false" aria-label="About Brand Engine"><span aria-hidden="true">+</span></button></div>
-        <p class="desc" hidden>A seeded brand system: one number and one fixed palette make every visual for a brand — diagrams, avatars, layouts, sub-brand logos — and the same seed always gives the same picture. Riso print modes, PNG, SVG and video export. <a href="brand-engine.html">Open Brand Engine →</a></p>
-      </li>
-      <li data-tags="3d physics">
-        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">08</span><a class="name" href="jelly-pitch.html">Jelly Pitch</a><button class="more" type="button" aria-expanded="false" aria-label="About Jelly Pitch"><span aria-hidden="true">+</span></button></div>
-        <p class="desc" hidden>A tennis ball, a football and a basketball made of wobbly, translucent jelly on turf that bends under them. Pull them about, cut them with a knife, and print your own face into the jelly. Needs WebGPU. <a href="jelly-pitch.html">Open Jelly Pitch →</a></p>
-      </li>
-      <li data-tags="type">
-        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">09</span><a class="name" href="pretext-play.html">Pretext Play</a><button class="more" type="button" aria-expanded="false" aria-label="About Pretext Play"><span aria-hidden="true">+</span></button></div>
-        <p class="desc" hidden>A playground for the pretext library: paragraphs measured and wrapped in plain JavaScript, with no DOM. Drag a column's width, shrink chat bubbles to their text, pour words around a moving circle, and see how the text is cut into pieces. <a href="pretext-play.html">Open Pretext Play →</a></p>
-      </li>
-      <li data-tags="3d">
-        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">10</span><a class="name" href="tape-deck.html">Tape Deck</a><button class="more" type="button" aria-expanded="false" aria-label="About Tape Deck"><span aria-hidden="true">+</span></button></div>
-        <p class="desc" hidden>A drum of cassettes, one per project, turning under a hot light. Hover a tape and a tracker reads out its name, its numbers and a few panels of noise; click and it opens. Saves itself as one offline file. <a href="tape-deck.html">Open Tape Deck →</a></p>
-      </li>
       <li data-tags="particles generative">
-        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">11</span><a class="name" href="grain-stack.html">Grain Stack</a><button class="more" type="button" aria-expanded="false" aria-label="About Grain Stack"><span aria-hidden="true">+</span></button></div>
-        <p class="desc" hidden>Shapes stacked like cut paper, each one filled with grains that are born on its bottom edge, rise, and darken until they vanish at the top. Dunes, nested hexagons, blobs, or a shape you draw yourself, with soft shadows between the layers. <a href="grain-stack.html">Open Grain Stack →</a></p>
-      </li>
-      <li data-tags="pattern generative">
-        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">12</span><a class="name" href="pattern-maker.html">Pattern Maker</a><button class="more" type="button" aria-expanded="false" aria-label="About Pattern Maker"><span aria-hidden="true">+</span></button></div>
-        <p class="desc" hidden>Seamless repeat patterns built in layers. Use the built-in shapes, type your own characters, drop in an image, paste an SVG or draw a motif by hand, then lay it out as a grid, brick, hex, scatter or mandala and bend it with fields. Exports a tile as PNG, SVG or CSS. <a href="pattern-maker.html">Open Pattern Maker →</a></p>
-      </li>
-      <li data-tags="particles image">
-        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">13</span><a class="name" href="particle-morph.html">Particle Morph</a><button class="more" type="button" aria-expanded="false" aria-label="About Particle Morph"><span aria-hidden="true">+</span></button></div>
-        <p class="desc" hidden>Images drawn as tens of thousands of particles that flow from one picture into the next and scatter under the cursor. Add your own images, choose how particles are matched and how they travel, and export a video or an embed for your site. <a href="particle-morph.html">Open Particle Morph →</a></p>
-      </li>
-      <li data-tags="3d generative pattern">
-        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">14</span><a class="name" href="isocuboid.html">Isocuboid</a><button class="more" type="button" aria-expanded="false" aria-label="About Isocuboid"><span aria-hidden="true">+</span></button></div>
-        <p class="desc" hidden>An endless isometric city: thousands of flat-coloured boxes packed on a grid, grouped into districts, still or rising and falling in waves. Define your own box types, colours and outlines, reroll with a seed, and drag to wander. Or draw just one box, in line, and save it as SVG. <a href="isocuboid.html">Open Isocuboid →</a></p>
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">2026.11.27</span><a class="name" href="glow-cells.html">Glow Cells: a drifting colony of cells made of tiny circles</a><button class="more" type="button" aria-expanded="false" aria-label="About Glow Cells"><span aria-hidden="true">+</span></button></div>
+        <p class="desc" hidden>A colony of cells generated from a seed, every one built from hundreds of tiny circles in neighbouring hues, edged with chains of dots, drifting and jostling through loose specks in the dark. Drag a cell to move it. <a href="glow-cells.html">Open Glow Cells →</a></p>
       </li>
       <li data-tags="image pattern">
-        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">15</span><a class="name" href="tone-tiles.html">Tone Tiles</a><button class="more" type="button" aria-expanded="false" aria-label="About Tone Tiles"><span aria-hidden="true">+</span></button></div>
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">2026.11.27</span><a class="name" href="tone-tiles.html">Tone Tiles: a photo rebuilt from black and white patterns</a><button class="more" type="button" aria-expanded="false" aria-label="About Tone Tiles"><span aria-hidden="true">+</span></button></div>
         <p class="desc" hidden>A black and white picture rebuilt as a mosaic of patterns: dots, zigzags, checks, rings and stripes, each drawn as dense as its tile is dark, with small tiles where the picture has detail and big ones where it is calm. <a href="tone-tiles.html">Open Tone Tiles →</a></p>
       </li>
+      <li data-tags="3d generative pattern">
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">2026.11.25</span><a class="name" href="isocuboid.html">Isocuboid: an endless isometric city of flat-coloured boxes</a><button class="more" type="button" aria-expanded="false" aria-label="About Isocuboid"><span aria-hidden="true">+</span></button></div>
+        <p class="desc" hidden>An endless isometric city: thousands of flat-coloured boxes packed on a grid, grouped into districts, still or rising and falling in waves. Define your own box types, colours and outlines, reroll with a seed, and drag to wander. Or draw just one box, in line, and save it as SVG. <a href="isocuboid.html">Open Isocuboid →</a></p>
+      </li>
+      <li data-tags="particles image">
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">2026.11.25</span><a class="name" href="particle-morph.html">Particle Morph: images as particles that flow one into the next</a><button class="more" type="button" aria-expanded="false" aria-label="About Particle Morph"><span aria-hidden="true">+</span></button></div>
+        <p class="desc" hidden>Images drawn as tens of thousands of particles that flow from one picture into the next and scatter under the cursor. Add your own images, choose how particles are matched and how they travel, and export a video or an embed for your site. <a href="particle-morph.html">Open Particle Morph →</a></p>
+      </li>
+      <li data-tags="pattern generative">
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">2026.11.23</span><a class="name" href="pattern-maker.html">Pattern Maker: seamless repeat patterns built in layers</a><button class="more" type="button" aria-expanded="false" aria-label="About Pattern Maker"><span aria-hidden="true">+</span></button></div>
+        <p class="desc" hidden>Seamless repeat patterns built in layers. Use the built-in shapes, type your own characters, drop in an image, paste an SVG or draw a motif by hand, then lay it out as a grid, brick, hex, scatter or mandala and bend it with fields. Exports a tile as PNG, SVG or CSS. <a href="pattern-maker.html">Open Pattern Maker →</a></p>
+      </li>
       <li data-tags="particles generative">
-        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">16</span><a class="name" href="glow-cells.html">Glow Cells</a><button class="more" type="button" aria-expanded="false" aria-label="About Glow Cells"><span aria-hidden="true">+</span></button></div>
-        <p class="desc" hidden>A colony of cells generated from a seed, every one built from hundreds of tiny circles in neighbouring hues, edged with chains of dots, drifting and jostling through loose specks in the dark. Drag a cell to move it. <a href="glow-cells.html">Open Glow Cells →</a></p>
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">2026.11.23</span><a class="name" href="grain-stack.html">Grain Stack: layered shapes filled with rising, fading grains</a><button class="more" type="button" aria-expanded="false" aria-label="About Grain Stack"><span aria-hidden="true">+</span></button></div>
+        <p class="desc" hidden>Shapes stacked like cut paper, each one filled with grains that are born on its bottom edge, rise, and darken until they vanish at the top. Dunes, nested hexagons, blobs, or a shape you draw yourself, with soft shadows between the layers. <a href="grain-stack.html">Open Grain Stack →</a></p>
+      </li>
+      <li data-tags="3d">
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">2026.11.23</span><a class="name" href="tape-deck.html">Tape Deck: a turning drum of cassettes, one per project</a><button class="more" type="button" aria-expanded="false" aria-label="About Tape Deck"><span aria-hidden="true">+</span></button></div>
+        <p class="desc" hidden>A drum of cassettes, one per project, turning under a hot light. Hover a tape and a tracker reads out its name, its numbers and a few panels of noise; click and it opens. Saves itself as one offline file. <a href="tape-deck.html">Open Tape Deck →</a></p>
+      </li>
+      <li data-tags="type">
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">2026.11.23</span><a class="name" href="pretext-play.html">Pretext Play: measuring and wrapping text without the DOM</a><button class="more" type="button" aria-expanded="false" aria-label="About Pretext Play"><span aria-hidden="true">+</span></button></div>
+        <p class="desc" hidden>A playground for the pretext library: paragraphs measured and wrapped in plain JavaScript, with no DOM. Drag a column's width, shrink chat bubbles to their text, pour words around a moving circle, and see how the text is cut into pieces. <a href="pretext-play.html">Open Pretext Play →</a></p>
+      </li>
+      <li data-tags="3d physics">
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">2026.11.21</span><a class="name" href="jelly-pitch.html">Jelly Pitch: wobbly jelly balls you can pull, cut and print a face on</a><button class="more" type="button" aria-expanded="false" aria-label="About Jelly Pitch"><span aria-hidden="true">+</span></button></div>
+        <p class="desc" hidden>A tennis ball, a football and a basketball made of wobbly, translucent jelly on turf that bends under them. Pull them about, cut them with a knife, and print your own face into the jelly. Needs WebGPU. <a href="jelly-pitch.html">Open Jelly Pitch →</a></p>
+      </li>
+      <li data-tags="logo generative">
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">2026.11.21</span><a class="name" href="brand-engine.html">Brand Engine: one seed and one palette for a whole brand system</a><button class="more" type="button" aria-expanded="false" aria-label="About Brand Engine"><span aria-hidden="true">+</span></button></div>
+        <p class="desc" hidden>A seeded brand system: one number and one fixed palette make every visual for a brand — diagrams, avatars, layouts, sub-brand logos — and the same seed always gives the same picture. Riso print modes, PNG, SVG and video export. <a href="brand-engine.html">Open Brand Engine →</a></p>
+      </li>
+      <li data-tags="logo">
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">2026.11.21</span><a class="name" href="compass-mark.html">Compass Mark: building a logo from nothing but circles</a><button class="more" type="button" aria-expanded="false" aria-label="About Compass Mark"><span aria-hidden="true">+</span></button></div>
+        <p class="desc" hidden>A logo drawn with nothing but circles — lobes around a ring, fillets rolled into the notches, thin spiral channels cut through — with the construction lines left showing. Save versions, check it at icon sizes, export PNG or SVG. <a href="compass-mark.html">Open Compass Mark →</a></p>
+      </li>
+      <li data-tags="3d">
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">2026.11.03</span><a class="name" href="prism-core.html">Prism Core: a soft translucent block that glows from the inside</a><button class="more" type="button" aria-expanded="false" aria-label="About Prism Core"><span aria-hidden="true">+</span></button></div>
+        <p class="desc" hidden>A soft, rounded block that glows from the inside — orbs, translucent layers and drifting motes moving through it. Turn it by hand, change its shape, view and arrangement, and build the gradient from as many colours as you like. <a href="prism-core.html">Open Prism Core →</a></p>
+      </li>
+      <li data-tags="image type">
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">2026.09.14</span><a class="name" href="glyph-matrix.html">Glyph Matrix: images and video redrawn in a grid of marks</a><button class="more" type="button" aria-expanded="false" aria-label="About Glyph Matrix"><span aria-hidden="true">+</span></button></div>
+        <p class="desc" hidden>A grid of small marks that reads a picture or a video and redraws it in its own alphabet — rings, bars, crosses, characters — one glyph and colour per tonal band, with a wave running through the lattice. <a href="glyph-matrix.html">Open Glyph Matrix →</a></p>
+      </li>
+      <li data-tags="image">
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">2026.09.06</span><a class="name" href="line-relief.html">Line Relief: a picture carved out of bending parallel lines</a><button class="more" type="button" aria-expanded="false" aria-label="About Line Relief"><span aria-hidden="true">+</span></button></div>
+        <p class="desc" hidden>A field of parallel lines pushed sideways by an image's brightness, so the picture exists only as deformation — bunching into dense bands where it steepens, thinning into dots where it spreads. <a href="line-relief.html">Open Line Relief →</a></p>
+      </li>
+      <li data-tags="image">
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">2026.09.05</span><a class="name" href="dither-lab.html">Dither Lab: live GPU dithering for images and video</a><button class="more" type="button" aria-expanded="false" aria-label="About Dither Lab"><span aria-hidden="true">+</span></button></div>
+        <p class="desc" hidden>Drop an image or a video and it is dithered live on the GPU — Bayer, noise or halftone, down to a few tones and a three-colour palette, with a lens that sharpens wherever the cursor rests. <a href="dither-lab.html">Open Dither Lab →</a></p>
+      </li>
+      <li data-tags="type">
+        <div class="entry"><span class="sq" aria-hidden="true"></span><span class="no">2026.09.05</span><a class="name" href="terminal-type.html">Terminal Type: text that types itself in behind a scramble of glyphs</a><button class="more" type="button" aria-expanded="false" aria-label="About Terminal Type"><span aria-hidden="true">+</span></button></div>
+        <p class="desc" hidden>Portrait terminal text that types itself in, a scramble of glyphs decoding just ahead of the write head, over scanlines and flicker. Drop in any font file to see it set in that face. <a href="terminal-type.html">Open Terminal Type →</a></p>
       </li>
       </ul>
       <p id="none" hidden>Nothing matches those filters.</p>
