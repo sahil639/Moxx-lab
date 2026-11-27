@@ -229,6 +229,17 @@ sliders and number boxes for width, depth, height, inner stroke (0.5) and outer 
 and saves it as SVG.
 Keys: H panel, R randomize, S save PNG, space pause.
 
+**`tone-tiles.html` — Tone Tiles.** Rebuilds an image as a mosaic of black and white
+patterns. The picture is cut into squares that split in four wherever there is detail, and
+each square is filled with one pattern (dots, offset dots, squares, checker, diamonds,
+stripes, bars, diagonals, grid, zigzag, waves, scales, rings, nested squares, crosses, a
+diagonal half, a soft fade or flat grey) drawn at the density that matches the square's
+average grey. Controls: contrast, brightness, midtones and invert; largest tile size, number
+of splits, the detail threshold and a gap; which patterns are allowed, repeats per tile, the
+share of flat grey, how much pattern stays in pure white and black, and a seed; ink and paper
+colours. Choose, drop or paste an image. Saves a PNG up to 8× the screen size.
+Keys: H panel, R reshuffle, S save PNG.
+
 ## Interface
 
 Every page loads two shared files, `ui.css` and `ui.js`. Together they give the site a

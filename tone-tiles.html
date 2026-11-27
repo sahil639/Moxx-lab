@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="fonts.css">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Moxx Lab — Tone Tiles</title>
+<style>
+  :root{ --panel-w:340px; }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{height:100%}
+  body{margin:0;overflow:hidden;background:#d9d9d6;font:12px/1.4 'GT Zirkon',system-ui,sans-serif;-webkit-text-size-adjust:100%}
+  #stage{position:fixed;left:0;top:0;bottom:0;right:var(--panel-w);display:grid;place-items:center;overflow:hidden}
+  body.ui-hidden #stage{right:0}
+  #c{display:block;box-shadow:0 8px 40px rgba(0,0,0,.18)}
+  #panel{position:fixed;top:0;right:0;bottom:0;width:var(--panel-w);overflow-y:auto;z-index:10;transition:transform .18s ease}
+  body.ui-hidden #panel{transform:translateX(100%)}
+  h1 small{display:block}
+  .lead{margin:0 2px 10px!important}
+  .grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin:2px 0 8px}
+  #dropzone{border:1.5px dashed var(--u-line);border-radius:10px;padding:14px 12px;text-align:center;cursor:pointer;margin:4px 0 8px;transition:border-color .15s ease,background .15s ease}
+  #dropzone:hover,body.dragging #dropzone{border-color:var(--u-accent);background:var(--u-tile)}
+  #dropzone b{display:block;font-weight:500;font-size:12px;margin-bottom:4px;color:var(--u-fg)}
+  #dropzone span{font-size:10.5px;line-height:1.6;color:var(--u-dim)}
+  #hud{position:fixed;left:12px;bottom:10px;font-size:10px;letter-spacing:.08em;z-index:9;pointer-events:none;color:rgba(0,0,0,.5)}
+  body.ui-hidden #hud{display:none}
+  .mark{width:15px;height:15px;vertical-align:-2px;margin-right:8px}
+  #back{position:fixed;left:14px;top:14px;z-index:11;display:inline-flex;align-items:center;gap:8px;padding:8px 13px 8px 11px;
+    font:500 12px/1 'GT Zirkon',system-ui,sans-serif;letter-spacing:.06em;text-decoration:none;white-space:nowrap;
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);transition:opacity .18s ease,background .15s ease,border-color .15s ease}
+  #back img{width:13px;height:13px;display:block}
+  body.ui-hidden #back{opacity:0} body.ui-hidden #back:hover,body.ui-hidden #back:focus-visible{opacity:1}
+</style>
+<link rel="stylesheet" href="ui.css">
+<script src="ui.js"></script>
+</head>
+<body>
+
+<div id="stage"><canvas id="c"></canvas></div>
+<a id="back" href="index.html" aria-label="Back to Moxx Lab index"><img src="logo.svg" alt="">← Moxx Lab</a>
+<div id="hud"><kbd>H</kbd> panel · <kbd>R</kbd> reshuffle · <kbd>S</kbd> save png</div>
+<input type="file" id="file" accept="image/*" hidden>
+
+<div id="panel">
+  <h1><img class="mark" src="logo.svg" alt="">Tone Tiles<small>a picture rebuilt from black and white patterns</small></h1>
+
+  <details open>
+    <summary>Image</summary>
+    <p class="hint lead">The picture to rebuild. Black and white works best; colour is read as grey.</p>
+    <div id="dropzone"><b>Choose an image, or drop one here</b><span>PNG, JPG or WEBP · a clear subject with strong light and dark</span></div>
+    <div id="f-image"></div>
+  </details>
+
+  <details open>
+    <summary>Tiles</summary>
+    <p class="hint lead">Big tiles where the picture is calm, small ones where it has detail.</p>
+    <div id="f-tiles"></div>
+    <p class="hint" id="stat"></p>
+  </details>
+
+  <details open>
+    <summary>Patterns</summary>
+    <p class="hint lead">Which patterns may be used. Each is drawn as dense as its tile is dark.</p>
+    <div class="grid" id="pats"></div>
+    <div class="btns"><button id="bAll">All</button><button id="bNone">Only flat grey</button></div>
+    <div id="f-pats"></div>
+    <div class="btns"><button id="bShuffle">Reshuffle patterns</button></div>
+  </details>
+
+  <details open>
+    <summary>Ink</summary>
+    <p class="hint lead">The two colours everything is printed in.</p>
+    <div id="f-ink"></div>
+  </details>
+
+  <details open>
+    <summary>Export</summary>
+    <p class="hint lead">Save the picture as a PNG, larger than the screen if you like.</p>
+    <div id="f-export"></div>
+    <div class="btns"><button id="bSave">Save PNG</button><button id="bReset">Reset</button><button id="bHide">Hide panel</button></div>
+  </details>
+</div>
+
+<script>
+/* Tone Tiles — an image redrawn as a mosaic of black-and-white patterns. Each tile is filled with one pattern, drawn at
+   the density that gives the tile's average grey; tiles split in four wherever the picture has detail.
+   File order: state → source (image → grey, with summed tables) → tiles (the quadtree) → PATTERNS → render → UI. */
+const $ = id => document.getElementById(id), el = (t, c) => { const e = document.createElement(t); if (c) e.className = c; return e; };
+const clamp = (v,a,b) => v<a?a:v>b?b:v, TAU = Math.PI*2;
+const hash = (a,b,c,d) => { let x = Math.imul(a|0, 374761393) ^ Math.imul(b|0, 668265263) ^ Math.imul(c|0, 1274126177) ^ Math.imul(d|0, 2246822519); x = Math.imul(x ^ x>>>15, 2246822519); x = Math.imul(x ^ x>>>13, 3266489917); return ((x ^ x>>>16)>>>0)/4294967296; };
+
+/* ------------------------------------------------------------ state */
+const DEFAULTS = { contrast:1.15, bright:0, gamma:1, invert:false, cols:12, depth:3, detail:.14, gap:0, rep:5, flat:.1, floor:.07, mix:true, seed:11, ink:'#000000', paper:'#ffffff', scale:3, off:{} };
+let S = JSON.parse(JSON.stringify(DEFAULTS)), img = null, matte = '#fff';
+const cv = $('c'), ctx = cv.getContext('2d');
+
+/* ------------------------------------------------------------ source: the image as grey, plus summed tables for instant averages */
+let G = null;                                                   // { w, h, sum, sq } — integral images of brightness and brightness squared
+function prepare(){ if (!img) return; const iw = img.naturalWidth, ih = img.naturalHeight, m = 420/Math.max(iw, ih), w = Math.max(8, Math.round(iw*m)), h = Math.max(8, Math.round(ih*m));
+  const c = el('canvas'); c.width = w; c.height = h; const g = c.getContext('2d', { willReadFrequently:true }); g.fillStyle = matte; g.fillRect(0, 0, w, h); g.drawImage(img, 0, 0, w, h);                 // matte: what shows through a transparent image
+  const d = g.getImageData(0, 0, w, h).data, W1 = w+1, sum = new Float64Array(W1*(h+1)), sq = new Float64Array(W1*(h+1));
+  for (let y = 0; y < h; y++){ let rs = 0, rq = 0; for (let x = 0; x < w; x++){ const i = (y*w+x)*4; let v = (d[i]*.299+d[i+1]*.587+d[i+2]*.114)/255;
+      v = clamp((v-.5)*S.contrast+.5+S.bright, 0, 1); v = Math.pow(v, 1/S.gamma); if (S.invert) v = 1-v; rs += v; rq += v*v; sum[(y+1)*W1+x+1] = sum[y*W1+x+1]+rs; sq[(y+1)*W1+x+1] = sq[y*W1+x+1]+rq; } }
+  G = { w, h, sum, sq }; }
+function stats(x0, y0, x1, y1){                                 // mean and spread of brightness in a rectangle given in 0..1 of the image
+  const W1 = G.w+1, a = clamp(Math.floor(x0*G.w), 0, G.w-1), b = clamp(Math.floor(y0*G.h), 0, G.h-1), c = clamp(Math.ceil(x1*G.w), a+1, G.w), d = clamp(Math.ceil(y1*G.h), b+1, G.h), n = (c-a)*(d-b);
+  const s = G.sum[d*W1+c]-G.sum[b*W1+c]-G.sum[d*W1+a]+G.sum[b*W1+a], q = G.sq[d*W1+c]-G.sq[b*W1+c]-G.sq[d*W1+a]+G.sq[b*W1+a], mean = s/n; return [mean, Math.sqrt(Math.max(0, q/n-mean*mean))]; }
+
+/* ------------------------------------------------------------ tiles: a grid of big squares, each split in four while it still holds detail */
+let tiles = [], cols = 1, rows = 1;
+function buildTiles(){ tiles = []; if (!G) return; cols = Math.max(2, S.cols|0); rows = Math.max(1, Math.round(cols*G.h/G.w));
+  const split = (x, y, s, depth) => { const [mean, dev] = stats(x/cols, y/rows, (x+s)/cols, (y+s)/rows);
+    if (depth < S.depth && dev > S.detail){ const h = s/2; split(x, y, h, depth+1); split(x+h, y, h, depth+1); split(x, y+h, h, depth+1); split(x+h, y+h, h, depth+1); }
+    else tiles.push({ x, y, s, depth, mean }); };
+  for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) split(x, y, 1, 0);
+  $('stat').textContent = tiles.length.toLocaleString()+' tiles · '+cols+' × '+rows+' at the largest size'; }
+
+/* ------------------------------------------------------------ PATTERNS
+   Each draws ink shapes inside a square of side s at the origin so that about `c` of the area is covered (c is 0..0.5;
+   darker tiles are drawn as the same pattern in reverse). n = repeats across the tile, u = s / n, r() = a random number. */
+const lines = (g, s, u, w, fn) => { g.lineWidth = w; g.beginPath(); for (let k = -1; k*u <= s+u; k++) fn(k*u); g.stroke(); };
+const PATTERNS = {
+  dots:     ['Dots',      (g, s, c, n, u) => { const r = u*Math.sqrt(c/Math.PI); for (let j = 0; j < n; j++) for (let i = 0; i < n; i++){ g.beginPath(); g.arc((i+.5)*u, (j+.5)*u, r, 0, TAU); g.fill(); } }],
+  stagger:  ['Offset dots', (g, s, c, n, u) => { const r = u*Math.sqrt(c/Math.PI); for (let j = -1; j <= n; j++) for (let i = -1; i <= n; i++){ g.beginPath(); g.arc((i+.5+(j&1)*.5)*u, (j+.5)*u, r, 0, TAU); g.fill(); } }],
+  squares:  ['Squares',   (g, s, c, n, u) => { const a = u*Math.sqrt(c); for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) g.fillRect((i+.5)*u-a/2, (j+.5)*u-a/2, a, a); }],
+  checker:  ['Checker',   (g, s, c, n, u) => { const a = u*Math.sqrt(Math.min(1, c*2)); for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) if ((i+j)%2 === 0) g.fillRect((i+.5)*u-a/2, (j+.5)*u-a/2, a, a); }],
+  diamonds: ['Diamonds',  (g, s, c, n, u) => { const d = u*Math.sqrt(c/2); g.beginPath(); for (let j = 0; j < n; j++) for (let i = 0; i < n; i++){ const x = (i+.5)*u, y = (j+.5)*u; g.moveTo(x, y-d); g.lineTo(x+d, y); g.lineTo(x, y+d); g.lineTo(x-d, y); g.closePath(); } g.fill(); }],
+  hlines:   ['Stripes',   (g, s, c, n, u) => lines(g, s, u, u*c, y => { g.moveTo(-u, y+u/2); g.lineTo(s+u, y+u/2); })],
+  vlines:   ['Bars',      (g, s, c, n, u) => lines(g, s, u, u*c, x => { g.moveTo(x+u/2, -u); g.lineTo(x+u/2, s+u); })],
+  diagonal: ['Diagonals', (g, s, c, n, u, r) => { g.translate(s/2, s/2); g.rotate(r() < .5 ? Math.PI/4 : -Math.PI/4); g.translate(-s, -s); lines(g, s*2, u, u*c, y => { g.moveTo(-u, y); g.lineTo(s*2+u, y); }); }],
+  grid:     ['Grid',      (g, s, c, n, u) => { const w = u*(1-Math.sqrt(1-c)); lines(g, s, u, w, y => { g.moveTo(-u, y+u/2); g.lineTo(s+u, y+u/2); }); lines(g, s, u, w, x => { g.moveTo(x+u/2, -u); g.lineTo(x+u/2, s+u); }); }],
+  zigzag:   ['Zigzag',    (g, s, c, n, u) => { g.lineJoin = 'miter'; lines(g, s, u, u*c/1.414, y => { for (let i = -1; i <= n*2+1; i++){ const x = i*u/2, yy = y+u/2+(i&1 ? u/4 : -u/4); i === -1 ? g.moveTo(x, yy) : g.lineTo(x, yy); } }); }],
+  waves:    ['Waves',     (g, s, c, n, u) => lines(g, s, u, u*c/1.22, y => { g.moveTo(-u, y+u/2); for (let i = -1; i <= n; i++) g.bezierCurveTo(i*u+u*.25, y+u*.1, i*u+u*.75, y+u*.9, (i+1)*u, y+u/2); })],
+  scales:   ['Scales',    (g, s, c, n, u) => { g.lineWidth = u*c/Math.PI*1.05; g.beginPath(); for (let j = -1; j <= n*2; j++) for (let i = -1; i <= n; i++){ const x = (i+.5+(j&1)*.5)*u, y = j*u/2; g.moveTo(x+u/2, y); g.arc(x, y, u/2, 0, Math.PI); } g.stroke(); }],
+  rings:    ['Rings',     (g, s, c, n, u) => { g.lineWidth = u*c/2; g.beginPath(); for (let k = 0; k*u/2 < s; k++){ g.moveTo(s/2+(k+.5)*u/2, s/2); g.arc(s/2, s/2, (k+.5)*u/2, 0, TAU); } g.stroke(); }],
+  nested:   ['Nested',    (g, s, c, n, u) => { g.lineWidth = u*c/2; g.lineJoin = 'miter'; for (let k = 0; k*u/2 < s/2; k++){ const q = (k+.5)*u/2; g.strokeRect(s/2-q, s/2-q, q*2, q*2); } }],
+  plus:     ['Crosses',   (g, s, c, n, u) => { const t = u*c/1.3, L = u*.7; for (let j = 0; j < n; j++) for (let i = 0; i < n; i++){ const x = (i+.5)*u, y = (j+.5)*u; g.fillRect(x-L/2, y-t/2, L, t); g.fillRect(x-t/2, y-L/2, t, L); } }],
+  triangle: ['Half',      null],                                  // special: one diagonal half darker than the other
+  fade:     ['Fade',      null],                                  // special: a soft gradient around the tile's grey
+  flat:     ['Flat grey', null],
+};
+const mixHex = (a, b, t) => { const p = h => [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)], x = p(a), y = p(b); return 'rgb('+x.map((v, i) => Math.round(v+(y[i]-v)*t)).join(',')+')'; };
+const grey = c => mixHex(S.paper, S.ink, clamp(c, 0, 1));         // c = how much ink
+function drawTile(g, T, px){                                      // px = pixels per largest tile
+  const s = T.s*px, x = Math.round(T.x*px), y = Math.round(T.y*px), w = Math.round((T.x+T.s)*px)-x, c = S.floor+(1-2*S.floor)*clamp(1-T.mean, 0, 1), r = k =>                 /* floor: even pure white and pure black keep a little pattern */ hash(S.seed, T.x*64, T.y*64, k+T.depth*31);
+  const on = Object.keys(PATTERNS).filter(k => !S.off[k] && k !== 'flat'); let key = 'flat';
+  if (c > .015 && c < .985 && on.length && r(1) >= S.flat) key = on[Math.floor(r(2)*on.length)];
+  g.save(); g.beginPath(); g.rect(x, y, w, w); g.clip(); g.translate(x, y);
+  const gap = S.gap*px*.5;
+  if (key === 'flat'){ g.fillStyle = grey(c); g.fillRect(0, 0, w, w); }
+  else if (key === 'triangle'){ const a = clamp(c*2, 0, 1), b = clamp(c*2-1, 0, 1), flip = r(3) < .5, swap = r(4) < .5; g.fillStyle = grey(swap ? a : b); g.fillRect(0, 0, w, w);
+    g.fillStyle = grey(swap ? b : a); g.beginPath(); if (flip){ g.moveTo(0, 0); g.lineTo(w, 0); g.lineTo(0, w); } else { g.moveTo(w, 0); g.lineTo(w, w); g.lineTo(0, w); } g.fill(); }
+  else if (key === 'fade'){ const sp = Math.min(c, 1-c, .3), gr = g.createRadialGradient(w/2, w/2, 0, w/2, w/2, w*.72), inn = r(3) < .5 ? c-sp : c+sp; gr.addColorStop(0, grey(inn)); gr.addColorStop(1, grey(2*c-inn)); g.fillStyle = gr; g.fillRect(0, 0, w, w); }
+  else { const rev = c > .5, cc = rev ? 1-c : c, n = Math.max(1, Math.round(1+r(5)*(S.rep-1))), u = w/n; let k = 5;                 /* dark tiles: the same pattern, paper on ink */
+    g.fillStyle = rev ? S.ink : S.paper; g.fillRect(0, 0, w, w); g.fillStyle = g.strokeStyle = rev ? S.paper : S.ink; PATTERNS[key][1](g, w, clamp(cc, .004, .5), n, u, () => r(++k)); }
+  g.restore();
+  if (gap > 0){ g.strokeStyle = S.paper; g.lineWidth = gap*2; g.strokeRect(x, y, w, w); }
+}
+
+/* ------------------------------------------------------------ render */
+function render(g, px){ g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = S.paper; g.fillRect(0, 0, g.canvas.width, g.canvas.height); g.lineCap = 'butt'; for (const T of tiles) drawTile(g, T, px); }
+function fit(){ const st = $('stage'), pad = 56, aw = st.clientWidth-pad, ah = st.clientHeight-pad, dpr = Math.min(devicePixelRatio || 1, 2), cellCss = Math.max(4, Math.floor(Math.min(aw/cols, ah/rows)));
+  const px = Math.round(cellCss*dpr/8)*8 || 8; cv.width = cols*px; cv.height = rows*px; cv.style.width = cols*px/dpr+'px'; cv.style.height = rows*px/dpr+'px'; return px; }
+let pending = 0, needSource = true, needTiles = true;
+function draw(){ pending = 0; if (!img) return; if (needSource){ prepare(); needSource = false; needTiles = true; } if (needTiles){ buildTiles(); needTiles = false; } render(ctx, fit()); }
+const touch = (what) => { if (what === 'source') needSource = true; if (what === 'tiles') needTiles = true; if (!pending) pending = requestAnimationFrame(draw); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} };
+
+/* ------------------------------------------------------------ UI */
+const KEY = 'moxx-tone-tiles', shows = [];
+function ctl(host, key, label, o){ o = o || {}; let row, inp, val;
+  if (o.type === 'toggle'){ row = el('label','toggle'); inp = el('input'); inp.type = 'checkbox'; row.append(inp, ' '+label); }
+  else { row = el('div','row'); const lab = el('label'); lab.textContent = label; inp = el('input'); inp.type = o.type || 'range'; if (inp.type === 'range'){ inp.min = o.min; inp.max = o.max; inp.step = o.step || 1; val = el('span','val'); } row.append(lab, inp); if (val) row.append(val); }
+  const fmt = o.fmt || (v => String(v)), read = () => inp.type === 'checkbox' ? inp.checked : inp.type === 'range' ? parseFloat(inp.value) : o.num ? (parseInt(inp.value, 10) || 0) : inp.value;
+  inp[inp.type === 'checkbox' ? 'onchange' : 'oninput'] = () => { S[key] = read(); if (val) val.textContent = fmt(S[key]); touch(o.what); };
+  shows.push(() => { if (inp.type === 'checkbox') inp.checked = !!S[key]; else if (document.activeElement !== inp || inp.type === 'range') inp.value = S[key]; if (val) val.textContent = fmt(S[key]); });
+  $(host).append(row); }
+const pct = v => Math.round(v*100)+'%', f2 = v => (+v).toFixed(2);
+ctl('f-image', 'contrast', 'Contrast', { min:.3, max:3, step:.01, fmt:f2, what:'source' }); ctl('f-image', 'bright', 'Brightness', { min:-.5, max:.5, step:.01, fmt:v => (v > 0 ? '+' : '')+Math.round(v*100), what:'source' });
+ctl('f-image', 'gamma', 'Midtones', { min:.3, max:3, step:.01, fmt:f2, what:'source' }); ctl('f-image', 'invert', 'Invert the picture', { type:'toggle', what:'source' });
+ctl('f-tiles', 'cols', 'Largest tiles across', { min:2, max:40, what:'tiles' }); ctl('f-tiles', 'depth', 'Splits', { min:0, max:5, fmt:v => v === 0 ? 'none' : v+' (down to 1/'+Math.pow(2, v)+')', what:'tiles' });
+ctl('f-tiles', 'detail', 'Split where detail exceeds', { min:.01, max:.4, step:.005, fmt:pct, what:'tiles' }); ctl('f-tiles', 'gap', 'Gap between tiles', { min:0, max:.2, step:.005, fmt:pct });
+ctl('f-pats', 'rep', 'Most repeats in a tile', { min:1, max:12 }); ctl('f-pats', 'floor', 'Pattern in pure white and black', { min:0, max:.25, step:.005, fmt:pct }); ctl('f-pats', 'flat', 'Share of flat grey tiles', { min:0, max:1, step:.01, fmt:pct }); ctl('f-pats', 'seed', 'Seed', { type:'text', num:true });
+ctl('f-ink', 'ink', 'Ink', { type:'color' }); ctl('f-ink', 'paper', 'Paper', { type:'color' });
+ctl('f-export', 'scale', 'PNG size', { min:1, max:8, fmt:v => v+'× · '+cv.width*v+' × '+cv.height*v+' px' });
+const patBtns = {};
+for (const k in PATTERNS){ if (k === 'flat') continue; const b = el('button'); b.textContent = PATTERNS[k][0]; b.onclick = () => { S.off[k] = !S.off[k]; sync(); touch(); }; $('pats').append(b); patBtns[k] = b; }
+function sync(){ shows.forEach(f => f()); for (const k in patBtns) patBtns[k].classList.toggle('on', !S.off[k]); }
+$('bAll').onclick = () => { S.off = {}; sync(); touch(); }; $('bNone').onclick = () => { for (const k in patBtns) S.off[k] = true; sync(); touch(); };
+$('bShuffle').onclick = () => { S.seed = Math.random()*100000|0; sync(); touch(); };
+$('bReset').onclick = () => { S = JSON.parse(JSON.stringify(DEFAULTS)); sync(); touch('source'); };
+$('bHide').onclick = () => { document.body.classList.toggle('ui-hidden'); touch(); };
+$('bSave').onclick = () => { if (!img) return; const c = el('canvas'), px = cv.width/cols*S.scale; c.width = cols*px; c.height = rows*px; render(c.getContext('2d'), px);
+  c.toBlob(b => { const a = el('a'); a.href = URL.createObjectURL(b); a.download = 'tone-tiles-'+c.width+'x'+c.height+'.png'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); }); };
+
+function load(src, revoke, under){ const im = new Image(); im.onload = () => { img = im; matte = under || '#fff'; if (revoke) URL.revokeObjectURL(src); touch('source'); }; im.onerror = () => { $('stat').textContent = 'That image could not be read.'; }; im.src = src; }
+const take = f => { if (f && /^image\//.test(f.type)) load(URL.createObjectURL(f), true); };
+$('dropzone').onclick = () => { $('file').value = ''; $('file').click(); }; $('file').onchange = e => take(e.target.files[0]);
+let dragN = 0;
+addEventListener('dragenter', e => { e.preventDefault(); dragN++; document.body.classList.add('dragging'); }); addEventListener('dragleave', () => { if (--dragN <= 0){ dragN = 0; document.body.classList.remove('dragging'); } });
+addEventListener('dragover', e => e.preventDefault()); addEventListener('drop', e => { e.preventDefault(); dragN = 0; document.body.classList.remove('dragging'); take(e.dataTransfer.files[0]); });
+addEventListener('paste', e => take([...(e.clipboardData.files || [])][0]));
+addEventListener('keydown', e => { if (/^(TEXTAREA|SELECT)$/.test(e.target.tagName) || (e.target.tagName === 'INPUT' && e.target.type === 'text') || e.metaKey || e.ctrlKey || e.altKey) return; const k = e.key.toLowerCase();
+  if (k === 'h') $('bHide').click(); else if (k === 'r') $('bShuffle').click(); else if (k === 's') $('bSave').click(); });
+addEventListener('resize', () => touch());
+
+try { const o = JSON.parse(localStorage.getItem(KEY)); if (o && typeof o === 'object') S = Object.assign(JSON.parse(JSON.stringify(DEFAULTS)), o, { off:o.off || {} }); } catch(e){}
+sync(); load('dither-default.png', false, '#000');
+window.TT = { get S(){ return S; }, get tiles(){ return tiles; }, PATTERNS, draw, touch };
+</script>
+</body>
+</html>

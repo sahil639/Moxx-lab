@@ -17,7 +17,8 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
   `glyph-matrix.html` (04), `prism-core.html` (05), `compass-mark.html` (06),
   `brand-engine.html` (07), `jelly-pitch.html` (08),
   `pretext-play.html` (09), `tape-deck.html` (10), `grain-stack.html` (11),
-  `pattern-maker.html` (12), `particle-morph.html` (13), `isocuboid.html` (14) — the effects.
+  `pattern-maker.html` (12), `particle-morph.html` (13), `isocuboid.html` (14),
+  `tone-tiles.html` (15) — the effects.
 - `logo.svg` (white on transparent), `favicon.svg` (on black) — Moxx Lab brand mark; every
   page uses them for tab icon, panel header (`.mark`) and back link.
 - `ui.css`, `ui.js` — shared interface layer, loaded right after each page's own `<style>`.
@@ -183,6 +184,18 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
   State `S`, saved in localStorage `moxx-isocuboid`. Exposed as `window.IQ`.
   Not checked: animation in motion (the preview pane throttles frames), Uniform mode, the
   type editor by hand, SVG/PNG/video export, very high counts.
+
+- **Tone Tiles** (15): an image rebuilt as a mosaic of black-and-white patterns, Canvas 2D,
+  shared `ui.css`/`ui.js`, from a reference picture the user supplied. File order: state →
+  source (`prepare`: image → grey with contrast/brightness/midtones, into summed-area tables;
+  `stats` gives mean and spread of any rectangle) → tiles (`buildTiles`: a grid of squares,
+  each split in four while its spread exceeds `detail`, up to `depth`) → `PATTERNS` (each
+  draws ink shapes covering fraction `c` ≤ 0.5 of a square; darker tiles draw the same pattern
+  reversed; `triangle`, `fade` and `flat` are special cases in `drawTile`) → `render(g, px)`
+  (used for screen and for the larger PNG) → UI. Pattern choice is `hash(seed, tile)`. `floor`
+  keeps a little pattern in pure white and black. The sample is `dither-default.png` on a black
+  matte. Settings in localStorage `moxx-tone-tiles`. R = reshuffle. Exposed as `window.TT`.
+  Not checked: uploading an image, drop and paste, Save PNG. No SVG export.
 
 ## Status (last work)
 All work is committed; see `git log`.
