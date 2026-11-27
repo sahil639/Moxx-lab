@@ -74,6 +74,13 @@
   .credit a{color:var(--ix-fg)}
   .credit a:hover,.credit a:focus-visible{color:var(--ix-accent);outline:none}
 
+  /* a sample image that follows the pointer over a row */
+  #peek{position:fixed;left:0;top:0;z-index:5;width:340px;aspect-ratio:16/10;pointer-events:none;overflow:hidden;background:#0a0a0a;border:1px solid var(--ix-line);
+    opacity:0;transform:translate3d(-999px,-999px,0);transition:opacity .15s ease;will-change:transform}
+  #peek.on{opacity:1}
+  #peek img{display:block;width:100%;height:100%;object-fit:cover}
+  @media not (hover:hover){#peek{display:none}}
+
   @media (max-width:980px){
     .cols{grid-template-columns:1fr;row-gap:30px}
     #filters{display:flex;flex-wrap:wrap;gap:2px 22px;margin-left:0;padding-left:0;border-left:0}
@@ -197,6 +204,7 @@
   <footer class="credit">&copy; <span id="yr">2026</span> / Made by <!-- TODO: portfolio URL --><a href="#" id="portfolio" rel="noopener">Sahil ↗</a></footer>
 
 </div>
+<div id="peek" aria-hidden="true"><img alt=""></div>
 <script>
 /* Filters and the + buttons. A row's topics are in data-tags; ticking several topics shows rows that have any of them. */
 (() => {
@@ -208,6 +216,13 @@
     const li = document.createElement('li'), lab = document.createElement('label'), cb = document.createElement('input'), tx = document.createElement('span');
     cb.type = 'checkbox'; tx.textContent = NAMES[k]+' ('+n+')'; cb.onchange = () => { cb.checked ? on.add(k) : on.delete(k); apply(); }; lab.append(cb, tx); li.append(lab); host.append(li); }
   clear.onclick = () => { on.clear(); host.querySelectorAll('input').forEach(c => { c.checked = false; }); apply(); };
+  /* hover preview: previews/<page>.jpg, loaded the first time its row is hovered */
+  const peek = document.getElementById('peek'), pim = peek.firstElementChild; let px = 0, py = 0, tx = 0, ty = 0, live = false, raf = 0;
+  const move = () => { px += (tx-px)*.22; py += (ty-py)*.22; peek.style.transform = `translate3d(${px.toFixed(1)}px,${py.toFixed(1)}px,0)`; raf = live || Math.abs(tx-px)+Math.abs(ty-py) > .5 ? requestAnimationFrame(move) : 0; };
+  const aim = e => { const w = peek.offsetWidth, h = peek.offsetHeight; tx = Math.min(innerWidth-w-16, e.clientX+26); ty = Math.max(12, Math.min(innerHeight-h-12, e.clientY-h*.35)); };
+  if (matchMedia('(hover:hover)').matches) for (const li of rows){ const row = li.querySelector('.entry'), src = 'previews/'+row.querySelector('.name').getAttribute('href').replace('.html', '.jpg');
+    row.addEventListener('pointerenter', e => { if (e.pointerType === 'touch') return; pim.src = src; aim(e); if (!live){ px = tx; py = ty; } live = true; peek.classList.add('on'); if (!raf) raf = requestAnimationFrame(move); });
+    row.addEventListener('pointermove', aim); row.addEventListener('pointerleave', () => { live = false; peek.classList.remove('on'); }); }
   for (const b of document.querySelectorAll('.more')) b.onclick = () => { const open = b.getAttribute('aria-expanded') !== 'true'; b.setAttribute('aria-expanded', open); b.closest('li').querySelector('.desc').hidden = !open; };
 })();
 </script>

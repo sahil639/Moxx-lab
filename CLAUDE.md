@@ -15,7 +15,10 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
   with any of them. Its own tokens are `--ix-*`; it still loads `ui.css` for the theme toggle,
   so the block at the end of its `<style>` undoes the panel styling of `summary`, `button` and
   inputs — keep that block last. Small labels and numbers use the system monospace; everything
-  else is Helvetica Neue. No hover thumbnails any more. The logo is an inline WebGL1 script
+  else is Helvetica Neue. Hovering a row shows that effect's sample image (`previews/<page>.jpg`, 720 x 450) in a
+  box that follows the pointer (`#peek`; hover-capable devices only). The previews are cropped
+  screenshots of each page at its defaults, taken with headless Chrome at 1600 x 900 (crop
+  1240 x 775 from x 0, y 62); a new effect needs one added. The logo is an inline WebGL1 script
   (no library): `logo.svg` is baked into a texture (shape + two blurs for bevel/dome), drawn
   as 18 masked slices with a procedural reflection; drag rotates, flick spins, hold pulls it
   along, springs bring it back. It is 250px square (170px on phones) and only draws while
