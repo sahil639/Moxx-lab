@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<link rel="stylesheet" href="fonts.css">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Moxx Lab — Brand Engine</title>
@@ -22,7 +21,7 @@
   *{box-sizing:border-box}
   html,body{height:100%}
   body{margin:0;background:var(--stage);color:var(--fg);overflow:hidden;
-    font:12px/1.45 'GT Zirkon',system-ui,sans-serif;transition:background-color .3s ease}
+    font:12px/1.45 'Helvetica Neue',Helvetica,Arial,sans-serif;transition:background-color .3s ease}
   button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;padding:0}
   .card{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:0 12px 40px rgba(0,0,0,.28);
     transition:background-color .3s ease,border-color .3s ease,transform .22s cubic-bezier(.2,.8,.2,1),opacity .22s ease}
@@ -222,7 +221,7 @@ const DEFAULT_KIT = {
           'Reroll until it sings.','Systems over one-offs.','Draw the rule, not the poster.'],
   family: ['Lab','Studio','Engine','Press','API','Open Projects'],
   display: '"Helvetica Neue",Helvetica,Arial,sans-serif',
-  mono: '"GT Zirkon",system-ui,sans-serif',
+  mono: '"Helvetica Neue",Helvetica,Arial,sans-serif',
 };
 let kit = structuredClone(DEFAULT_KIT);
 try { const k=JSON.parse(localStorage.getItem(KIT_KEY)||'null'); if (k && Array.isArray(k.palette)){ delete k.display; delete k.mono; kit = {...kit, ...k}; } } catch(e){}

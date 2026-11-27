@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<link rel="stylesheet" href="fonts.css">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Moxx Lab — Pattern Maker</title>
@@ -11,7 +10,7 @@
   *{box-sizing:border-box}
   [hidden]{display:none!important}
   html,body{height:100%}
-  body{margin:0;overflow:hidden;background:#111;font:12px/1.4 'GT Zirkon',system-ui,sans-serif;-webkit-text-size-adjust:100%}
+  body{margin:0;overflow:hidden;background:#111;font:12px/1.4 'Helvetica Neue',Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%}
   #c{position:fixed;left:0;top:0;display:block;touch-action:none;cursor:grab}
   #c:active{cursor:grabbing}
   #panel{position:fixed;top:0;right:0;bottom:0;width:var(--panel-w);overflow-y:auto;z-index:10;transition:transform .18s ease}
@@ -38,7 +37,7 @@
   body.ui-hidden #hud{display:none}
   .mark{width:15px;height:15px;vertical-align:-2px;margin-right:8px}
   #back{position:fixed;left:14px;top:14px;z-index:11;display:inline-flex;align-items:center;gap:8px;padding:8px 13px 8px 11px;
-    font:500 12px/1 'GT Zirkon',system-ui,sans-serif;letter-spacing:.06em;text-decoration:none;white-space:nowrap;
+    font:500 12px/1 'Helvetica Neue',Helvetica,Arial,sans-serif;letter-spacing:.06em;text-decoration:none;white-space:nowrap;
     -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);transition:opacity .18s ease,background .15s ease,border-color .15s ease}
   #back img{width:13px;height:13px;display:block}
   body.ui-hidden #back{opacity:0} body.ui-hidden #back:hover,body.ui-hidden #back:focus-visible{opacity:1}
@@ -132,7 +131,7 @@ const hsl = (h,s,l) => { s/=100; l/=100; const k = n => (n+h/30)%12, a = s*Math.
 let uid = 1;
 const newLayer = o => Object.assign({
   id: uid++, seed: Math.random()*1e9|0, on:true,
-  motif:'shape', shape:'circle', text:'✿', font:'GT Zirkon', weight:500, img:null, pathD:'', pathBox:null, strokes:[], drawFill:false,
+  motif:'shape', shape:'circle', text:'✿', font:'Helvetica Neue', weight:500, img:null, pathD:'', pathBox:null, strokes:[], drawFill:false,
   layout:'grid', cols:6, rows:6, count:40, relax:true, rings:4, perRing:6, spread:.9, orient:true, centre:true, offX:0, offY:0, stagger:.5,
   size:.5, sx:1, sy:1, rot:0, rotCol:0, rotRow:0, altRot:0, altFlip:'none',
   jPos:0, jRot:0, jSize:0, mask:'all', maskN:2, drop:0,
@@ -174,7 +173,7 @@ const SHAPES = {
   cross:['Cross','M-.4-.4L.4 .4M.4-.4L-.4 .4', 1], line:['Line','M-.5 0H.5', 1], wave:['Wave','M-.5 0Q-.25-.5 0 0T.5 0', 1], zigzag:['Zigzag','M-.5 .25L-.25-.25L0 .25L.25-.25L.5 .25', 1],
   chevron:['Chevron','M-.4-.2L0 .2L.4-.2', 1], arc:['Arc','M-.5 .25A.5 .5 0 0 1 .5 .25', 1], hoop:['Hoop', CIRC(.5), 1], corner:['Corner','M-.5-.5V.5H.5', 1],
 };
-const FONTS = ['GT Zirkon','Georgia','Times New Roman','Helvetica Neue','Courier New','Impact','system-ui'];
+const FONTS = ['Helvetica Neue','Georgia','Times New Roman','Arial','Courier New','Impact','system-ui'];
 const pathCache = new Map(), imgCache = new Map();
 const path2d = d => { let p = pathCache.get(d); if (!p){ try { p = new Path2D(d); } catch(e){ p = new Path2D(); } pathCache.set(d, p); if (pathCache.size > 400) pathCache.clear(); } return p; };
 function strokesToPath(L){ let d = ''; for (const s of L.strokes){ if (s.length < 2) continue; d += 'M'+s.map(p => f3(p[0])+' '+f3(p[1])).join('L')+(L.drawFill ? 'Z' : ''); } return d; }

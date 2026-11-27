@@ -1,8 +1,8 @@
 # Moxx Lab
 
 Mockup animations. Each one is a single self-contained HTML page — no build step,
-no dependencies. Open one in a browser and it runs. The brand font, GT Zirkon, is
-self-hosted in `fonts/` (see `fonts.css`); every page falls back to the system sans.
+no dependencies. Open one in a browser and it runs. The interface is set in Helvetica Neue, a system font,
+falling back to Helvetica or Arial; no font is downloaded.
 
 `index.html` is the directory; add a new row to its list when a new animation lands.
 Its logo is a small chrome object: drag to turn it, flick to spin it, let go and it settles back.

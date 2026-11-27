@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<link rel="stylesheet" href="fonts.css">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Moxx Lab — Compass Mark</title>
@@ -14,7 +13,7 @@
   *{box-sizing:border-box}
   html,body{height:100%}
   body{margin:0;background:#0b0c10;color:var(--panel-fg);
-    font:12px/1.4 'GT Zirkon',system-ui,sans-serif;overflow:hidden}
+    font:12px/1.4 'Helvetica Neue',Helvetica,Arial,sans-serif;overflow:hidden}
 
   #c{position:fixed;left:0;top:0;display:block;cursor:grab;touch-action:none}
   #c.drag{cursor:grabbing}
@@ -61,7 +60,7 @@
   body.ui-hidden #hud{display:none}
   .mark{width:15px;height:15px;vertical-align:-2px;margin-right:8px;opacity:.95}
   #back{position:fixed;left:14px;top:14px;z-index:11;display:inline-flex;align-items:center;gap:8px;
-    padding:8px 13px 8px 11px;font:500 12px/1 'GT Zirkon',system-ui,sans-serif;
+    padding:8px 13px 8px 11px;font:500 12px/1 'Helvetica Neue',Helvetica,Arial,sans-serif;
     letter-spacing:.06em;color:#e8eaed;text-decoration:none;white-space:nowrap;
     background:rgba(10,12,15,.72);border:1px solid rgba(255,255,255,.16);border-radius:6px;
     -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
@@ -301,7 +300,7 @@ function stamp(c,P,cx,cy,size,color){
 function rrect(c,x,y,s,r){ c.beginPath(); c.roundRect ? c.roundRect(x,y,s,s,r) : c.rect(x,y,s,s); }
 function renderView(w,h,P){
   const u=dpr*S.zoom, cx=w/2, cy=h/2;
-  ctx.font=`${Math.round(10*dpr)}px 'GT Zirkon',system-ui,sans-serif`; ctx.textAlign='center'; ctx.textBaseline='top';
+  ctx.font=`${Math.round(10*dpr)}px 'Helvetica Neue',Helvetica,Arial,sans-serif`; ctx.textAlign='center'; ctx.textBaseline='top';
   if (S.view==='sizes'){
     const sizes=[16,24,32,48,64,96,128], gap=34*u, total=sizes.reduce((a,s)=>a+s*u,0)+gap*(sizes.length-1);
     const k=Math.min(1,(w*0.88)/total); let x=cx-total*k/2; const base=cy+64*u*k;

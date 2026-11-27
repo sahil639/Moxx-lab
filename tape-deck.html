@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<link rel="stylesheet" href="fonts.css">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Moxx Lab — Tape Deck</title>
@@ -10,7 +9,7 @@
   :root{ --panel-w:340px; }
   *{box-sizing:border-box}
   html,body{height:100%}
-  body{margin:0;overflow:hidden;background:#000;font:12px/1.4 'GT Zirkon',system-ui,sans-serif}
+  body{margin:0;overflow:hidden;background:#000;font:12px/1.4 'Helvetica Neue',Helvetica,Arial,sans-serif}
   #gl,#hud2{position:fixed;left:0;top:0;display:block}
   #gl{touch-action:none;cursor:grab} #gl.link{cursor:pointer} #gl.drag{cursor:grabbing}
   #hud2{pointer-events:none}
@@ -22,7 +21,7 @@
   body.ui-hidden #hud{display:none}
   .mark{width:15px;height:15px;vertical-align:-2px;margin-right:8px}
   #back{position:fixed;left:14px;top:14px;z-index:11;display:inline-flex;align-items:center;gap:8px;padding:8px 13px 8px 11px;
-    font:500 12px/1 'GT Zirkon',system-ui,sans-serif;letter-spacing:.06em;text-decoration:none;white-space:nowrap;
+    font:500 12px/1 'Helvetica Neue',Helvetica,Arial,sans-serif;letter-spacing:.06em;text-decoration:none;white-space:nowrap;
     -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);transition:opacity .18s ease,background .15s ease,border-color .15s ease}
   #back img{width:13px;height:13px;display:block}
   body.ui-hidden #back{opacity:0} body.ui-hidden #back:hover,body.ui-hidden #back:focus-visible{opacity:1}
@@ -128,10 +127,10 @@ function paintLabel(g,p,i){
   g.restore();
   g.fillStyle=on; g.textBaseline='alphabetic';
   g.font='900 30px "Helvetica Neue",Helvetica,Arial,sans-serif'; g.fillText('MOXX',sx+16,sy+42);
-  g.font='500 11px "GT Zirkon",system-ui,sans-serif'; g.fillText(['C-60','C-90','MX-46','TYPE II','UX 54'][Math.floor(r()*5)],sx+sw-70,sy+26); g.fillText('SIDE A',sx+sw-70,sy+42);
+  g.font='500 11px "Helvetica Neue",Helvetica,Arial,sans-serif'; g.fillText(['C-60','C-90','MX-46','TYPE II','UX 54'][Math.floor(r()*5)],sx+sw-70,sy+26); g.fillText('SIDE A',sx+sw-70,sy+42);
   let fs=30; g.font=`italic ${fs}px Georgia,"Times New Roman",serif`; while (g.measureText(p.name).width>sw-36 && fs>14){ fs-=2; g.font=`italic ${fs}px Georgia,"Times New Roman",serif`; }
   g.fillText(p.name,sx+18,sy+78); g.fillRect(sx+16,sy+86,sw-32,1.2);
-  g.font='500 10px "GT Zirkon",system-ui,sans-serif'; g.fillText((p.tag||'').toUpperCase().slice(0,26),sx+18,sy+sh-66+(style===0?-8:0)); g.fillText(p.year,sx+sw-52,sy+sh-66+(style===0?-8:0));
+  g.font='500 10px "Helvetica Neue",Helvetica,Arial,sans-serif'; g.fillText((p.tag||'').toUpperCase().slice(0,26),sx+18,sy+sh-66+(style===0?-8:0)); g.fillText(p.year,sx+sw-52,sy+sh-66+(style===0?-8:0));
   // the lower block: head openings and screws
   g.fillStyle=dark?'rgba(255,255,255,.06)':'rgba(0,0,0,.08)'; g.beginPath(); g.moveTo(96,LH); g.lineTo(118,240); g.lineTo(LW-118,240); g.lineTo(LW-96,LH); g.fill();
   g.fillStyle=dark?'#000':'#1a1a1a'; for (const x of [150,206,256,306,362]){ g.beginPath(); g.roundRect(x-11,270,22,x===256?26:18,3); g.fill(); }
@@ -141,7 +140,7 @@ function paintLabel(g,p,i){
 function paintBack(g){ g.fillStyle='#808080'; g.fillRect(0,0,LW,LH); g.fillStyle='rgba(0,0,0,.16)'; for (let y=30;y<230;y+=14) g.fillRect(40,y,LW-80,2);
   g.fillStyle='rgba(0,0,0,.25)'; g.beginPath(); g.moveTo(96,LH); g.lineTo(118,240); g.lineTo(LW-118,240); g.lineTo(LW-96,LH); g.fill();
   g.fillStyle='rgba(0,0,0,.6)'; for (const [x,y] of [[14,14],[LW-14,14],[14,LH-14],[LW-14,LH-14],[256,232]]){ g.beginPath(); g.arc(x,y,5,0,TAU); g.fill(); }
-  g.font='700 13px "GT Zirkon",system-ui,sans-serif'; g.fillStyle='rgba(255,255,255,.5)'; g.fillText('SIDE B',LW-110,LH-90); }
+  g.font='700 13px "Helvetica Neue",Helvetica,Arial,sans-serif'; g.fillStyle='rgba(255,255,255,.5)'; g.fillText('SIDE B',LW-110,LH-90); }
 
 /* ==================================================================== 5. GL */
 const cv=$('gl'), gl=cv.getContext('webgl2',{antialias:false,alpha:false,powerPreference:'high-performance'});
@@ -295,7 +294,7 @@ function screenBox(tp){ let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9; for (let k=0;k<8;k++)
 function wrapText(g,text,w){ const out=[]; let cur=''; for (const word of text.split(/\s+/)){ const tr=cur?cur+' '+word:word; if (g.measureText(tr).width<=w || !cur) cur=tr; else { out.push(cur); cur=word; } } if (cur) out.push(cur); return out; }
 function drawTracker(){
   hx.setTransform(dpr,0,0,dpr,0,0); hx.clearRect(0,0,W,H); if (!S.tracker || hover<0 || hoverAmt<.02) return;
-  const tp=tapes.find(x=>x.i===hover); if (!tp) return; const b=screenBox(tp); if (!b) return; const p=projects[tp.proj], a=hoverAmt, r=mulberry32(hash(p.name)+3), mono="'GT Zirkon',system-ui,sans-serif";
+  const tp=tapes.find(x=>x.i===hover); if (!tp) return; const b=screenBox(tp); if (!b) return; const p=projects[tp.proj], a=hoverAmt, r=mulberry32(hash(p.name)+3), mono="'Helvetica Neue',Helvetica,Arial,sans-serif";
   const show=k=>clamp(a*7-k,0,1), line='rgba(255,255,255,', txt=(s,x,y,al,size,weight)=>{ hx.font=`${weight||400} ${size||10}px ${mono}`; hx.fillStyle=line+(al==null?.9:al)+')'; hx.fillText(s,x,y); };
   hx.lineWidth=1; hx.textBaseline='alphabetic';
   // the tape's own box, with its numbers

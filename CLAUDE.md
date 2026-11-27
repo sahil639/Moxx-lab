@@ -32,11 +32,11 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
 - `README.md` — documents each effect; keep it in sync when effects change.
 
 ## Conventions
-- Brand font: GT Zirkon, self-hosted (`fonts.css` + `fonts/*.woff2`: Thin 200, Light 300,
-  Book 350, Regular 400, Medium 500–700), linked from every page; system sans fallback. It is a
-  commercial Grilli Type face — the user supplied the files; web licence not confirmed.
-  Pretext Play still imports its library from a CDN. Terminal Type's stage/font-tester fonts
-  are intentionally not changed (that page exists to try other typefaces).
+- Brand font: Helvetica Neue, a system font (stack `'Helvetica Neue',Helvetica,Arial,sans-serif`),
+  on every page; nothing is downloaded. It replaced the self-hosted GT Zirkon on the user's
+  request (2026-11-27); `fonts.css` and `fonts/` are deleted. Devices without Helvetica Neue
+  (Windows, Android) fall back to Helvetica or Arial. Pretext Play still imports its library
+  from a CDN. Terminal Type's stage/font-tester fonts are intentionally not changed.
 - Look: minimal, modern; neutral greys with one near-black / near-white accent
   (no per-effect accent colours any more). Light and dark themes; the theme styles the
   interface only, effect canvases keep their own colours.
@@ -221,7 +221,7 @@ All work is committed; see `git log`.
   (other than Prism Core), Prism Core drag/motion modes, Save PNG, front/side/top views,
   gradient backgrounds, cylinder/sphere/pyramid after later changes.
 - Per-effect accent colours are gone (unified by `ui.css`).
-- After the GT Zirkon change only the index and Dither Lab were looked at; the chrome logo was
+- After the font changes (GT Zirkon, then Helvetica Neue) the pages were not re-checked by eye; the chrome logo was
   driven with synthetic pointer events, not a real mouse or touch.
 - Light/dark redesign not checked by eye: Safari, Firefox, phone width, the theme wipe
   animation at full frame rate, drag-and-drop overlays in light mode.
