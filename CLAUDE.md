@@ -18,7 +18,7 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
   `brand-engine.html` (07), `jelly-pitch.html` (08),
   `pretext-play.html` (09), `tape-deck.html` (10), `grain-stack.html` (11),
   `pattern-maker.html` (12), `particle-morph.html` (13), `isocuboid.html` (14),
-  `tone-tiles.html` (15) — the effects.
+  `tone-tiles.html` (15), `glow-cells.html` (16) — the effects.
 - `logo.svg` (white on transparent), `favicon.svg` (on black) — Moxx Lab brand mark; every
   page uses them for tab icon, panel header (`.mark`) and back link.
 - `ui.css`, `ui.js` — shared interface layer, loaded right after each page's own `<style>`.
@@ -196,6 +196,18 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
   keeps a little pattern in pure white and black. The sample is `dither-default.png` on a black
   matte. Settings in localStorage `moxx-tone-tiles`. R = reshuffle. Exposed as `window.TT`.
   Not checked: uploading an image, drop and paste, Save PNG. No SVG export.
+
+- **Glow Cells** (16): generative neon cell colony, Canvas 2D, shared `ui.css`/`ui.js`, from a
+  reference video (black ground, wobbling glowing membranes in magenta/orange/cyan, bright
+  cores, scribbly threads, bands of drifting specks). File order: state → `noise` → colony
+  (`newColony` from the seed; `outline()` = circle pushed by sliding sine waves, one phase per
+  loop; `physics`: flow drift, pull to the middle, soft repulsion, drag) → `plankton` (specks
+  moved by a flow field, faded by a clump mask and near cells) → `drawCell` (kinds `ring`,
+  `tangle`, `core`, `jelly`) → `draw`: everything is painted additively into an offscreen
+  `scene` canvas (which keeps the trails), then copied to the visible canvas with two shrunken
+  copies laid over it as bloom, so the bloom never feeds back into the trails. Settings in
+  localStorage `moxx-glow-cells`. R = new colony. Exposed as `window.GC`. About 2 ms a frame
+  at the defaults. Not checked: motion at full frame rate, dragging by hand, video.
 
 ## Status (last work)
 All work is committed; see `git log`.

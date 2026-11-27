@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="fonts.css">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Moxx Lab — Glow Cells</title>
+<style>
+  :root{ --panel-w:340px; }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{height:100%}
+  body{margin:0;overflow:hidden;background:#000;font:12px/1.4 'GT Zirkon',system-ui,sans-serif;-webkit-text-size-adjust:100%}
+  #c{position:fixed;left:0;top:0;display:block;touch-action:none;cursor:grab}
+  #c:active{cursor:grabbing}
+  #panel{position:fixed;top:0;right:0;bottom:0;width:var(--panel-w);overflow-y:auto;z-index:10;transition:transform .18s ease}
+  body.ui-hidden #panel{transform:translateX(100%)}
+  h1 small{display:block}
+  .lead{margin:0 2px 10px!important}
+  .grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin:2px 0 8px}
+  .sw{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+  .sw input[type=color]{width:34px;flex:0 0 34px}
+  .sw button{flex:0 0 34px;height:34px;padding:0}
+  .row input[type=text]{flex:1;min-width:0}
+  .sub{margin:14px 2px 6px;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--u-dim)}
+  #hud{position:fixed;left:12px;bottom:10px;font-size:10px;letter-spacing:.08em;z-index:9;pointer-events:none;color:rgba(255,255,255,.45)}
+  body.ui-hidden #hud{display:none}
+  .mark{width:15px;height:15px;vertical-align:-2px;margin-right:8px}
+  #back{position:fixed;left:14px;top:14px;z-index:11;display:inline-flex;align-items:center;gap:8px;padding:8px 13px 8px 11px;
+    font:500 12px/1 'GT Zirkon',system-ui,sans-serif;letter-spacing:.06em;text-decoration:none;white-space:nowrap;
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);transition:opacity .18s ease,background .15s ease,border-color .15s ease}
+  #back img{width:13px;height:13px;display:block}
+  body.ui-hidden #back{opacity:0} body.ui-hidden #back:hover,body.ui-hidden #back:focus-visible{opacity:1}
+</style>
+<link rel="stylesheet" href="ui.css">
+<script src="ui.js"></script>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+<a id="back" href="index.html" aria-label="Back to Moxx Lab index"><img src="logo.svg" alt="">← Moxx Lab</a>
+<div id="hud">drag a cell to move it · <kbd>H</kbd> panel · <kbd>R</kbd> new colony · <kbd>S</kbd> save png · <kbd>space</kbd> pause</div>
+
+<div id="panel">
+  <h1><img class="mark" src="logo.svg" alt="">Glow Cells<small>a generative colony of glowing, drifting cells</small></h1>
+
+  <details open>
+    <summary>Colony</summary>
+    <p class="hint lead">How many cells there are, how big, and how they crowd together.</p>
+    <div id="f-colony"></div>
+    <div class="btns"><button id="bNew">New colony</button><button id="bReset">Reset</button></div>
+  </details>
+
+  <details open>
+    <summary>Cell shape</summary>
+    <p class="hint lead">The wobbling outline of each cell and what is drawn inside it.</p>
+    <div class="grid" id="kinds"></div>
+    <div id="f-shape"></div>
+  </details>
+
+  <details open>
+    <summary>Colour</summary>
+    <p class="hint lead">The colours the cells are drawn in. Each cell takes one, with a second for its core.</p>
+    <div class="grid" id="palettes"></div>
+    <div class="sw" id="cellPal"></div>
+    <div id="f-colour"></div>
+  </details>
+
+  <details open>
+    <summary>Plankton</summary>
+    <p class="hint lead">The specks and streaks that flow through the dark around the cells.</p>
+    <div id="f-plankton"></div>
+    <div class="sw" id="specPal"></div>
+  </details>
+
+  <details open>
+    <summary>Look and motion</summary>
+    <p class="hint lead">Glow, trails and the speed of the whole scene.</p>
+    <div id="f-look"></div>
+    <div class="btns"><button id="bPlay">Pause</button></div>
+  </details>
+
+  <details open>
+    <summary>Export</summary>
+    <p class="hint lead">Save a still, or record a few seconds of the motion.</p>
+    <div class="btns"><button id="bSave">Save PNG</button><button id="bVideo">Record 8 s</button><button id="bHide">Hide panel</button></div>
+  </details>
+</div>
+
+<script>
+/* Glow Cells — a colony of soft glowing cells drifting through flowing specks, all generated from a seed.
+   File order: state → noise → colony (cells: shape, physics) → plankton → drawing → frame → UI → export. */
+const $ = id => document.getElementById(id), el = (t, c) => { const e = document.createElement(t); if (c) e.className = c; return e; };
+const clamp = (v,a,b) => v<a?a:v>b?b:v, lerp = (a,b,t) => a+(b-a)*t, TAU = Math.PI*2;
+function makeRng(seed){ let a = seed>>>0; return () => { a |= 0; a = a+0x6D2B79F5|0; let t = Math.imul(a^a>>>15, 1|a); t = t+Math.imul(t^t>>>7, 61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+
+/* ------------------------------------------------------------ state */
+const PALETTES = {
+  Neon:     ['#ff3df2','#ff7a1a','#19f0ff','#f7ff3d','#b06bff','#ff3d8b'],
+  'Deep sea': ['#19f0ff','#2a8bff','#7dffd4','#b8f7ff','#5a6bff','#00ffa8'],
+  Ember:    ['#ff7a1a','#ff3d3d','#ffd23d','#ff5d8f','#ff9a5a','#ffe9a8'],
+  Orchid:   ['#ff3df2','#b06bff','#ff8bd1','#7a5cff','#ffc2f5','#19f0ff'],
+  Bone:     ['#ffffff','#d8d8d8','#a8b4c4','#f4e9d8','#8fa3b8','#ffe9a8'],
+  Acid:     ['#c8ff1a','#19ffb0','#f7ff3d','#ff3df2','#19f0ff','#8bff3d'],
+};
+const KINDS = { ring:'Rings', tangle:'Tangles', core:'Bright cores', jelly:'Jellies' };
+const DEFAULTS = { seed:4711, count:10, sizeMin:.05, sizeMax:.13, crowd:.55, gather:.5, drift:.5,
+  kinds:{ ring:true, tangle:true, core:true, jelly:true }, wobble:.32, lobes:5, wobbleSpeed:.5, loops:5, weight:1.3, filaments:26, core:.8, beads:.4,
+  palette:PALETTES.Neon.slice(), sat:1,
+  specks:7000, speckSize:1.5, streaks:.08, flow:.45, flowScale:2.2, clump:.7, fringe:true, specPal:['#9aa0a8','#7fe7ff','#ff5a5a','#ffffff','#6b7078','#ff9a3c','#7a5cff','#8a8f98'],
+  glow:.6, trails:.3, bg:'#000000', speed:1, playing:true };
+let S = JSON.parse(JSON.stringify(DEFAULTS));
+const cv = $('c'), out = cv.getContext('2d'), scene = el('canvas'), g = scene.getContext('2d'), b1 = el('canvas'), g1 = b1.getContext('2d'), b2 = el('canvas'), g2 = b2.getContext('2d');
+let W = 1, H = 1, dpr = 1, time = 0, cells = [], P = null;
+
+/* ------------------------------------------------------------ noise: smooth, 0..1, with a slow third axis for time */
+const h3 = (x, y, z) => { let n = Math.imul(x|0, 374761393) ^ Math.imul(y|0, 668265263) ^ Math.imul(z|0, 1274126177) ^ Math.imul(S.seed|0, 2246822519); n = Math.imul(n ^ n>>>15, 2246822519); n = Math.imul(n ^ n>>>13, 3266489917); return ((n ^ n>>>16)>>>0)/4294967296; };
+const sm = t => t*t*(3-2*t);
+function noise(x, y, z){ const x0 = Math.floor(x), y0 = Math.floor(y), z0 = Math.floor(z), fx = sm(x-x0), fy = sm(y-y0), fz = z-z0;
+  const sl = k => lerp(lerp(h3(x0,y0,k), h3(x0+1,y0,k), fx), lerp(h3(x0,y0+1,k), h3(x0+1,y0+1,k), fx), fy); return lerp(sl(z0), sl(z0+1), fz); }
+
+/* ------------------------------------------------------------ colony */
+function newColony(){ const r = makeRng(S.seed), kinds = Object.keys(KINDS).filter(k => S.kinds[k]); cells = [];
+  for (let i = 0; i < S.count; i++){ const kind = kinds.length ? kinds[Math.floor(r()*kinds.length)] : 'ring', a = r()*TAU, d = Math.sqrt(r())*.34, big = kind === 'jelly' ? .55 : 1;
+    cells.push({ kind, x:W/2+Math.cos(a)*d*W*.8, y:H/2+Math.sin(a)*d*H*.8, vx:0, vy:0, size:lerp(S.sizeMin, S.sizeMax, r())*big, ci:Math.floor(r()*64), cj:Math.floor(r()*64), seed:r()*1000, spin:(r()-.5)*.3, lob:Math.floor(r()*4)-2,
+      harm:[1,2,3,4].map(k => ({ amp:(.4+r()*.6)/k, ph:r()*TAU, sp:(r()-.5)*1.6 })),
+      fil:Array.from({ length:64 }, () => ({ a:r()*TAU, len:.25+r()*.75, curl:(r()-.5)*5, sp:.3+r()*1.2, ph:r()*TAU, w:.4+r()*.8 })) }); }
+}
+const radiusOf = (c) => c.size*Math.min(W, H);
+/* the outline: a circle pushed in and out by a few sine waves that slide round it; each loop is slightly out of step */
+function outline(c, th, loop, t){ let s = 0; const L = Math.max(2, Math.round(S.lobes)+c.lob);                        /* each cell has its own number of lobes, near the chosen one */
+  s += c.harm[0].amp*Math.sin(L*th + c.harm[0].ph + t*c.harm[0].sp + loop*.35);
+  s += c.harm[1].amp*Math.sin((L+1)*th + c.harm[1].ph - t*c.harm[1].sp*1.3 + loop*.5);
+  s += c.harm[2].amp*1.5*Math.sin(2*th + c.harm[2].ph + t*c.harm[2].sp*.7) + c.harm[1].amp*.9*Math.sin(th + c.harm[3].ph - t*c.harm[2].sp*.4);
+  s += c.harm[3].amp*.6*Math.sin((L*2+1)*th + c.harm[3].ph + t*c.harm[3].sp*2 + loop*.9);
+  return 1 + S.wobble*.42*s + (loop-(S.loops-1)/2)*.02; }
+function physics(dt){ const m = Math.min(W, H), n = cells.length;
+  for (let i = 0; i < n; i++){ const c = cells[i], a = noise(c.x/m*1.3, c.y/m*1.3, time*.05+c.seed)*TAU*2, R = radiusOf(c);
+    c.vx += Math.cos(a)*S.drift*14*dt; c.vy += Math.sin(a)*S.drift*14*dt;
+    c.vx += (W/2-c.x)*S.gather*.05*dt; c.vy += (H/2-c.y)*S.gather*.09*dt;                         /* a weak pull to the middle keeps the colony together */
+    for (let j = i+1; j < n; j++){ const o = cells[j], dx = o.x-c.x, dy = o.y-c.y, d = Math.hypot(dx, dy)+1e-3, want = (R+radiusOf(o))*(1.02-S.crowd*.4);
+      if (d < want){ const f = (want-d)/want*90*dt, ux = dx/d, uy = dy/d; c.vx -= ux*f; c.vy -= uy*f; o.vx += ux*f; o.vy += uy*f; } }
+    if (c.x < R*.6) c.vx += 30*dt; if (c.x > W-R*.6) c.vx -= 30*dt; if (c.y < R*.6) c.vy += 30*dt; if (c.y > H-R*.6) c.vy -= 30*dt; }
+  for (const c of cells){ if (c === held) continue; const damp = Math.pow(.2, dt); c.vx *= damp; c.vy *= damp; c.x += c.vx*dt; c.y += c.vy*dt; } }
+
+/* ------------------------------------------------------------ plankton: specks carried by a flow field */
+function newPlankton(){ const n = S.specks|0, r = makeRng(S.seed+99); P = { n, x:new Float32Array(n), y:new Float32Array(n), s:new Float32Array(n), c:new Uint8Array(n), k:new Uint8Array(n), px:new Float32Array(n), py:new Float32Array(n) };
+  for (let i = 0; i < n; i++){ P.x[i] = P.px[i] = r()*W; P.y[i] = P.py[i] = r()*H; P.s[i] = .5+r()*r()*2.2; P.c[i] = Math.floor(r()*250); P.k[i] = r() < S.streaks ? 1 : 0; } }
+function plankton(dt){ if (!P || P.n !== (S.specks|0)) newPlankton(); const m = Math.min(W, H), fs = S.flowScale/m, sp = S.flow*46*dt, pal = S.specPal, np = pal.length || 1, t = time*.04, cl = S.clump;
+  g.lineCap = 'round';
+  for (let i = 0; i < P.n; i++){ let x = P.x[i], y = P.y[i]; const a = noise(x*fs, y*fs, t)*TAU*2.2, streak = P.k[i] === 1, v = sp*(streak ? 3.2 : 1)*(.5+P.s[i]*.4);
+    P.px[i] = x; P.py[i] = y; x += Math.cos(a)*v; y += Math.sin(a)*v;
+    if (x < -8){ x = W+8; P.px[i] = x; } else if (x > W+8){ x = -8; P.px[i] = x; } if (y < -8){ y = H+8; P.py[i] = y; } else if (y > H+8){ y = -8; P.py[i] = y; } P.x[i] = x; P.y[i] = y;
+    let al = cl > 0 ? clamp((noise(x*fs*1.7+31, y*fs*1.7-17, t*.6)-(.5-.12+cl*.12))*(2+cl*9), 0, 1) : 1; if (al <= .02) continue;           /* clumps and voids */
+    for (const c of cells){ const R = radiusOf(c)*1.25, dx = x-c.x, dy = y-c.y, d2 = dx*dx+dy*dy; if (d2 < R*R){ al *= clamp((Math.sqrt(d2)/R-.7)/.3, 0, 1); if (al <= .02) break; } }
+    if (al <= .02) continue; const col = pal[P.c[i]%np], sz = P.s[i]*S.speckSize;
+    if (streak){ const ca = Math.cos(a), sa = Math.sin(a), L = 6+sz*9; g.globalAlpha = al*.85; g.strokeStyle = col; g.lineWidth = Math.max(.6, sz*.7); g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x-ca*L*.5+sa*L*.18, y-sa*L*.5-ca*L*.18, x-ca*L, y-sa*L); g.stroke(); }
+    else { if (S.fringe && sz > 1.1){ g.globalAlpha = al*.5; g.fillStyle = '#ff3b3b'; g.fillRect(x-sz*.5-1, y-sz*.5, sz, sz); g.fillStyle = '#35e8ff'; g.fillRect(x-sz*.5+1, y-sz*.5, sz, sz); }
+      g.globalAlpha = al*(.45+.5*(P.c[i]%7)/6); g.fillStyle = col; g.fillRect(x-sz*.5, y-sz*.5, sz, sz); } }
+  g.globalAlpha = 1; }
+
+/* ------------------------------------------------------------ drawing a cell */
+const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`; };
+function drawCell(c, t){ const R = radiusOf(c), pal = S.palette, col = pal[c.ci%pal.length] || '#fff', col2 = pal[(c.ci+1+c.cj%Math.max(1, pal.length-1))%pal.length] || col, rot = t*c.spin, N = 96, tw = t*S.wobbleSpeed*2;
+  const pt = (th, loop, k) => { const r = R*outline(c, th, loop, tw)*k; return [c.x+Math.cos(th+rot)*r, c.y+Math.sin(th+rot)*r]; };
+  const path = (loop, k) => { g.beginPath(); for (let i = 0; i <= N; i++){ const p = pt(i/N*TAU, loop, k); i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]); } g.closePath(); };
+  g.lineJoin = 'round'; g.lineCap = 'round';
+  if (S.core > 0 && c.kind !== 'ring'){ const cr = R*(c.kind === 'core' ? .75 : c.kind === 'jelly' ? 1 : .55), gr = g.createRadialGradient(c.x, c.y, 0, c.x, c.y, cr);                 /* the glowing middle */
+    const k = c.kind === 'jelly' ? .45 : 1; gr.addColorStop(0, rgba(c.kind === 'core' ? '#fff6c8' : col2, .9*S.core*k)); gr.addColorStop(.35, rgba(col2, .5*S.core*k)); gr.addColorStop(1, rgba(col2, 0)); g.fillStyle = gr; g.beginPath(); g.arc(c.x, c.y, cr, 0, TAU); g.fill(); }
+  if (c.kind === 'jelly'){ path(0, .62); g.fillStyle = rgba(col, .7); g.fill(); }
+  const fils = Math.round(S.filaments*(c.kind === 'tangle' ? 1.6 : c.kind === 'ring' ? .45 : c.kind === 'jelly' ? .5 : 1)), reach = c.kind === 'jelly' ? 1.55 : c.kind === 'core' ? .8 : .92;
+  for (let f = 0; f < Math.min(fils, c.fil.length); f++){ const F = c.fil[f], M = 14; g.beginPath();                                                                 /* threads that curl out from the middle */
+    for (let j = 0; j <= M; j++){ const u = j/M, th = F.a + Math.sin(u*3.1+t*F.sp+F.ph)*F.curl*.22*u + (c.kind === 'tangle' ? Math.sin(u*9+F.ph*3+t*F.sp*.7)*.5 : 0), r = R*outline(c, th, 0, tw)*u*F.len*reach*(c.kind === 'tangle' ? .5+.5*Math.sin(u*6+F.ph) : 1);
+      const x = c.x+Math.cos(th+rot)*r, y = c.y+Math.sin(th+rot)*r; j ? g.lineTo(x, y) : g.moveTo(x, y); }
+    g.strokeStyle = rgba(f%4 === 0 ? col2 : col, c.kind === 'tangle' ? .5 : .38); g.lineWidth = S.weight*F.w*.8; g.stroke(); }
+  if (c.kind !== 'jelly' || S.loops > 3){ const loops = c.kind === 'jelly' ? 2 : Math.max(1, Math.round(S.loops));                                                     /* the membrane: several thin loops, slightly out of step */
+    for (let l = 0; l < loops; l++){ path(l, c.kind === 'jelly' ? .7 : 1); g.strokeStyle = rgba(col, l === 0 ? .95 : .5); g.lineWidth = S.weight*(l === 0 ? 1.5 : .8); g.stroke(); } }
+  if (S.beads > 0 && c.kind !== 'jelly'){ const nb = Math.round(S.beads*40); g.fillStyle = rgba(col, .9); for (let i = 0; i < nb; i++){ const th = (i/nb)*TAU + Math.sin(t*.3+c.seed+i)*.1, p = pt(th, 0, .86+.1*Math.sin(i*2.3+c.seed)); g.beginPath(); g.arc(p[0], p[1], S.weight*(.5+((i*7)%5)*.22), 0, TAU); g.fill(); } }
+}
+
+/* ------------------------------------------------------------ frame */
+function resize(){ const hidden = document.body.classList.contains('ui-hidden'); W = Math.max(1, innerWidth-(hidden || innerWidth < 720 ? 0 : 340)); H = Math.max(1, innerHeight); dpr = Math.min(devicePixelRatio || 1, 1.5);
+  for (const [c, k] of [[cv, 1], [scene, 1], [b1, .25], [b2, .09]]){ c.width = Math.max(2, Math.round(W*dpr*k)); c.height = Math.max(2, Math.round(H*dpr*k)); }
+  cv.style.width = W+'px'; cv.style.height = H+'px'; g.fillStyle = S.bg; g.fillRect(0, 0, scene.width, scene.height); if (!cells.length) newColony(); P = null; }
+function draw(dt){
+  g.setTransform(dpr, 0, 0, dpr, 0, 0); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; g.fillStyle = rgba(S.bg, dt > 0 ? 1-clamp(S.trails, 0, .97)*.92 : 1); if (dt > 0 || !S.trails) g.fillRect(0, 0, W, H);
+  g.globalCompositeOperation = 'lighter'; if (dt > 0) physics(dt); plankton(dt); for (const c of cells) drawCell(c, time); g.globalCompositeOperation = 'source-over';
+  out.setTransform(1, 0, 0, 1, 0, 0); out.globalCompositeOperation = 'source-over'; out.globalAlpha = 1; out.drawImage(scene, 0, 0);
+  if (S.glow > 0){ g1.globalCompositeOperation = 'copy'; g1.drawImage(scene, 0, 0, b1.width, b1.height); g2.globalCompositeOperation = 'copy'; g2.imageSmoothingQuality = 'high'; g2.drawImage(b1, 0, 0, b2.width, b2.height);      /* bloom: the picture, shrunk and laid back over itself */
+    out.globalCompositeOperation = 'lighter'; out.imageSmoothingEnabled = true; out.imageSmoothingQuality = 'high'; out.globalAlpha = S.glow*.55; out.drawImage(b1, 0, 0, cv.width, cv.height); out.globalAlpha = S.glow*.9; out.drawImage(b2, 0, 0, cv.width, cv.height); out.globalAlpha = 1; }
+}
+let last = 0;
+function frame(now){ requestAnimationFrame(frame); const dt = Math.min(.05, (now-last)/1000 || 0); last = now; if (document.hidden) return; const d = S.playing ? dt*S.speed : 0; time += d; draw(d); }
+
+/* ------------------------------------------------------------ UI */
+const KEY = 'moxx-glow-cells', shows = []; let saveT = 0;
+const touch = colony => { if (colony) newColony(); clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} }, 400); };
+function ctl(host, key, label, o){ o = o || {}; let row, inp, val;
+  if (o.type === 'toggle'){ row = el('label','toggle'); inp = el('input'); inp.type = 'checkbox'; row.append(inp, ' '+label); }
+  else { row = el('div','row'); const lab = el('label'); lab.textContent = label; inp = el('input'); inp.type = o.type || 'range'; if (inp.type === 'range'){ inp.min = o.min; inp.max = o.max; inp.step = o.step || 1; val = el('span','val'); } row.append(lab, inp); if (val) row.append(val); }
+  const fmt = o.fmt || (v => String(v)), read = () => inp.type === 'checkbox' ? inp.checked : inp.type === 'range' ? parseFloat(inp.value) : o.num ? (parseInt(inp.value, 10) || 0) : inp.value;
+  inp[inp.type === 'checkbox' ? 'onchange' : 'oninput'] = () => { S[key] = read(); if (val) val.textContent = fmt(S[key]); touch(o.colony); };
+  shows.push(() => { if (inp.type === 'checkbox') inp.checked = !!S[key]; else if (document.activeElement !== inp || inp.type === 'range') inp.value = S[key]; if (val) val.textContent = fmt(S[key]); });
+  $(host).append(row); }
+const pct = v => Math.round(v*100)+'%', f2 = v => (+v).toFixed(2);
+ctl('f-colony', 'count', 'Cells', { min:1, max:40, colony:true }); ctl('f-colony', 'sizeMin', 'Smallest', { min:.02, max:.25, step:.005, fmt:pct, colony:true }); ctl('f-colony', 'sizeMax', 'Largest', { min:.03, max:.4, step:.005, fmt:pct, colony:true });
+ctl('f-colony', 'crowd', 'Overlap', { min:0, max:1, step:.01, fmt:pct }); ctl('f-colony', 'gather', 'Pull to the middle', { min:0, max:2, step:.01, fmt:pct }); ctl('f-colony', 'drift', 'Drift', { min:0, max:2, step:.01, fmt:pct });
+ctl('f-colony', 'seed', 'Seed', { type:'text', num:true, colony:true });
+ctl('f-shape', 'wobble', 'Wobble', { min:0, max:1, step:.01, fmt:pct }); ctl('f-shape', 'lobes', 'Lobes', { min:2, max:10 }); ctl('f-shape', 'wobbleSpeed', 'Wobble speed', { min:0, max:3, step:.01, fmt:f2 });
+ctl('f-shape', 'loops', 'Outline loops', { min:1, max:10 }); ctl('f-shape', 'weight', 'Line weight', { min:.3, max:5, step:.05, fmt:v => f2(v)+' px' }); ctl('f-shape', 'filaments', 'Threads inside', { min:0, max:40 });
+ctl('f-shape', 'core', 'Core glow', { min:0, max:1, step:.01, fmt:pct }); ctl('f-shape', 'beads', 'Beads on the edge', { min:0, max:1, step:.01, fmt:pct });
+ctl('f-plankton', 'specks', 'Specks', { min:0, max:16000, step:100 }); ctl('f-plankton', 'speckSize', 'Size', { min:.5, max:5, step:.05, fmt:f2 }); ctl('f-plankton', 'streaks', 'Share of streaks', { min:0, max:1, step:.01, fmt:pct });
+ctl('f-plankton', 'flow', 'Flow speed', { min:0, max:3, step:.01, fmt:f2 }); ctl('f-plankton', 'flowScale', 'Swirl size', { min:.5, max:8, step:.05, fmt:f2 }); ctl('f-plankton', 'clump', 'Clumps and voids', { min:0, max:1, step:.01, fmt:pct });
+ctl('f-plankton', 'fringe', 'Red and cyan fringes on the specks', { type:'toggle' });
+ctl('f-look', 'glow', 'Glow', { min:0, max:1.5, step:.01, fmt:pct }); ctl('f-look', 'trails', 'Trails', { min:0, max:.97, step:.01, fmt:pct }); ctl('f-look', 'speed', 'Speed', { min:0, max:4, step:.05, fmt:v => f2(v)+'×' }); ctl('f-look', 'bg', 'Background', { type:'color' });
+const kindBtns = {}; for (const k in KINDS){ const b = el('button'); b.textContent = KINDS[k]; b.onclick = () => { S.kinds[k] = !S.kinds[k]; touch(true); sync(); }; $('kinds').append(b); kindBtns[k] = b; }
+for (const k in PALETTES){ const b = el('button'); b.textContent = k; b.onclick = () => { S.palette = PALETTES[k].slice(); touch(); sync(); }; $('palettes').append(b); }
+function swatches(host, list){ const h = $(host); h.textContent = ''; list.forEach((c, i) => { const inp = el('input'); inp.type = 'color'; inp.value = c; inp.oninput = () => { list[i] = inp.value; touch(); }; h.append(inp); });
+  const add = el('button'); add.textContent = '+'; add.title = 'Add a colour'; add.onclick = () => { if (list.length < 12){ list.push('#ffffff'); touch(); sync(); } }; const del = el('button'); del.textContent = '−'; del.title = 'Remove the last colour'; del.onclick = () => { if (list.length > 1){ list.pop(); touch(); sync(); } }; h.append(add, del); }
+function sync(){ shows.forEach(f => f()); for (const k in kindBtns) kindBtns[k].classList.toggle('on', !!S.kinds[k]); swatches('cellPal', S.palette); swatches('specPal', S.specPal); $('bPlay').textContent = S.playing ? 'Pause' : 'Play'; }
+$('bNew').onclick = () => { S.seed = Math.random()*100000|0; touch(true); P = null; sync(); };
+$('bReset').onclick = () => { S = JSON.parse(JSON.stringify(DEFAULTS)); touch(true); P = null; sync(); };
+$('bPlay').onclick = () => { S.playing = !S.playing; touch(); sync(); };
+$('bHide').onclick = () => { document.body.classList.toggle('ui-hidden'); resize(); };
+
+let held = null, grab = [0, 0];
+cv.addEventListener('pointerdown', e => { const r = cv.getBoundingClientRect(), x = e.clientX-r.left, y = e.clientY-r.top; let best = null, bd = 1e9; for (const c of cells){ const d = Math.hypot(c.x-x, c.y-y)/radiusOf(c); if (d < 1.2 && d < bd){ bd = d; best = c; } }
+  if (best){ held = best; grab = [best.x-x, best.y-y]; cv.setPointerCapture(e.pointerId); } });
+cv.addEventListener('pointermove', e => { if (!held) return; const r = cv.getBoundingClientRect(), nx = e.clientX-r.left+grab[0], ny = e.clientY-r.top+grab[1]; held.vx = (nx-held.x)*8; held.vy = (ny-held.y)*8; held.x = nx; held.y = ny; });
+const drop = () => { held = null; }; cv.addEventListener('pointerup', drop); cv.addEventListener('pointercancel', drop);
+
+/* ------------------------------------------------------------ export */
+const download = (blob, name) => { const a = el('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
+$('bSave').onclick = () => cv.toBlob(b => download(b, 'glow-cells-'+S.seed+'.png'));
+$('bVideo').onclick = () => { const b = $('bVideo'); if (b.disabled) return; if (!window.MediaRecorder || !cv.captureStream){ b.textContent = 'Not supported'; return; }
+  const type = ['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(t => MediaRecorder.isTypeSupported(t)) || '', rec = new MediaRecorder(cv.captureStream(60), { mimeType:type, videoBitsPerSecond:20e6 }), chunks = []; let left = 8;
+  S.playing = true; sync(); b.disabled = true; b.textContent = 'Recording 8'; const tick = setInterval(() => { left--; b.textContent = 'Recording '+Math.max(0, left); }, 1000);
+  rec.ondataavailable = e => e.data.size && chunks.push(e.data);
+  rec.onstop = () => { clearInterval(tick); b.disabled = false; b.textContent = 'Record 8 s'; download(new Blob(chunks, { type:type || 'video/webm' }), 'glow-cells'+(type.includes('mp4') ? '.mp4' : '.webm')); };
+  rec.start(); setTimeout(() => rec.stop(), 8000); };
+addEventListener('keydown', e => { if (/^(TEXTAREA|SELECT)$/.test(e.target.tagName) || (e.target.tagName === 'INPUT' && e.target.type === 'text') || e.metaKey || e.ctrlKey || e.altKey) return; const k = e.key.toLowerCase();
+  if (k === 'h') $('bHide').click(); else if (k === 'r') $('bNew').click(); else if (k === 's') $('bSave').click(); else if (e.key === ' '){ e.preventDefault(); $('bPlay').click(); } });
+addEventListener('resize', () => { const w = W, h = H; resize(); for (const c of cells){ c.x *= W/w; c.y *= H/h; } });
+
+try { const o = JSON.parse(localStorage.getItem(KEY)); if (o && typeof o === 'object') S = Object.assign(JSON.parse(JSON.stringify(DEFAULTS)), o, { kinds:Object.assign({}, DEFAULTS.kinds, o.kinds || {}) }); } catch(e){}
+resize(); sync(); requestAnimationFrame(frame);
+window.GC = { get S(){ return S; }, get cells(){ return cells; }, newColony, draw };
+</script>
+</body>
+</html>

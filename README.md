@@ -240,6 +240,16 @@ share of flat grey, how much pattern stays in pure white and black, and a seed; 
 colours. Choose, drop or paste an image. Saves a PNG up to 8× the screen size.
 Keys: H panel, R reshuffle, S save PNG.
 
+**`glow-cells.html` — Glow Cells.** A generative colony of glowing cells on black: wobbling
+neon membranes drawn as several thin loops, bright cores, curling threads and beads, in four
+kinds (rings, tangles, bright cores, jellies). The cells drift, pull together and push each
+other apart, and can be dragged. Around them flow thousands of specks and streaks, gathered
+into clumps with dark voids. Controls for the number and size of cells, overlap, drift, the
+outline (wobble, lobes, speed, loops, line weight), threads, core glow and beads; six
+palettes with editable colours; speck count, size, streaks, flow and clumping; glow, trails,
+speed and background; and a seed. Saves a PNG or an 8-second video.
+Keys: H panel, R new colony, S save PNG, space pause.
+
 ## Interface
 
 Every page loads two shared files, `ui.css` and `ui.js`. Together they give the site a
