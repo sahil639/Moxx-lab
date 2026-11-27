@@ -200,8 +200,9 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
 - **Glow Cells** (16): generative neon cell colony, Canvas 2D, shared `ui.css`/`ui.js`, from a
   reference video (black ground, wobbling glowing membranes in magenta/orange/cyan, bright
   cores, scribbly threads, bands of drifting specks). File order: state → `noise` → colony
-  (`newColony` from the seed; `outline()` = circle pushed by sliding sine waves, one phase per
-  loop; `physics`: flow drift, pull to the middle, soft repulsion, drag) → `plankton` (specks
+  (`newColony` from the seed; `shapeTable()` works out each cell's radii once a frame from smooth
+  noise read around a ring plus a stretch along one axis, one row per loop, and `outline()`
+  only looks them up; `physics`: flow drift, pull to the middle, soft repulsion, drag) → `plankton` (specks
   moved by a flow field, faded by a clump mask and near cells) → `drawCell` (kinds `ring`,
   `tangle`, `core`, `jelly`; besides loops and threads each cell gets `scribble` coils — a
   spring wound along the membrane — and `inside` scrawls, long looping paths that fill the

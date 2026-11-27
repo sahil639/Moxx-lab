@@ -106,7 +106,7 @@ const PALETTES = {
 };
 const KINDS = { ring:'Rings', tangle:'Tangles', core:'Bright cores', jelly:'Jellies' };
 const DEFAULTS = { seed:4711, count:10, sizeMin:.06, sizeMax:.15, crowd:.3, gather:.4, drift:.5,
-  kinds:{ ring:true, tangle:true, core:true, jelly:true }, wobble:.32, lobes:5, wobbleSpeed:.5, loops:8, weight:1.1, filaments:30, scribble:.75, inside:.75, core:.8, beads:.4,
+  kinds:{ ring:true, tangle:true, core:true, jelly:true }, wobble:.45, blob:.75, lobes:5, wobbleSpeed:.5, loops:8, weight:1.1, filaments:30, scribble:.75, inside:.75, core:.8, beads:.4,
   palette:PALETTES.Neon.slice(), sat:1,
   specks:7000, speckSize:1.5, streaks:.08, flow:.45, flowScale:2.2, clump:.7, fringe:true, specPal:['#9aa0a8','#7fe7ff','#ff5a5a','#ffffff','#6b7078','#ff9a3c','#7a5cff','#8a8f98'],
   glow:.5, trails:.3, bg:'#000000', speed:1, playing:true };
@@ -123,18 +123,21 @@ function noise(x, y, z){ const x0 = Math.floor(x), y0 = Math.floor(y), z0 = Math
 /* ------------------------------------------------------------ colony */
 function newColony(){ const r = makeRng(S.seed), kinds = Object.keys(KINDS).filter(k => S.kinds[k]); cells = [];
   for (let i = 0; i < S.count; i++){ const kind = kinds.length ? kinds[Math.floor(r()*kinds.length)] : 'ring', a = r()*TAU, d = Math.sqrt(r())*.34, big = kind === 'jelly' ? .55 : 1;
-    cells.push({ kind, x:W/2+Math.cos(a)*d*W*.8, y:H/2+Math.sin(a)*d*H*.8, vx:0, vy:0, size:lerp(S.sizeMin, S.sizeMax, r())*big, ci:Math.floor(r()*64), cj:Math.floor(r()*64), seed:r()*1000, spin:(r()-.5)*.3, lob:Math.floor(r()*4)-2,
+    cells.push({ kind, x:W/2+Math.cos(a)*d*W*.8, y:H/2+Math.sin(a)*d*H*.8, vx:0, vy:0, size:lerp(S.sizeMin, S.sizeMax, r())*big, ci:Math.floor(r()*64), cj:Math.floor(r()*64), seed:r()*1000, spin:(r()-.5)*.3, lob:Math.floor(r()*4)-2, el:.1+r()*.3, ea:r()*TAU,
       harm:[1,2,3,4].map(k => ({ amp:(.4+r()*.6)/k, ph:r()*TAU, sp:(r()-.5)*1.6 })),
       fil:Array.from({ length:64 }, () => ({ a:r()*TAU, len:.25+r()*.75, curl:(r()-.5)*5, sp:.3+r()*1.2, ph:r()*TAU, w:.4+r()*.8 })) }); }
 }
 const radiusOf = (c) => c.size*Math.min(W, H);
-/* the outline: a circle pushed in and out by a few sine waves that slide round it; each loop is slightly out of step */
-function outline(c, th, loop, t){ let s = 0; const L = Math.max(2, Math.round(S.lobes)+c.lob);                        /* each cell has its own number of lobes, near the chosen one */
-  s += c.harm[0].amp*Math.sin(L*th + c.harm[0].ph + t*c.harm[0].sp + loop*.35);
-  s += c.harm[1].amp*Math.sin((L+1)*th + c.harm[1].ph - t*c.harm[1].sp*1.3 + loop*.5);
-  s += c.harm[2].amp*1.5*Math.sin(2*th + c.harm[2].ph + t*c.harm[2].sp*.7) + c.harm[1].amp*.9*Math.sin(th + c.harm[3].ph - t*c.harm[2].sp*.4);
-  s += c.harm[3].amp*.6*Math.sin((L*2+1)*th + c.harm[3].ph + t*c.harm[3].sp*2 + loop*.9);
-  return 1 + S.wobble*.42*s + (loop-(S.loops-1)/2)*.02; }
+/* the outline: a circle pushed in and out by smooth noise read around a ring, so every cell is its own irregular blob,
+   stretched a little along one axis. Each loop reads the noise slightly further on, so the loops wander apart and cross.
+   shapeTable() works the radii out once per cell per frame; outline() only looks them up. */
+const TN = 128;
+function shapeTable(c, t){ const L = Math.max(4, Math.round(S.loops)), f = .55+S.lobes*.2, k1 = S.wobble*(1.5+1.9*S.blob), k2 = S.wobble*(.6+.8*S.blob), el = c.el*S.blob, mid = (S.loops-1)/2;
+  if (!c.tab || c.tab.length !== L*(TN+1)) c.tab = new Float32Array(L*(TN+1)); c.tabL = L;
+  for (let l = 0; l < L; l++) for (let i = 0; i <= TN; i++){ const th = i/TN*TAU, x = Math.cos(th), y = Math.sin(th);
+    const n1 = noise(c.seed+x*f, c.seed*1.7+y*f, t*.12+l*.06)-.5, n2 = noise(c.seed*3.1+x*f*2.4, 9+y*f*2.4, t*.2+l*.1)-.5, n3 = noise(40+x*f*5, c.seed+y*f*5, t*.3+l*.2)-.5;
+    c.tab[l*(TN+1)+i] = Math.max(.25, 1 + k1*n1 + k2*n2 + S.wobble*.25*n3 + el*Math.cos(2*(th-c.ea)) + (l-mid)*.02); } }
+function outline(c, th, loop){ let u = th/TAU; u = (u-Math.floor(u))*TN; const i = u|0, l = Math.min(c.tabL-1, loop|0)*(TN+1); return c.tab[l+i] + (c.tab[l+i+1]-c.tab[l+i])*(u-i); }
 function physics(dt){ const m = Math.min(W, H), n = cells.length;
   for (let i = 0; i < n; i++){ const c = cells[i], a = noise(c.x/m*1.3, c.y/m*1.3, time*.05+c.seed)*TAU*2, R = radiusOf(c);
     c.vx += Math.cos(a)*S.drift*14*dt; c.vy += Math.sin(a)*S.drift*14*dt;
@@ -162,7 +165,7 @@ function plankton(dt){ if (!P || P.n !== (S.specks|0)) newPlankton(); const m = 
 
 /* ------------------------------------------------------------ drawing a cell */
 const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`; };
-function drawCell(c, t){ const R = radiusOf(c), pal = S.palette, col = pal[c.ci%pal.length] || '#fff', col2 = pal[(c.ci+1+c.cj%Math.max(1, pal.length-1))%pal.length] || col, rot = t*c.spin, N = 96, tw = t*S.wobbleSpeed*2;
+function drawCell(c, t){ shapeTable(c, t*S.wobbleSpeed*2); const R = radiusOf(c), pal = S.palette, col = pal[c.ci%pal.length] || '#fff', col2 = pal[(c.ci+1+c.cj%Math.max(1, pal.length-1))%pal.length] || col, rot = t*c.spin, N = 96, tw = t*S.wobbleSpeed*2;
   const pt = (th, loop, k) => { const r = R*outline(c, th, loop, tw)*k*(1 + S.scribble*(.04*Math.sin(th*17+loop*2.1+c.seed) + .025*Math.sin(th*31-loop*1.3+tw*.8)));   /* a shaky hand */ return [c.x+Math.cos(th+rot)*r, c.y+Math.sin(th+rot)*r]; };
   const path = (loop, k) => { g.beginPath(); for (let i = 0; i <= N; i++){ const p = pt(i/N*TAU, loop, k); i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]); } g.closePath(); };
   g.lineJoin = 'round'; g.lineCap = 'round';
@@ -217,7 +220,7 @@ const pct = v => Math.round(v*100)+'%', f2 = v => (+v).toFixed(2);
 ctl('f-colony', 'count', 'Cells', { min:1, max:40, colony:true }); ctl('f-colony', 'sizeMin', 'Smallest', { min:.02, max:.25, step:.005, fmt:pct, colony:true }); ctl('f-colony', 'sizeMax', 'Largest', { min:.03, max:.4, step:.005, fmt:pct, colony:true });
 ctl('f-colony', 'crowd', 'Overlap', { min:0, max:1, step:.01, fmt:pct }); ctl('f-colony', 'gather', 'Pull to the middle', { min:0, max:2, step:.01, fmt:pct }); ctl('f-colony', 'drift', 'Drift', { min:0, max:2, step:.01, fmt:pct });
 ctl('f-colony', 'seed', 'Seed', { type:'text', num:true, colony:true });
-ctl('f-shape', 'wobble', 'Wobble', { min:0, max:1, step:.01, fmt:pct }); ctl('f-shape', 'lobes', 'Lobes', { min:2, max:10 }); ctl('f-shape', 'wobbleSpeed', 'Wobble speed', { min:0, max:3, step:.01, fmt:f2 });
+ctl('f-shape', 'wobble', 'Wobble', { min:0, max:1, step:.01, fmt:pct }); ctl('f-shape', 'blob', 'Irregular, blobby', { min:0, max:1.5, step:.01, fmt:pct }); ctl('f-shape', 'lobes', 'Bumps', { min:1, max:10 }); ctl('f-shape', 'wobbleSpeed', 'Wobble speed', { min:0, max:3, step:.01, fmt:f2 });
 ctl('f-shape', 'scribble', 'Scribble on the edge', { min:0, max:1, step:.01, fmt:pct }); ctl('f-shape', 'inside', 'Scrawl inside', { min:0, max:1.5, step:.01, fmt:pct });
 ctl('f-shape', 'loops', 'Outline loops', { min:1, max:14 }); ctl('f-shape', 'weight', 'Line weight', { min:.3, max:5, step:.05, fmt:v => f2(v)+' px' }); ctl('f-shape', 'filaments', 'Threads inside', { min:0, max:40 });
 ctl('f-shape', 'core', 'Core glow', { min:0, max:1, step:.01, fmt:pct }); ctl('f-shape', 'beads', 'Beads on the edge', { min:0, max:1, step:.01, fmt:pct });
