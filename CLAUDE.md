@@ -6,8 +6,7 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
 
 ## Files
 - `index.html` — directory page, laid out after a reference the user supplied (a developer-blog
-  index): black ground with a neon green accent (`--ix-accent`), the chrome logo top-left with a count
-  beside it and a short description of Moxx Lab top-right (`.intro`), a left "/ FILTERS" column
+  index): black ground with a neon green accent (`--ix-accent`), the chrome logo top-left (no count beside it; the user removed it) and a short description of Moxx Lab top-right (`.intro`), a left "/ FILTERS" column
   of topic checkboxes, and a "/ DATE / NAME" list, newest first: a green square, the date the
   page was first committed (from `git log --diff-filter=A`, written `2026.11.27`), a long
   descriptive title ("Name: what it does") and a "+" per row, separated by thin lines. The name is the link; "+" opens the

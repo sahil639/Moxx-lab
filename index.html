@@ -30,7 +30,6 @@
   .logo canvas{position:absolute;left:50%;top:50%;width:300%;height:300%;margin:-150% 0 0 -150%;pointer-events:none;will-change:transform}
   .logo.live img{visibility:hidden}
   html[data-theme=light] .logo img{filter:invert(1)}
-  .count{margin:50px 0 0 -14px;font-size:17px;letter-spacing:-.01em;color:var(--ix-count);font-variant-numeric:tabular-nums}
 
   .intro{margin:58px 6px 0 auto;max-width:400px;font-size:14.5px;line-height:1.5;color:var(--ix-dim)}
   .intro b{display:block;margin-bottom:6px;font-weight:500;color:var(--ix-fg)}
@@ -86,7 +85,6 @@
     .wrap{padding:0 16px 56px}
     .head{padding:14px 0 4px 4px;flex-wrap:wrap}
     .logo{width:170px;height:170px;margin:0 0 -4px 0}
-    .count{margin:34px 0 0 -10px;font-size:15px}
     .intro{margin:6px 0 18px;max-width:none;flex:0 0 100%}
     .labels{grid-template-columns:96px 1fr}
     .entry{grid-template-columns:14px 82px minmax(0,1fr) 30px;min-height:44px}
@@ -112,7 +110,6 @@
 
   <header class="head">
     <div class="logo" id="logo" title="Drag me"><img src="logo.svg" alt="Moxx Lab" draggable="false"></div>
-    <span class="count" id="count" aria-label="16 effects">(16)</span>
     <p class="intro"><b>Moxx Lab</b>A growing set of small browser tools for making motion graphics, generative images and brand visuals. Each one is a single page: open it, shape it with the panel, then save a still or record the result.</p>
   </header>
 
@@ -207,7 +204,7 @@
   const NAMES = { image:'Your image', generative:'Generative', particles:'Particles', pattern:'Pattern', type:'Type', '3d':'3D', logo:'Logo and brand', physics:'Physics' };
   const rows = [...document.querySelectorAll('#list li')], host = document.getElementById('filters'), clear = document.getElementById('clear'), on = new Set();
   const apply = () => { let n = 0; for (const li of rows){ const show = !on.size || li.dataset.tags.split(' ').some(t => on.has(t)); li.hidden = !show; if (show) n++; }
-    document.getElementById('count').textContent = '('+n+')'; document.getElementById('none').hidden = n > 0; clear.hidden = !on.size; };
+    document.getElementById('none').hidden = n > 0; clear.hidden = !on.size; };
   for (const k in NAMES){ const n = rows.filter(li => li.dataset.tags.split(' ').includes(k)).length; if (!n) continue;
     const li = document.createElement('li'), lab = document.createElement('label'), cb = document.createElement('input'), tx = document.createElement('span');
     cb.type = 'checkbox'; tx.textContent = NAMES[k]+' ('+n+')'; cb.onchange = () => { cb.checked ? on.add(k) : on.delete(k); apply(); }; lab.append(cb, tx); li.append(lab); host.append(li); }
