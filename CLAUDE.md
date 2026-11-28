@@ -219,7 +219,11 @@ No build step, no dependencies: each page is one HTML file plus the shared `ui.c
   (body dots one path per shade, optional ringed dots, membrane = chains of dots along the
   outline, the last chain meandering) → `plankton` (loose circles, ringed ones, streaks as
   short dot chains) → `draw` into an offscreen `scene`, then to the visible canvas with a light
-  halo. Not additive: plain `source-over`. Settings carry `v:2`; older saved settings are
+  halo. Not additive: plain `source-over`. Hover: every circle is drawn through
+  `dotAt()` → `warp()`, which displaces (push, pull, swirl, shake) and swells it by distance to
+  the smoothed pointer `M`; nothing is stored per circle. `HK` is the strength for what is
+  being drawn (0 for plankton when `hPlank` is off); `hCells` also nudges whole cells in
+  `physics`. Settings carry `v:2`; older saved settings are
   ignored. localStorage `moxx-glow-cells`. R = new colony. Exposed as `window.GC`. About 5 ms
   a frame. Not checked: motion at full frame rate, dragging by hand, video.
 

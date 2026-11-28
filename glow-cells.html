@@ -39,7 +39,7 @@
 
 <canvas id="c"></canvas>
 <a id="back" href="index.html" aria-label="Back to Moxx Lab index"><img src="logo.svg" alt="">← Moxx Lab</a>
-<div id="hud">drag a cell to move it · <kbd>H</kbd> panel · <kbd>R</kbd> new colony · <kbd>S</kbd> save png · <kbd>space</kbd> pause</div>
+<div id="hud">move over the cells · drag a cell to move it · <kbd>H</kbd> panel · <kbd>R</kbd> new colony · <kbd>S</kbd> save png · <kbd>space</kbd> pause</div>
 
 <div id="panel">
   <h1><img class="mark" src="logo.svg" alt="">Glow Cells<small>a colony of cells, every one built from tiny circles</small></h1>
@@ -62,6 +62,12 @@
     <summary>Membrane</summary>
     <p class="hint lead">The chains of dots that trace the edge of each cell.</p>
     <div id="f-membrane"></div>
+  </details>
+
+  <details open>
+    <summary>Hover</summary>
+    <p class="hint lead">What the circles do when the pointer, or a finger, passes over them.</p>
+    <div id="f-hover"></div>
   </details>
 
   <details open>
@@ -117,6 +123,7 @@ const DEFAULTS = { v:2, seed:4711, count:10, sizeMin:.06, sizeMax:.15, crowd:.15
   rings:2, ringGap:.06, chain:1.5, meander:.5,
   palette:PALETTES.Neon.slice(), hueVar:22, lightVar:.22, accent:.1,
   specks:5200, speckSize:1.6, streaks:.06, flow:.45, flowScale:2.2, clump:.7, specPal:['#ff5a7a','#35d6c8','#8a8f98','#ff8fb4','#4fa8ff','#f2f2f2','#ff9a3c','#7a5cff'],
+  hover:true, hMode:'push', hRadius:.16, hStrength:.7, hSwell:.35, hFollow:9, hPlank:true, hCells:true,
   glow:.22, trails:.12, bg:'#000000', speed:1, playing:true };
 let S = JSON.parse(JSON.stringify(DEFAULTS));
 const cv = $('c'), out = cv.getContext('2d'), scene = el('canvas'), g = scene.getContext('2d'), b1 = el('canvas'), g1 = b1.getContext('2d'), b2 = el('canvas'), g2 = b2.getContext('2d');
@@ -162,18 +169,29 @@ function physics(dt){ const m = Math.min(W, H), n = cells.length;
     c.vx += Math.cos(a)*S.drift*14*dt; c.vy += Math.sin(a)*S.drift*14*dt; c.vx += (W/2-c.x)*S.gather*.05*dt; c.vy += (H/2-c.y)*S.gather*.09*dt;
     for (let j = i+1; j < n; j++){ const o = cells[j], dx = o.x-c.x, dy = o.y-c.y, d = Math.hypot(dx, dy)+1e-3, want = (R+radiusOf(o))*(1.12-S.crowd*.5);
       if (d < want){ const f = (want-d)/want*90*dt, ux = dx/d, uy = dy/d; c.vx -= ux*f; c.vy -= uy*f; o.vx += ux*f; o.vy += uy*f; } }
+    if (S.hCells && M.amt > .01 && c !== held){ const hx = c.x-M.x, hy = c.y-M.y, hd = Math.hypot(hx, hy)+1e-3, reach = S.hRadius*m+R*.7;                    /* the pointer nudges whole cells too */
+      if (hd < reach){ const f = (1-hd/reach)*M.amt*S.hStrength*260*dt, ux = hx/hd, uy = hy/hd; if (S.hMode === 'pull'){ c.vx -= ux*f*.6; c.vy -= uy*f*.6; } else if (S.hMode === 'swirl'){ c.vx += -uy*f; c.vy += ux*f; } else if (S.hMode !== 'shake'){ c.vx += ux*f; c.vy += uy*f; } } }
     if (c.x < R*.6) c.vx += 30*dt; if (c.x > W-R*.6) c.vx -= 30*dt; if (c.y < R*.6) c.vy += 30*dt; if (c.y > H-R*.6) c.vy -= 30*dt; }
   for (const c of cells){ if (c === held) continue; const damp = Math.pow(.2, dt); c.vx *= damp; c.vy *= damp; c.x += c.vx*dt; c.y += c.vy*dt; } }
 
 /* ------------------------------------------------------------ drawing: every mark is a filled circle */
-const dotAt = (x, y, r) => { g.moveTo(x+r, y); g.arc(x, y, r, 0, TAU); };
-function drawCell(c, t){ shapeTable(c, t*S.wobbleSpeed*2); const R = radiusOf(c), D = c.d, sh = shades(c), rot = t*c.spin, sw = S.swirl, base = S.dot;
+/* hover: every circle is drawn through warp(), which moves it (and can swell it) by how close it is to the pointer.
+   Nothing is stored per circle, so they fall back into place as soon as the pointer moves on. */
+const M = { x:0, y:0, tx:0, ty:0, inside:false, amt:0 }; let wx = 0, wy = 0, ws = 1, HK = 0;
+function warp(x, y){ wx = x; wy = y; ws = 1; if (HK <= .002) return; const dx = x-M.x, dy = y-M.y, R = S.hRadius*Math.min(W, H), d2 = dx*dx+dy*dy; if (d2 >= R*R) return;
+  const d = Math.sqrt(d2)+1e-4; let f = 1-d/R; f = f*f*HK; const k = S.hStrength, mode = S.hMode; ws = 1+f*S.hSwell*2.5;
+  if (mode === 'pull'){ const m = Math.min(d*.85, f*k*R*.5); wx = x-dx/d*m; wy = y-dy/d*m; }
+  else if (mode === 'swirl'){ const a = f*k*2.4, c = Math.cos(a), sn = Math.sin(a); wx = M.x+dx*c-dy*sn; wy = M.y+dx*sn+dy*c; }
+  else if (mode === 'shake'){ const m = f*k*R*.22; wx = x+Math.sin(x*12.9+y*78.2+time*11)*m; wy = y+Math.cos(x*39.3+y*11.1+time*13)*m; }
+  else { const m = f*k*R*.55; wx = x+dx/d*m; wy = y+dy/d*m; } }
+const dotAt = (x, y, r) => { warp(x, y); const q = r*ws; g.moveTo(wx+q, wy); g.arc(wx, wy, q, 0, TAU); };
+function drawCell(c, t){ HK = M.amt; shapeTable(c, t*S.wobbleSpeed*2); const R = radiusOf(c), D = c.d, sh = shades(c), rot = t*c.spin, sw = S.swirl, base = S.dot;
   for (let s = 0; s < NS; s++){ const list = D.by[s]; if (!list.length) continue; g.fillStyle = sh[s]; g.beginPath();                                   /* the body: one pass per shade */
     for (let q = 0; q < list.length; q++){ const k = list[q], rho = D.rho[k], th = D.th[k] + t*sw*D.w[k]*(1.2-rho) + Math.sin(t*.6+D.ph[k])*.08, r = R*outline(c, th, 0)*rho*.94 + Math.sin(t*1.3*D.w[k]+D.ph[k])*base*1.5;
       dotAt(c.x+Math.cos(th+rot)*r, c.y+Math.sin(th+rot)*r, Math.max(.4, base*D.sz[k]*(s >= 6 ? 1.15 : 1))); }
     g.fill(); }
   if (S.ringed > 0){ g.strokeStyle = sh[7]; g.lineWidth = Math.max(.5, base*.45); g.beginPath();                                                        /* a few circles wear a ring */
-    for (let k = 0; k < D.n; k++) if (D.ring[k]){ const rho = D.rho[k], th = D.th[k] + t*sw*D.w[k]*(1.2-rho) + Math.sin(t*.6+D.ph[k])*.08, r = R*outline(c, th, 0)*rho*.94 + Math.sin(t*1.3*D.w[k]+D.ph[k])*base*1.5, x = c.x+Math.cos(th+rot)*r, y = c.y+Math.sin(th+rot)*r, rr = base*D.sz[k]*2.1; g.moveTo(x+rr, y); g.arc(x, y, rr, 0, TAU); }
+    for (let k = 0; k < D.n; k++) if (D.ring[k]){ const rho = D.rho[k], th = D.th[k] + t*sw*D.w[k]*(1.2-rho) + Math.sin(t*.6+D.ph[k])*.08, r = R*outline(c, th, 0)*rho*.94 + Math.sin(t*1.3*D.w[k]+D.ph[k])*base*1.5, x = c.x+Math.cos(th+rot)*r, y = c.y+Math.sin(th+rot)*r, rr0 = base*D.sz[k]*2.1; warp(x, y); const rr = rr0*ws; g.moveTo(wx+rr, wy); g.arc(wx, wy, rr, 0, TAU); }
     g.stroke(); }
   if (c.kind !== 'cloud'){ const rings = Math.round(S.rings), step = Math.max(1.2, S.chain*base*.9), dr = Math.max(.5, base*.72);                             /* the membrane: chains of dots, one of them meandering */
     for (let l = 0; l < rings; l++){ const k = 1+l*S.ringGap, K = Math.max(24, Math.round(TAU*R*k/step)), wav = l === rings-1 ? S.meander : 0, mf = Math.round(R*k*.55), dir = l%2 ? -1 : 1; g.fillStyle = sh[l === 0 ? 2 : l%2 ? 4 : 0]; g.beginPath();
@@ -185,14 +203,14 @@ function drawCell(c, t){ shapeTable(c, t*S.wobbleSpeed*2); const R = radiusOf(c)
 /* ------------------------------------------------------------ plankton: loose circles carried by a flow field */
 function newPlankton(){ const n = S.specks|0, r = makeRng(S.seed+99); P = { n, x:new Float32Array(n), y:new Float32Array(n), s:new Float32Array(n), c:new Uint8Array(n), k:new Uint8Array(n) };
   for (let i = 0; i < n; i++){ P.x[i] = r()*W; P.y[i] = r()*H; P.s[i] = .5+r()*r()*2.4; P.c[i] = Math.floor(r()*250); P.k[i] = r() < S.streaks ? 1 : r() < .12 ? 2 : 0; } }
-function plankton(dt){ if (!P || P.n !== (S.specks|0)) newPlankton(); const m = Math.min(W, H), fs = S.flowScale/m, sp = S.flow*46*dt, pal = S.specPal, np = pal.length || 1, t = time*.04, cl = S.clump;
+function plankton(dt){ if (!P || P.n !== (S.specks|0)) newPlankton(); HK = S.hPlank ? M.amt : 0; const m = Math.min(W, H), fs = S.flowScale/m, sp = S.flow*46*dt, pal = S.specPal, np = pal.length || 1, t = time*.04, cl = S.clump;
   for (let i = 0; i < P.n; i++){ let x = P.x[i], y = P.y[i]; const a = noise(x*fs, y*fs, t)*TAU*2.2, kind = P.k[i], v = sp*(kind === 1 ? 3 : 1)*(.5+P.s[i]*.4);
     x += Math.cos(a)*v; y += Math.sin(a)*v; if (x < -8) x = W+8; else if (x > W+8) x = -8; if (y < -8) y = H+8; else if (y > H+8) y = -8; P.x[i] = x; P.y[i] = y;
     let al = cl > 0 ? clamp((noise(x*fs*1.7+31, y*fs*1.7-17, t*.6)-(.38+cl*.12))*(2+cl*9), 0, 1) : 1; if (al <= .03) continue;                          /* clumps and voids */
     for (const c of cells){ const R = radiusOf(c)*1.3, dx = x-c.x, dy = y-c.y, d2 = dx*dx+dy*dy; if (d2 < R*R){ al *= clamp((Math.sqrt(d2)/R-.72)/.28, 0, 1); if (al <= .03) break; } }
     if (al <= .03) continue; const col = pal[P.c[i]%np], sz = P.s[i]*S.speckSize; g.globalAlpha = al*(.55+.45*(P.c[i]%7)/6); g.fillStyle = col; g.beginPath();
     if (kind === 1){ const ca = Math.cos(a), sa = Math.sin(a), nd = 7; for (let q = 0; q < nd; q++){ const u = q/(nd-1); dotAt(x-ca*u*(8+sz*7)+sa*Math.sin(u*3)*2, y-sa*u*(8+sz*7)-ca*Math.sin(u*3)*2, Math.max(.4, sz*.55*(1-u*.6))); } g.fill(); }    /* a streak is a short chain of dots */
-    else { dotAt(x, y, Math.max(.4, sz*.62)); g.fill(); if (kind === 2){ g.strokeStyle = pal[(P.c[i]+3)%np]; g.lineWidth = Math.max(.5, sz*.3); g.beginPath(); g.arc(x, y, sz*1.5, 0, TAU); g.stroke(); } } }
+    else { dotAt(x, y, Math.max(.4, sz*.62)); g.fill(); if (kind === 2){ g.strokeStyle = pal[(P.c[i]+3)%np]; g.lineWidth = Math.max(.5, sz*.3); g.beginPath(); warp(x, y); g.arc(wx, wy, sz*1.5*ws, 0, TAU); g.stroke(); } } }
   g.globalAlpha = 1; }
 
 /* ------------------------------------------------------------ frame */
@@ -207,16 +225,19 @@ function draw(dt){
     out.globalCompositeOperation = 'lighter'; out.imageSmoothingEnabled = true; out.imageSmoothingQuality = 'high'; out.globalAlpha = S.glow*.5; out.drawImage(b1, 0, 0, cv.width, cv.height); out.globalAlpha = S.glow*.8; out.drawImage(b2, 0, 0, cv.width, cv.height); out.globalAlpha = 1; }
 }
 let last = 0;
-function frame(now){ requestAnimationFrame(frame); const dt = Math.min(.05, (now-last)/1000 || 0); last = now; if (document.hidden) return; const d = S.playing ? dt*S.speed : 0; time += d; draw(d); }
+function frame(now){ requestAnimationFrame(frame); const dt = Math.min(.05, (now-last)/1000 || 0); last = now; if (document.hidden) return;
+  const fo = Math.min(1, dt*S.hFollow); M.x += (M.tx-M.x)*fo; M.y += (M.ty-M.y)*fo; M.amt += ((M.inside && S.hover && !held ? 1 : 0)-M.amt)*Math.min(1, dt*6);
+  const d = S.playing ? dt*S.speed : 0; time += d; draw(d); }
 
 /* ------------------------------------------------------------ UI */
 const KEY = 'moxx-glow-cells', shows = []; let saveT = 0;
 const touch = colony => { if (colony) newColony(); clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} }, 400); };
 function ctl(host, key, label, o){ o = o || {}; let row, inp, val;
   if (o.type === 'toggle'){ row = el('label','toggle'); inp = el('input'); inp.type = 'checkbox'; row.append(inp, ' '+label); }
+  else if (o.type === 'select'){ row = el('div','row'); const lab = el('label'); lab.textContent = label; inp = el('select'); for (const [v, n] of o.opts){ const op = el('option'); op.value = v; op.textContent = n; inp.append(op); } row.append(lab, inp); }
   else { row = el('div','row'); const lab = el('label'); lab.textContent = label; inp = el('input'); inp.type = o.type || 'range'; if (inp.type === 'range'){ inp.min = o.min; inp.max = o.max; inp.step = o.step || 1; val = el('span','val'); } row.append(lab, inp); if (val) row.append(val); }
   const fmt = o.fmt || (v => String(v)), read = () => inp.type === 'checkbox' ? inp.checked : inp.type === 'range' ? parseFloat(inp.value) : o.num ? (parseInt(inp.value, 10) || 0) : inp.value;
-  inp[inp.type === 'checkbox' ? 'onchange' : 'oninput'] = () => { S[key] = read(); if (val) val.textContent = fmt(S[key]); touch(o.colony); };
+  inp[inp.type === 'checkbox' || o.type === 'select' ? 'onchange' : 'oninput'] = () => { S[key] = read(); if (val) val.textContent = fmt(S[key]); touch(o.colony); };
   shows.push(() => { if (inp.type === 'checkbox') inp.checked = !!S[key]; else if (document.activeElement !== inp || inp.type === 'range') inp.value = S[key]; if (val) val.textContent = fmt(S[key]); });
   $(host).append(row); }
 const pct = v => Math.round(v*100)+'%', f2 = v => (+v).toFixed(2);
@@ -227,6 +248,11 @@ ctl('f-shape', 'dots', 'Circles per cell', { min:50, max:4000, step:50, colony:t
 ctl('f-shape', 'patch', 'Patchiness', { min:0, max:1, step:.01, fmt:pct, colony:true }); ctl('f-shape', 'swirl', 'Swirl inside', { min:0, max:2, step:.01, fmt:f2 }); ctl('f-shape', 'ringed', 'Circles with a ring', { min:0, max:.4, step:.005, fmt:pct, colony:true });
 ctl('f-shape', 'wobble', 'Wobble', { min:0, max:1, step:.01, fmt:pct }); ctl('f-shape', 'blob', 'Irregular, blobby', { min:0, max:1.5, step:.01, fmt:pct }); ctl('f-shape', 'lobes', 'Bumps', { min:1, max:10 }); ctl('f-shape', 'wobbleSpeed', 'Wobble speed', { min:0, max:3, step:.01, fmt:f2 });
 ctl('f-membrane', 'rings', 'Chains', { min:0, max:5 }); ctl('f-membrane', 'ringGap', 'Space between chains', { min:.02, max:.25, step:.005, fmt:pct }); ctl('f-membrane', 'chain', 'Dot spacing', { min:1, max:8, step:.1, fmt:f2 }); ctl('f-membrane', 'meander', 'Meander', { min:0, max:1.5, step:.01, fmt:pct });
+ctl('f-hover', 'hover', 'Circles react to the pointer', { type:'toggle' });
+ctl('f-hover', 'hMode', 'They', { type:'select', opts:[['push','Move away'],['pull','Gather in'],['swirl','Swirl round it'],['shake','Shake']] });
+ctl('f-hover', 'hRadius', 'Reach', { min:.03, max:.6, step:.01, fmt:pct }); ctl('f-hover', 'hStrength', 'Strength', { min:0, max:2, step:.01, fmt:pct });
+ctl('f-hover', 'hSwell', 'Circles swell', { min:0, max:1.5, step:.01, fmt:pct }); ctl('f-hover', 'hFollow', 'How closely it follows', { min:1, max:30, step:.5, fmt:v => v < 5 ? 'lazy' : v > 18 ? 'tight' : 'medium' });
+ctl('f-hover', 'hPlank', 'The plankton reacts too', { type:'toggle' }); ctl('f-hover', 'hCells', 'Whole cells are nudged too', { type:'toggle' });
 ctl('f-colour', 'hueVar', 'Hue variation', { min:0, max:90, fmt:v => '±'+v+'°' }); ctl('f-colour', 'lightVar', 'Light and dark variation', { min:0, max:.5, step:.01, fmt:pct }); ctl('f-colour', 'accent', 'Accent circles', { min:0, max:.6, step:.01, fmt:pct, colony:true });
 ctl('f-plankton', 'specks', 'Circles', { min:0, max:16000, step:100 }); ctl('f-plankton', 'speckSize', 'Size', { min:.5, max:5, step:.05, fmt:f2 }); ctl('f-plankton', 'flow', 'Flow speed', { min:0, max:3, step:.01, fmt:f2 });
 ctl('f-plankton', 'flowScale', 'Swirl size', { min:.5, max:8, step:.05, fmt:f2 }); ctl('f-plankton', 'clump', 'Clumps and voids', { min:0, max:1, step:.01, fmt:pct });
@@ -244,6 +270,8 @@ $('bHide').onclick = () => { document.body.classList.toggle('ui-hidden'); resize
 cv.addEventListener('pointerdown', e => { const r = cv.getBoundingClientRect(), x = e.clientX-r.left, y = e.clientY-r.top; let best = null, bd = 1e9; for (const c of cells){ const d = Math.hypot(c.x-x, c.y-y)/radiusOf(c); if (d < 1.2 && d < bd){ bd = d; best = c; } }
   if (best){ held = best; grab = [best.x-x, best.y-y]; cv.setPointerCapture(e.pointerId); } });
 cv.addEventListener('pointermove', e => { if (!held) return; const r = cv.getBoundingClientRect(), nx = e.clientX-r.left+grab[0], ny = e.clientY-r.top+grab[1]; held.vx = (nx-held.x)*8; held.vy = (ny-held.y)*8; held.x = nx; held.y = ny; });
+const track = e => { const r = cv.getBoundingClientRect(); M.tx = e.clientX-r.left; M.ty = e.clientY-r.top; if (!M.inside){ M.x = M.tx; M.y = M.ty; } M.inside = true; };
+cv.addEventListener('pointermove', track); cv.addEventListener('pointerdown', track); cv.addEventListener('pointerleave', () => { M.inside = false; }); cv.addEventListener('pointerup', e => { if (e.pointerType !== 'mouse') M.inside = false; });
 const drop = () => { held = null; }; cv.addEventListener('pointerup', drop); cv.addEventListener('pointercancel', drop);
 
 /* ------------------------------------------------------------ export */

@@ -245,7 +245,8 @@ Keys: H panel, R reshuffle, S save PNG.
 every mark is a tiny circle. Each cell is an irregular blob filled with hundreds of circles in
 closely related hues, with a few accent circles and ringed ones, and its edge is traced by
 chains of dots, one of them meandering. Four kinds: hollow, full, bright core and cloud. The
-cells drift, push each other apart and can be dragged; around them flow loose circles, ringed
+cells drift, push each other apart and can be dragged, and the circles react to the pointer
+(move away, gather in, swirl or shake, with reach, strength and swell); around them flow loose circles, ringed
 circles and dotted streaks, gathered into clumps with dark voids. Controls for the colony,
 the circles per cell and their size, patchiness and swirl, the blob shape, the membrane
 chains, six palettes with hue and lightness variation, the plankton, glow, trails and speed,
